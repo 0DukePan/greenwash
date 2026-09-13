@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""Build `assets/demo.gif` -- the real output of `python demo/run_demo.py`,
-typed onto a terminal card.
+"""Build `assets/demo.gif` -- the real output of `python demo/run_demo.py
+--terse`, typed onto a terminal card.
 
-Nothing here is a mock-up: the lines come from running the demo and capturing
-its stdout, so the GIF cannot drift from what the command actually prints.
-The flag lines are highlighted for readability; the text itself is verbatim.
+Nothing here is a mock-up: the generator runs the demo and captures its stdout,
+so the GIF cannot drift from what the command prints. The only styling it adds
+is a tint and amber tag on the flag lines; the text is verbatim.
 
-Frames are drawn at 2x and downsampled, so text and corners are antialiased.
-The clip opens on the payoff (the fully caught state) so the poster frame
-GitHub and social previews grab is the catch, not an empty terminal, and it
-loops back onto that same frame.
+The clip opens on the caught state, so the poster frame GitHub and social
+previews grab is the catch rather than an empty terminal, and it loops back
+onto that same frame.
 
-Needs Pillow and a monospace font (Consolas, Cascadia Mono, DejaVu Sans Mono).
+Frames are drawn at 2x and downsampled. Needs Pillow and a monospace font
+(Consolas, Cascadia Mono, DejaVu Sans Mono).
 
 Run:  python assets/make_demo_gif.py [--preview DIR]
 """
@@ -29,20 +29,21 @@ ROOT = HERE.parent
 OUT = HERE / "demo.gif"
 
 S = 2                    # supersampling factor
-W, H = 720, 550          # final canvas
-INSET = 16               # card distance from the canvas edge
+W, H = 768, 420          # final canvas
+INSET = 14               # card distance from the canvas edge
 RADIUS = 12
 HEADER = 26              # terminal chrome strip
-TEXT_LEFT = 38
-TEXT_TOP = 54
-LINE_H = 22
-SIZE = 16
+TEXT_LEFT = 34
+TEXT_TOP = 50
+LINE_H = 25
+SIZE = 17
 
 BG = (9, 12, 17)
 CARD, BORDER, DIVIDER = (14, 18, 24), (31, 38, 47), (26, 32, 40)
 DOTS = [(255, 95, 86), (255, 189, 46), (39, 201, 63)]
 PROMPT, CMD = (63, 185, 80), (230, 237, 243)
 BODY, FLAG, DIM = (201, 209, 217), (240, 136, 62), (139, 148, 158)
+TINT = (35, 29, 24)      # card colour, warmed up: the flag-row highlight
 
 FONT_DIRS = [
     pathlib.Path(r"C:\Windows\Fonts"),
@@ -74,20 +75,18 @@ def px(v: float) -> int:
 
 
 def demo_lines() -> list[str]:
-    proc = subprocess.run([sys.executable, str(ROOT / "demo" / "run_demo.py")],
+    proc = subprocess.run([sys.executable, str(ROOT / "demo" / "run_demo.py"),
+                           "--terse"],
                           capture_output=True, text=True, cwd=ROOT)
     if proc.returncode != 0:
-        sys.exit(f"demo/run_demo.py failed:\n{proc.stderr}")
+        sys.exit(f"demo/run_demo.py --terse failed:\n{proc.stderr}")
     return [line.rstrip() for line in proc.stdout.splitlines()]
 
 
 def classify(lines: list[str]) -> list[str]:
-    first = next(i for i, line in enumerate(lines) if line.startswith("$ "))
     kinds = []
-    for i, line in enumerate(lines):
-        if i < first:
-            kinds.append("dim")
-        elif line.startswith("$ "):
+    for line in lines:
+        if line.startswith("$ "):
             kinds.append("cmd")
         elif line.lstrip().startswith("["):
             kinds.append("flag")
@@ -126,6 +125,24 @@ BASE = card()
 def render(visible, cursor=None) -> Image.Image:
     img = BASE.copy()
     d = ImageDraw.Draw(img)
+
+    # tint every flag line and the detail lines under it, as one block
+    tinted, i = set(), 0
+    while i < len(visible):
+        if visible[i][1] == "flag":
+            tinted.add(i)
+            j = i + 1
+            while j < len(visible) and visible[j][1] == "dim":
+                tinted.add(j)
+                j += 1
+            i = j
+        else:
+            i += 1
+
+    for row in tinted:
+        y = px(TEXT_TOP + row * LINE_H)
+        d.rectangle([px(INSET + 5), y - px(3), px(W - INSET - 5), y + px(20)], fill=TINT)
+
     for row, (line, kind) in enumerate(visible):
         y = px(TEXT_TOP + row * LINE_H)
         if kind == "cmd":
@@ -138,40 +155,40 @@ def render(visible, cursor=None) -> Image.Image:
             x = TEXT_LEFT + d.textlength(line[:end], font=FONT) / S
             d.text((px(x), y), line[end:], font=FONT, fill=CMD)
         else:
-            fill = {"out": BODY, "dim": DIM}[kind]
-            d.text((px(TEXT_LEFT), y), line, font=FONT, fill=fill)
+            d.text((px(TEXT_LEFT), y), line, font=FONT,
+                   fill={"out": BODY, "dim": DIM}[kind])
     if cursor is not None:
         y = px(TEXT_TOP + cursor * LINE_H)
-        d.rectangle([px(TEXT_LEFT), y - px(1), px(TEXT_LEFT + 9), y + px(17)], fill=CMD)
+        d.rectangle([px(TEXT_LEFT), y - px(1), px(TEXT_LEFT + 9), y + px(18)], fill=CMD)
     return img
 
 
 def story_frames():
-    """The demo, in order: narration already visible, two commands, two flags."""
+    """The demo, in order: two commands, their output, the flags."""
     lines = demo_lines()
     kinds = classify(lines)
     commands = [i for i, line in enumerate(lines) if line.startswith("$ ")]
     frames: list[tuple[Image.Image, int]] = []
+    visible: list[tuple[str, str]] = []
 
-    def add(visible, ms, cursor=None):
+    def add(ms, cursor=None):
         frames.append((render(visible, cursor), ms))
 
-    visible = [(lines[i], kinds[i]) for i in range(commands[0])]
-    add(visible, 420, cursor=len(visible))
+    add(260, cursor=0)
 
     for k, start in enumerate(commands):
         end = commands[k + 1] if k + 1 < len(commands) else len(lines)
         command = lines[start]
-        step = 2 if len(command) <= 20 else 5         # long commands paste faster
+        step = 2 if len(command) <= 20 else 6         # long commands paste faster
         for n in range(step, len(command), step):
-            add(visible + [(command[:n], "cmd")], 35, cursor=len(visible))
-        add(visible + [(command, "cmd")], 70, cursor=len(visible))
+            frames.append((render(visible + [(command[:n], "cmd")], len(visible)), 45))
+        frames.append((render(visible + [(command, "cmd")], len(visible)), 90))
         visible.append((command, "cmd"))
-        add(visible, 240)
+        add(200)
         for i in range(start + 1, end):               # this command's output
             visible.append((lines[i], kinds[i]))
-            add(visible, 40 if not lines[i].strip() else 110)
-        add(visible, 1100 if k == 0 else 900)         # let the catch land
+            add(45 if not lines[i].strip() else (135 if kinds[i] != "dim" else 120))
+        add(1000 if k == 0 else 1400)                 # let the catch land
     return frames
 
 
@@ -180,11 +197,37 @@ def build():
     poster = story[-1][0]
     opening = story[0][0]
 
-    frames = [(poster, 900)]                          # poster frame = the catch
+    frames = [(poster, 700)]                          # poster frame = the catch
     for t in (0.4, 0.75, 1.0):                        # dissolve into the story
-        frames.append((Image.blend(poster, opening, t), 90))
+        frames.append((Image.blend(poster, opening, t), 70))
     frames.extend(story)                              # ends on the same poster
     return frames
+
+
+ACCENTS = [BG, CARD, TINT, BORDER, DIVIDER, CMD, BODY, DIM, FLAG, PROMPT, *DOTS]
+
+
+def palette(frames) -> Image.Image:
+    """Palette from the art's own colours, with the accents forced in.
+
+    Adaptive quantisation quietly dropped the green `$`: it is a few dozen
+    pixels against a frame of greys, so median cut never spends a slot on it.
+    """
+    counts: dict[tuple, int] = {}
+    step = max(1, len(frames) // 8)
+    for img in frames[::step]:
+        for n, color in img.getcolors(1 << 22):
+            counts[color] = counts.get(color, 0) + n
+
+    colors = [c for c, _ in sorted(counts.items(), key=lambda kv: -kv[1])][:128]
+    for accent in ACCENTS:
+        if all(sum((a - b) ** 2 for a, b in zip(accent, c)) > 144 for c in colors):
+            colors.append(accent)
+
+    pal = Image.new("P", (1, 1))
+    pal.putpalette([v for c in colors[:256] for v in c]
+                   + [0] * (768 - 3 * len(colors[:256])))
+    return pal
 
 
 def main() -> None:
@@ -195,12 +238,14 @@ def main() -> None:
         preview = pathlib.Path(sys.argv[sys.argv.index("--preview") + 1])
         preview.mkdir(parents=True, exist_ok=True)
 
+    flats = [img.resize((W, H), Image.LANCZOS) for img, _ in frames]
+    pal = palette(flats)
+
     paletted = []
-    for i, (img, _) in enumerate(frames):
-        final = img.resize((W, H), Image.LANCZOS)
+    for i, img in enumerate(flats):
         if preview is not None and i % max(1, len(frames) // 12) == 0:
-            final.save(preview / f"frame-{i:03d}.png")
-        paletted.append(final.convert("P", palette=Image.ADAPTIVE, colors=32))
+            img.save(preview / f"frame-{i:03d}.png")
+        paletted.append(img.quantize(palette=pal, dither=Image.Dither.NONE))
 
     paletted[0].save(OUT, save_all=True, append_images=paletted[1:],
                      duration=[ms for _, ms in frames], loop=0, optimize=True,
