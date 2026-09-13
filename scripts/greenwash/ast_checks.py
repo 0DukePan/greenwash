@@ -42,6 +42,27 @@ def _is_noop(stmt) -> bool:
     return False
 
 
+SKIP_DECORATORS = ("pytest.mark.skip", "unittest.skip")
+SKIP_CALLS = ("pytest.skip", "self.skipTest", "unittest.skip")
+
+
+def _skip_flags(tree, added_lines) -> list:
+    """Skip detection by structure, not text: a file that merely *mentions*
+    `@pytest.mark.skip` (this repo's own pattern table, a docstring) is not
+    skipping anything."""
+    flags = []
+    for node in ast.walk(tree):
+        for decorator in getattr(node, "decorator_list", []) or []:
+            text = ast.unparse(decorator)
+            if text.startswith(SKIP_DECORATORS) and _line_in(added_lines, decorator):
+                flags.append(Flag("", "test-skipped", f"{text} on {getattr(node, 'name', '?')}"))
+        if isinstance(node, ast.Call) and _line_in(added_lines, node):
+            text = ast.unparse(node.func)
+            if text in SKIP_CALLS:
+                flags.append(Flag("", "test-skipped", f"{text}(...) called"))
+    return flags
+
+
 def check_python(path, added_lines, asserted_literals, is_test) -> list:
     flags: list = []
     try:
@@ -49,6 +70,9 @@ def check_python(path, added_lines, asserted_literals, is_test) -> list:
             tree = ast.parse(fh.read())
     except (OSError, SyntaxError, ValueError):
         return flags
+
+    for flag in _skip_flags(tree, added_lines):
+        flags.append(Flag(path, flag.kind, flag.detail))
 
     functions = [n for n in ast.walk(tree)
                  if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))]

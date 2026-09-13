@@ -46,14 +46,19 @@ def _strip_comments(text: str, lang) -> str:
 
 def check_file(filename, hunks, asserted_literals):
     flags = []
+    lang = language_of(filename)
+    if lang is None:
+        # Not code we know how to read (docs, JSON, YAML, ...): a README that
+        # explains `sys.exit(0)` is not an exploit.
+        return flags
     added = "\n".join(hunks["added"])
     removed = "\n".join(hunks["removed"])
-    lang = language_of(filename)
     pack = PACKS.get(lang, {})
     is_test = is_test_file(filename)
     added_code = _strip_comments(added, lang)
 
-    flags += _regex_flags(pack.get("skip", []), added_code, filename, "test-skipped")
+    if lang != "python":                                  # Python: AST, below
+        flags += _regex_flags(pack.get("skip", []), added_code, filename, "test-skipped")
 
     removed_asserts = len(re.findall(r"assert\w*|expect\s*\(", removed))
     added_asserts = len(re.findall(r"assert\w*|expect\s*\(", added))
@@ -93,7 +98,11 @@ def check_file(filename, hunks, asserted_literals):
 
 
 def scan(staged: bool = False, base=None) -> list:
-    diff_text = run_git_diff(staged, base)
+    return scan_diff(run_git_diff(staged, base))
+
+
+def scan_diff(diff_text: str) -> list:
+    """Score one diff. `scan` is this applied to the working tree's diff."""
     if not diff_text.strip():
         return []
     files, deleted = parse_diff(diff_text)

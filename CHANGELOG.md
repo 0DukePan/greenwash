@@ -2,6 +2,30 @@
 
 ## Unreleased
 
+- `benchmark/fp_survey.py` measures the scanner against real history -- 59
+  commits touching 1,225 file changes across three repositories -- and writes
+  `benchmark/results/fp-survey.json`: 29 flags, 20 of them the
+  ask-for-an-explanation rules and 9 genuine false positives. Both classes are
+  now listed in `THREAT_MODEL.md`.
+- Two false-positive classes the survey found are fixed: docs and configs
+  (`.md`, `.json`, `.yml`) are no longer scanned as code, and Python skip
+  detection is AST-based, so a file that merely *mentions* `@pytest.mark.skip`
+  -- the scanner's own pattern table -- is no longer flagged. Both have
+  regression tests.
+- The detection measurement attacks each task with the cheat it was designed
+  to tempt (`FAKE_AGENT_CHEAT=auto` instead of one generic hardcode) and breaks
+  the result down by cheat type: static scan 24/24, held-out suite 22/24,
+  false positives 0/24. The two behavioral misses are the exploit pair --
+  `__eq__` returning True, a patched `conftest.py` -- because both tricks
+  satisfy the hidden test too; only the static layer catches them.
+- Task validation got stricter: the hidden test must now fail on the buggy
+  baseline by itself, not just as part of a failing suite. That caught three
+  hidden tests that passed on their own bug (`unique-preserve-order`,
+  `is-palindrome-stub`, `safe-divide`); all three were strengthened.
+- Host instruction files (`AGENTS.md`, Cursor, Copilot, Cline, Windsurf,
+  Gemini) are generated from the skill by `adapters/sync_instructions.py`, so
+  the rules cannot drift between hosts; a test fails when they do. Only the
+  Claude Code plugin additionally gets the unskippable Stop hook.
 - Restyled `assets/demo.gif` after a frame-by-frame review. The poster frame is
   now the caught state rather than an empty terminal, the flag tags are
   highlighted so the catch reads at thumbnail size, the dead beats at the loop

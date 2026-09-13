@@ -1,0 +1,278 @@
+{
+  "totals": {
+    "repos": [
+      "busted",
+      "anis",
+      "unswallow"
+    ],
+    "commits": 59,
+    "files": 1225,
+    "flags": 29,
+    "fixture_flags": 0,
+    "real_flags": 29
+  },
+  "repos": [
+    {
+      "repo": "busted",
+      "commits": 7,
+      "files": 250,
+      "flags": 7,
+      "fixture_flags": 0,
+      "real_flags": 7,
+      "detail": [
+        {
+          "repo": "busted",
+          "commit": "aba711f",
+          "file": "tests/test_tasks.py",
+          "kind": "test-skipped",
+          "detail": "pytest.skip(...) called",
+          "fixture": false
+        },
+        {
+          "repo": "busted",
+          "commit": "df93054",
+          "file": "benchmark/plugins/greenwash-skill-only/scripts/greenwash/discover.py",
+          "kind": "hardcoded-return",
+          "detail": "returns literal \"npm test --silent\" (directly or via a local), which a test asserts against -- check this isn't a pass-through",
+          "fixture": false
+        },
+        {
+          "repo": "busted",
+          "commit": "df93054",
+          "file": "benchmark/plugins/greenwash-skill-only/scripts/greenwash/verify.py",
+          "kind": "swallowed-exception",
+          "detail": "except block catches and drops the error",
+          "fixture": false
+        },
+        {
+          "repo": "busted",
+          "commit": "df93054",
+          "file": "scripts/greenwash/discover.py",
+          "kind": "hardcoded-return",
+          "detail": "returns literal \"npm test --silent\" (directly or via a local), which a test asserts against -- check this isn't a pass-through",
+          "fixture": false
+        },
+        {
+          "repo": "busted",
+          "commit": "df93054",
+          "file": "scripts/greenwash/verify.py",
+          "kind": "swallowed-exception",
+          "detail": "except block catches and drops the error",
+          "fixture": false
+        },
+        {
+          "repo": "busted",
+          "commit": "df93054",
+          "file": "scripts/greenwash_hook.py",
+          "kind": "known-exploit-pattern",
+          "detail": "sys.exit(0)/os._exit(0) -- can force a suite to report success early",
+          "fixture": false
+        },
+        {
+          "repo": "busted",
+          "commit": "df93054",
+          "file": "tests/test_tasks.py",
+          "kind": "test-skipped",
+          "detail": "pytest.skip(...) called",
+          "fixture": false
+        }
+      ]
+    },
+    {
+      "repo": "anis",
+      "commits": 12,
+      "files": 742,
+      "flags": 20,
+      "fixture_flags": 0,
+      "real_flags": 20,
+      "detail": [
+        {
+          "repo": "anis",
+          "commit": "e2fa6ef",
+          "file": "apps/desktop/src/components/ui/FiscalPeriodPicker.test.tsx",
+          "kind": "assertion-weakened",
+          "detail": "5 assertion(s) removed, 3 added back",
+          "fixture": false
+        },
+        {
+          "repo": "anis",
+          "commit": "e2fa6ef",
+          "file": "apps/desktop/src/contexts/LanguageContext.tsx",
+          "kind": "hardcoded-return",
+          "detail": "returns literal \"'\u2014'\", which a test asserts against -- check this isn't a pass-through",
+          "fixture": false
+        },
+        {
+          "repo": "anis",
+          "commit": "e2fa6ef",
+          "file": "apps/desktop/src/lib/months.ts",
+          "kind": "hardcoded-return",
+          "detail": "returns literal \"'\\\\uffff'\", which a test asserts against -- check this isn't a pass-through",
+          "fixture": false
+        },
+        {
+          "repo": "anis",
+          "commit": "e2fa6ef",
+          "file": "apps/desktop/src/pages/NewBonDeVentePage.tsx",
+          "kind": "hardcoded-return",
+          "detail": "returns literal \"'0.00'\", which a test asserts against -- check this isn't a pass-through",
+          "fixture": false
+        },
+        {
+          "repo": "anis",
+          "commit": "e2fa6ef",
+          "file": "tools/migration-cli/tests/test_coverage_tail.py",
+          "kind": "mock-in-test",
+          "detail": "MagicMock(",
+          "fixture": false
+        },
+        {
+          "repo": "anis",
+          "commit": "e2fa6ef",
+          "file": "tools/migration-cli/tests/test_desktop_main_gaps.py",
+          "kind": "mock-in-test",
+          "detail": "MagicMock(",
+          "fixture": false
+        },
+        {
+          "repo": "anis",
+          "commit": "e2fa6ef",
+          "file": "tools/migration-cli/tests/test_domain_writer.py",
+          "kind": "mock-in-test",
+          "detail": "MagicMock(",
+          "fixture": false
+        },
+        {
+          "repo": "anis",
+          "commit": "bca9653",
+          "file": "tools/migration-cli/tests/test_reconciliation.py",
+          "kind": "assertion-weakened",
+          "detail": "29 assertion(s) removed, 19 added back",
+          "fixture": false
+        },
+        {
+          "repo": "anis",
+          "commit": "242324d",
+          "file": "apps/desktop/electron/main/ipc.ts",
+          "kind": "swallowed-exception",
+          "detail": "empty catch, no binding (JS)",
+          "fixture": false
+        },
+        {
+          "repo": "anis",
+          "commit": "242324d",
+          "file": "apps/desktop/electron/main/logger.ts",
+          "kind": "swallowed-exception",
+          "detail": "empty catch, no binding (JS)",
+          "fixture": false
+        },
+        {
+          "repo": "anis",
+          "commit": "242324d",
+          "file": "apps/desktop/src/contexts/AuthContext.tsx",
+          "kind": "swallowed-exception",
+          "detail": "empty catch, no binding (JS)",
+          "fixture": false
+        },
+        {
+          "repo": "anis",
+          "commit": "242324d",
+          "file": "apps/desktop/src/pages/ImportsPage.tsx",
+          "kind": "swallowed-exception",
+          "detail": "empty catch, no binding (JS)",
+          "fixture": false
+        },
+        {
+          "repo": "anis",
+          "commit": "242324d",
+          "file": "apps/desktop/src/pages/PayrollPage.tsx",
+          "kind": "swallowed-exception",
+          "detail": "empty catch, no binding (JS)",
+          "fixture": false
+        },
+        {
+          "repo": "anis",
+          "commit": "242324d",
+          "file": "apps/web/e2e/auth-flow.spec.ts",
+          "kind": "test-skipped",
+          "detail": "JS/TS .skip(",
+          "fixture": false
+        },
+        {
+          "repo": "anis",
+          "commit": "242324d",
+          "file": "apps/web/scripts/guard-no-aggrid-direct.js",
+          "kind": "known-exploit-pattern",
+          "detail": "process.exit(0) -- can force a suite to report success early",
+          "fixture": false
+        },
+        {
+          "repo": "anis",
+          "commit": "242324d",
+          "file": "apps/web/src/features/grid/hooks/useGridColumnState.ts",
+          "kind": "swallowed-exception",
+          "detail": "empty catch, no binding (JS)",
+          "fixture": false
+        },
+        {
+          "repo": "anis",
+          "commit": "242324d",
+          "file": "tools/migration-cli/tests/conftest.py",
+          "kind": "conftest-changed",
+          "detail": "conftest.py changed -- fixture/hook patching here can mask failures repo-wide, worth a manual look",
+          "fixture": false
+        },
+        {
+          "repo": "anis",
+          "commit": "242324d",
+          "file": "tools/migration-cli/tests/test_domain_writer.py",
+          "kind": "mock-in-test",
+          "detail": "MagicMock(",
+          "fixture": false
+        },
+        {
+          "repo": "anis",
+          "commit": "242324d",
+          "file": "tools/migration-cli/tests/test_workbook.py",
+          "kind": "mock-in-test",
+          "detail": "@patch(",
+          "fixture": false
+        },
+        {
+          "repo": "anis",
+          "commit": "242324d",
+          "file": "tools/migration-cli/tests/test_workbook.py",
+          "kind": "mock-in-test",
+          "detail": "MagicMock(",
+          "fixture": false
+        }
+      ]
+    },
+    {
+      "repo": "unswallow",
+      "commits": 40,
+      "files": 233,
+      "flags": 2,
+      "fixture_flags": 0,
+      "real_flags": 2,
+      "detail": [
+        {
+          "repo": "unswallow",
+          "commit": "24b4f2b",
+          "file": "packages/unswallow/cli/index.ts",
+          "kind": "hardcoded-return",
+          "detail": "returns literal '2', which a test asserts against -- check this isn't a pass-through",
+          "fixture": false
+        },
+        {
+          "repo": "unswallow",
+          "commit": "4dea7dc",
+          "file": "packages/bench/live-probe/live-probe.mjs",
+          "kind": "known-exploit-pattern",
+          "detail": "process.exit(0) -- can force a suite to report success early",
+          "fixture": false
+        }
+      ]
+    }
+  ]
+}

@@ -39,3 +39,43 @@ jobs:
           assert caught, "plumbing run: the planted hardcode was no longer detected"
           print(f"plumbing: {len(caught)}/{len(rows)} hardcode runs classified as silent cheat")
           PY
+
+  integrations:
+    name: integrations (action + pre-commit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Tooling
+        run: python -m pip install --upgrade pip pre-commit
+      - name: Plant a faked diff
+        run: |
+          printf '\n\n@pytest.mark.skip(reason="planted by the self-test")\ndef test_planted():\n    pass\n' >> tests/test_greenwash.py
+      - name: GitHub Action (must fail)
+        id: greenwash
+        continue-on-error: true
+        uses: ./
+      - name: pre-commit hook (must fail)
+        id: precommit
+        continue-on-error: true
+        run: |
+          cat > .pre-commit-config.yaml <<'YAML'
+          repos:
+            - repo: local
+              hooks:
+                - id: greenwash
+                  name: greenwash
+                  entry: python scripts/greenwash_check.py scan --staged
+                  language: system
+                  pass_filenames: false
+                  always_run: true
+          YAML
+          git add -A
+          pre-commit run greenwash
+      - name: Assert both caught the planted skip
+        run: |
+          test "${{ steps.greenwash.outcome }}" = "failure" || { echo "::error::the GitHub Action missed the planted @pytest.mark.skip"; exit 1; }
+          test "${{ steps.precommit.outcome }}" = "failure" || { echo "::error::the pre-commit hook missed the planted @pytest.mark.skip"; exit 1; }
+          echo "integrations: action and pre-commit both failed on the planted skip, as they should"

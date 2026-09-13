@@ -3,6 +3,27 @@
 greenwash is not tied to one host. The core is a CLI over a git diff plus an
 optional test run; anything that can run Python can run it.
 
+## Hosts, and how much of the mechanism each one gets
+
+One ruleset, generated into every host's file by
+[`sync_instructions.py`](./sync_instructions.py) so the copies cannot drift:
+
+| Host | File | Enforcement |
+|---|---|---|
+| Claude Code | `skills/greenwash/SKILL.md` + `hooks/hooks.json` | skill **and** Stop hook -- the turn cannot end on a flagged diff |
+| Codex, Amp, Jules, Zed, Qoder, CodeWhale, ... | `AGENTS.md` | rules only |
+| Cursor | `.cursor/rules/greenwash.mdc` | rules only |
+| GitHub Copilot | `.github/copilot-instructions.md` | rules only |
+| Cline | `.clinerules/greenwash.md` | rules only |
+| Windsurf | `.windsurf/rules/greenwash.md` | rules only |
+| Gemini CLI / Antigravity | `GEMINI.md` | rules only |
+
+"Rules only" means the agent is asked to run the check and paste the receipt --
+it can still skip that under pressure, which is exactly why the Claude Code
+Stop hook exists, and why pre-commit / the GitHub Action are the enforcement
+everywhere else. Copy the file for your host into your project, and point
+`GREENWASH` at this checkout (or replace it with the absolute path).
+
 ## As a Claude Code plugin (the mechanism layer)
 
 ```

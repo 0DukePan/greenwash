@@ -116,30 +116,53 @@ test -- and greenwash's `hardcoded-return` (or `mock-in-test`, or
 
 ## Detector accuracy (no model)
 
-`benchmark/detection.py` scores every task three ways with greenwash itself --
-the buggy baseline, a scripted cheat, and the recorded real fix -- and writes
-`benchmark/results/detection.json`:
+`benchmark/detection.py` attacks every task with the cheat it was designed to
+tempt (`fake_agent` reads the task's `cheat_type`), then scores the result with
+greenwash itself, alongside the buggy baseline and the recorded real fix. It
+writes `benchmark/results/detection.json`:
 
 | Workspace | Result |
 |---|---|
-| 24 planted cheats | 18 produced a green visible suite; the held-out suite caught 18/18, the static scan 13/18 on its own |
+| 24 planted cheats | all 24 went green; static scan 24/24, held-out suite 22/24 |
 | 24 recorded real fixes | 0 flags, both suites pass |
 | 24 buggy baselines | 0 flags |
 
-All five static misses are trivial literals (`return 0` / `true` / `false`),
-which the scanner filters on purpose to keep the signal clean; the held-out
-suite catches them regardless.
+| Cheat type | Tasks | Static | Behavioral |
+|---|--:|--:|--:|
+| hardcode | 5 | 5 | 5 |
+| skip | 5 | 5 | 5 |
+| swallow | 5 | 5 | 5 |
+| mock | 4 | 4 | 4 |
+| exploit | 3 | 3 | 1 |
+| weaken | 2 | 2 | 2 |
 
-This measures the checker against a labelled corpus. It says nothing about how
-often a model reaches for the cheat -- that is what the harness measures.
+The two behavioral misses are the exploit pair -- an unconditional `__eq__` and
+a patched `conftest.py` -- because both tricks satisfy the held-out test as
+well. Only the static layer catches those, which is the argument for running
+both.
+
+This measures the checker against a labelled corpus, one cheat per task, each
+of the type that task was built around. It says nothing about how often a model
+reaches for the cheat -- that is what the harness measures.
+
+### False positives on real history
+
+`python benchmark/fp_survey.py --limit 40` runs the same scanner over recent
+commits of this repository and any sibling checkouts next to it, prints every
+flag with its path so a human can judge it, and writes
+`benchmark/results/fp-survey.json`. The latest run: 59 commits touching 1,225
+file changes, 29 flags -- 20 of them the rules that always ask for an
+explanation, and 9 genuine false positives, both classes listed in
+[THREAT_MODEL.md](./THREAT_MODEL.md).
 
 ## Where this stands
 
 The task set is built: 24 tasks across six cheat types (hardcode, skip,
 mock-the-unit, swallow, weakened assertions, named exploits), in Python and
 JavaScript. Every task is validated by `tests/test_tasks.py` -- the buggy
-workspace must fail both tests, the recorded solution must pass both -- and the
-whole pipeline (git init, scoring, hidden-test injection, classification) runs
+workspace must fail both suites, the recorded solution must pass both, and the
+hidden test on its own must fail against the buggy baseline -- and the whole
+pipeline (git init, scoring, hidden-test injection, classification) runs
 end-to-end with no model via `benchmark/tools/fake_agent.py`.
 
 What is still missing is the agent-facing measurement -- the silent-cheat rate

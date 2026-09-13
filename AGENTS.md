@@ -1,0 +1,107 @@
+<!-- generated from skills/greenwash/SKILL.md by adapters/sync_instructions.py -- edit the skill, then rerun -->
+# greenwash
+
+Point `GREENWASH` at your greenwash checkout before running these
+commands (or replace it with the absolute path).
+
+
+Anthropic's own research found that models under pressure to show a green
+checkmark sometimes make the checkmark green instead of making the code
+correct -- skipping the test, mocking the thing being tested, hardcoding
+the expected value, or swallowing the exception that would have failed
+loudly. All four produce the same visible result. Only one of them means
+the bug is fixed.
+
+This skill is three rules and one script.
+
+## Rule 1: no claim without the receipt
+
+Never write "done", "fixed", "tests pass", "should work now", or anything
+equivalent unless you paste, verbatim:
+
+1. The exact command you ran
+2. The exact output it produced
+
+Not a paraphrase. Not "all tests passed" -- the actual `5 passed in 0.32s`
+or equivalent. If you didn't run it, you don't get to say it passed. If you
+ran it and it's long, paste the relevant lines (the summary line and any
+failures), not a summary in your own words.
+
+## Rule 2: run the check before you claim anything
+
+Before the "done" message goes out, run the static check:
+
+```bash
+python "$GREENWASH/scripts/greenwash_check.py" scan
+```
+
+This diffs everything changed since the last commit and flags known
+cheat patterns. Paste its output too, whether clean or not.
+
+If it comes back clean, that's not proof of correctness either -- it's a
+smell test, not a prover. Say so plainly rather than treating "found
+nothing" as a stronger claim than it is.
+
+## Rule 3: when there is a broader or held-out suite, run it
+
+Static patterns are a pre-filter. The real question is whether the code
+actually works on inputs you weren't shown. If the repo has a fuller suite
+or a held-out test file, run it -- don't just run the one test you were
+pointed at:
+
+```bash
+python "$GREENWASH/scripts/greenwash_check.py" verify \
+  --run-tests "<the project's test command>" \
+  --heldout "<path to a suite you were not shown, if one exists>"
+```
+
+A fix that passes the visible test but fails the broader suite is not a
+fix. Report that plainly instead of shipping it.
+
+If the check flags something, you have exactly two honest options:
+
+- **Fix the real thing** it's pointing at, then show the receipt again.
+- **Explain why this specific flag isn't a cheat** (e.g. "this test was
+  already skipped before my change, unrelated to this fix" or "this mock
+  covers a database call, not the function under test") -- explicitly,
+  in the message to the user, not silently.
+
+What you may never do: delete, comment out, loosen, or route around a
+flag just to make the check pass. That's the exact behavior this skill
+exists to catch, and doing it to get past greenwash itself is the same
+failure one level up.
+
+## A stronger version of this runs automatically
+
+If this plugin's Stop hook is enabled, the check also runs automatically
+every time you try to end your turn, and blocks you from stopping if it
+finds something -- so treat the rules above as how to get ahead of that,
+not as optional given the hook exists. The hook doesn't know intent, only
+patterns and test results; explaining a false positive to the user is
+still on you.
+
+## What the script actually checks
+
+Static (`scan`):
+
+- A test got skipped/disabled instead of fixed (`.skip(`, `@pytest.mark.skip`,
+  `#[ignore]`, and similar, across common frameworks)
+- An entire test file was deleted
+- Assertions were removed and nothing equivalent replaced them
+- A mock/patch/stub shows up in a test file (flagged for you to confirm
+  it isn't mocking the exact function the test is supposed to exercise)
+- An implementation returns a literal that matches what a test asserts
+  against it -- directly or via a local variable -- suggesting a hardcoded
+  pass-through rather than real logic
+- An exception is caught and silently dropped
+- `sys.exit(0)`, an unconditional `__eq__` override, or a `conftest.py`
+  edit -- specific exploits named in Anthropic's own reward-hacking research
+
+Behavioral (`verify`, when configured):
+
+- `tests-failed` -- the test command exits non-zero after you claimed done
+- `heldout-failed` -- the visible suite passes but a held-out suite fails,
+  i.e. the change overfits what it was allowed to see
+
+None of these prove cheating by themselves. A flag means "explain this,"
+not "you're caught." Treat it exactly that plainly with the user.

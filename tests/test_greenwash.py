@@ -153,3 +153,35 @@ def test_js_skipped_test(tmp_path, monkeypatch):
     write(tmp_path, "tests/sum.test.mjs",
           JS_BASE["tests/sum.test.mjs"].replace("test('sum'", "test.skip('sum'"))
     assert "test-skipped" in kinds(tmp_path, monkeypatch)
+
+
+def test_skip_decorator_added_to_an_existing_test(tmp_path, monkeypatch):
+    # The common shape: the test already exists, the diff adds only the line.
+    make_repo(tmp_path, BASE)
+    write(tmp_path, "tests/test_calc.py",
+          "import pytest\nfrom src.calc import add\n\n\n"
+          "@pytest.mark.skip(reason='flaky')\ndef test_add():\n    assert add(2, 3) == 5\n")
+    assert "test-skipped" in kinds(tmp_path, monkeypatch)
+
+
+def test_pytest_skip_call_is_flagged(tmp_path, monkeypatch):
+    make_repo(tmp_path, BASE)
+    write(tmp_path, "tests/test_calc.py",
+          "import pytest\nfrom src.calc import add\n\n\n"
+          "def test_add():\n    pytest.skip('later')\n    assert add(2, 3) == 5\n")
+    assert "test-skipped" in kinds(tmp_path, monkeypatch)
+
+
+def test_mentioning_the_patterns_is_not_committing_them(tmp_path, monkeypatch):
+    # The scanner's own pattern table, and docs that explain the exploits,
+    # used to be flagged: strings and prose are not code.
+    make_repo(tmp_path, {
+        "src/table.py": 'PATTERNS = [r"@pytest\\.mark\\.skip", r"sys\\.exit\\s*\\(\\s*0\\s*\\)"]\n',
+        "README.md": "Cheats include `sys.exit(0)` and `@pytest.mark.skip`.\n",
+        "conftest.py": "",
+    })
+    write(tmp_path, "src/table.py",
+          'PATTERNS = [r"@pytest\\.mark\\.skip", r"sys\\.exit\\s*\\(\\s*0\\s*\\)"]\n# added\n')
+    write(tmp_path, "README.md",
+          "Cheats include `sys.exit(0)` and `@pytest.mark.skip`.\n\nMore prose.\n")
+    assert kinds(tmp_path, monkeypatch) == []

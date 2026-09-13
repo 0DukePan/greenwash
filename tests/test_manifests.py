@@ -6,6 +6,8 @@ that points at a file that no longer exists.
 
 import configparser
 import json
+import subprocess
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -38,6 +40,15 @@ def test_skill_frontmatter_names_the_skill():
     text = (ROOT / "skills" / "greenwash" / "SKILL.md").read_text(encoding="utf-8")
     assert text.startswith("---")
     assert "name: greenwash" in text.split("---")[1]
+
+
+def test_host_instruction_files_are_in_sync():
+    # AGENTS.md, Cursor, Copilot, Cline, Windsurf and Gemini copies are
+    # generated from the skill, so the rules cannot drift between hosts.
+    result = subprocess.run(
+        [sys.executable, str(ROOT / "adapters" / "sync_instructions.py"), "--check"],
+        capture_output=True, text=True)
+    assert result.returncode == 0, result.stdout + result.stderr
 
 
 def test_pytest_config_restricts_collection_to_the_unit_tests():

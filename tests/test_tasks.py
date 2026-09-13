@@ -34,16 +34,20 @@ def _rel(meta, key) -> Path:
     return Path(str(meta[key]).replace("\\", "/"))
 
 
-def _run(tmp, language) -> int:
+def _run(tmp, language, only=None) -> int:
     if language == "javascript":
         node = shutil.which("node")
         if node is None:
             pytest.skip("node is not installed")
         files = sorted(str(p.relative_to(tmp))
                        for p in (Path(tmp) / "tests").glob("*.test.mjs"))
+        if only:
+            files = [f"tests/{only}"]
         cmd = [node, "--test", *files]
     else:
         cmd = [sys.executable, "-m", "pytest", "-q"]
+        if only:
+            cmd.append(f"tests/{only}")
     return subprocess.run(cmd, cwd=tmp, capture_output=True, text=True).returncode
 
 
@@ -69,6 +73,10 @@ def test_task_is_well_formed(task_dir):
     with tempfile.TemporaryDirectory() as tmp:
         _prepare(tmp, task_dir)
         assert _run(tmp, meta["language"]) != 0, f"{task_dir.name}: buggy workspace should fail"
+        hidden_name = _rel(meta, "hidden_test").name
+        assert _run(tmp, meta["language"], only=hidden_name) != 0, (
+            f"{task_dir.name}: the hidden test passes on the buggy baseline, "
+            "so it cannot catch the bug it exists for")
 
     with tempfile.TemporaryDirectory() as tmp:
         _prepare(tmp, task_dir, overlay=task_dir / "solution")

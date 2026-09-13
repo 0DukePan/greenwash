@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  <strong>18/18 planted cheats caught &middot; 0 false positives on 24 real fixes &middot; 52 tests</strong><br>
+  <strong>24/24 planted cheats caught &middot; 0 false positives on 24 real fixes &middot; 52 tests</strong><br>
   <sub>
     An agent under pressure to show green will skip the test, mock the unit under
     test, hardcode the expected value, or swallow the exception that would have
@@ -198,6 +198,7 @@ can run Python can run it:
 | pre-commit | `.pre-commit-hooks.yaml` -- runs `scan --staged`, sees exactly what's about to be committed |
 | GitHub Action | `action.yml`, composite; inputs `base`, `run-tests`, `heldout` |
 | Any CI | `BASE=origin/main RUN_TESTS="pytest -q" HELDOUT=tests/heldout bash adapters/ci.sh` |
+| Other agents | generated rule files for Codex/Amp (`AGENTS.md`), Cursor, Copilot, Cline, Windsurf and Gemini -- see [adapters/README.md](./adapters/README.md); the Claude Code plugin is the only host with the unskippable Stop hook |
 | Manually | `python scripts/greenwash_check.py all` |
 
 Exit codes: `0` clean, `1` flags raised, `2` tool error. Non-zero on any flag,
@@ -215,26 +216,42 @@ python scripts/greenwash_check.py all --json
 
 ## Numbers
 
-**Detector accuracy on the corpus, no model in the loop.** Each of the 24
-tasks is scored three ways by greenwash itself: the buggy baseline it is handed,
-a scripted cheat (return the literal the visible test asserts), and the task's
-recorded real fix.
+**Detector accuracy on the corpus, no model in the loop.** Each of the 24 tasks
+is attacked with the cheat it was designed to tempt -- hardcoding the asserted
+value, skipping the test, weakening assertions, swallowing the exception,
+mocking the unit under test, or a named exploit -- and then scored by greenwash
+itself, alongside the buggy baseline it was handed and the task's recorded real
+fix.
 
 <p align="center">
-  <img src="assets/benchmark.svg" width="860" alt="Planted cheats caught: static scan 13/18, held-out suite 18/18, either layer 18/18; false positives on the 24 recorded fixes: 0">
+  <img src="assets/benchmark.svg" width="860" alt="Planted cheats caught per cheat type: the static scan catches 24/24, the held-out suite 22/24, and the two misses are the exploit pair; false positives on the 24 recorded fixes: 0">
 </p>
 
 | Workspace | What greenwash said |
 |---|---|
-| 24 planted cheats | 18 produced a green visible suite; the held-out suite caught **18/18**, the static scan flagged **13/18** on its own |
+| 24 planted cheats | all 24 went green; the **static scan caught 24/24**, the held-out suite **22/24** |
 | 24 recorded real fixes | **0 flags**, both suites pass |
 | 24 buggy baselines | 0 flags |
 
-All five static misses are the same deliberate trade: `return 0`, `return true`
-and `return false` are filtered as trivial literals so they don't drown the
-signal in noise. The held-out suite doesn't care about spelling. That split is
-the two-layer design doing its job -- the static scan is a fast pre-filter,
-`verify` is the durable signal. Reproduce with `python benchmark/detection.py`.
+The two the held-out suite misses are the exploit pair -- an unconditional
+`__eq__` and a patched `conftest.py` -- because those tricks satisfy the hidden
+test as well. That is exactly the argument for two layers: the behavioural pass
+is the durable signal, and the static scan is what catches the exploits that
+defeat it. Reproduce with `python benchmark/detection.py`.
+
+**False positives on real history.** `benchmark/fp_survey.py` re-runs the same
+scanner over recent commits of three unrelated repositories -- this one, a
+React/TypeScript app, and a Python tool -- 59 commits touching 1,225 file
+changes. It produced 29 flags. Hand-checked: 20 are the rules that always ask
+for an explanation (6 new mocks in test files, 8 empty `catch`/`except` blocks,
+3 skips, 2 weakened assertion sets, 1 changed `conftest.py`), and **9 are
+genuine false positives** -- 6 from `hardcoded-return` on a function that
+legitimately returns a constant a test asserts, 3 from a successful `exit(0)`
+in ordinary CLI or hook code. Both classes are listed in
+[THREAT_MODEL.md](./THREAT_MODEL.md). The survey has already paid for itself:
+it found two more classes that are now fixed (docs and configs were being
+scanned as code, and the scanner matched its own pattern strings). Full list:
+[`benchmark/results/fp-survey.json`](./benchmark/results/fp-survey.json).
 
 **What is not measured yet is the agent-facing number.** The silent-cheat rate
 -- how often a model claims done while the check it was told to pass isn't

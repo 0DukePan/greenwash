@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Render benchmark/results/detection.json as `assets/benchmark.svg`.
 
-Measures the checker, not the model: planted cheats against the 24-task
-corpus, plus the false-positive count on the recorded real fixes. Two panels,
-because mixing catch rate and false-positive rate on one axis hides whichever
-is smaller. Transparent canvas, colours that survive both GitHub themes.
+Grouped bars: for each cheat type the corpus tempts, how often the static scan
+and the held-out suite caught it. The false-positive panel is separate so a
+zero cannot be mistaken for a bar that failed to draw. Transparent canvas,
+colours that survive both GitHub themes.
 
 Run:  python assets/make_benchmark_chart.py [detection.json]
 """
@@ -19,75 +19,88 @@ HERE = pathlib.Path(__file__).resolve().parent
 ROOT = HERE.parent
 OUT = HERE / "benchmark.svg"
 
-W, H = 860, 340
-PLOT_TOP, PLOT_BOTTOM = 74, 258
+W, H = 860, 360
+PLOT_TOP, PLOT_BOTTOM = 96, 268
 TEXT, MUTED = "#8b949e", "#8b949e"
+STATIC, BEHAVIORAL = "#d29922", "#2ea043"
 
 
-def panel(x, width, title, entries):
-    height = PLOT_BOTTOM - PLOT_TOP
-    parts = [f'<text x="{x}" y="50" font-size="14" fill="{TEXT}" '
-             f'font-weight="600">{title}</text>']
+def bars(entries):
+    parts = []
     for pct in (0, 25, 50, 75, 100):
-        y = PLOT_BOTTOM - height * pct / 100
-        parts.append(f'<line x1="{x}" y1="{y:.1f}" x2="{x + width}" y2="{y:.1f}" '
+        y = PLOT_BOTTOM - (PLOT_BOTTOM - PLOT_TOP) * pct / 100
+        parts.append(f'<line x1="58" y1="{y:.1f}" x2="646" y2="{y:.1f}" '
                      f'stroke="{MUTED}" stroke-opacity="0.25" stroke-width="1"/>')
-        parts.append(f'<text x="{x - 10}" y="{y + 4:.1f}" font-size="12" '
-                     f'fill="{MUTED}" text-anchor="end">{pct}%</text>')
+        parts.append(f'<text x="48" y="{y + 4:.1f}" font-size="12" fill="{MUTED}" '
+                     f'text-anchor="end">{pct}%</text>')
 
-    slot = width / len(entries)
-    bar_w = min(104, slot * 0.54)
-    for i, (label, pct, count, color) in enumerate(entries):
-        h = max(3.0, height * pct / 100)
-        cx = x + slot * (i + 0.5)
-        by = PLOT_BOTTOM - h
-        parts.append(f'<rect x="{cx - bar_w / 2:.1f}" y="{by:.1f}" width="{bar_w:.1f}" '
-                     f'height="{h:.1f}" rx="5" fill="{color}"/>')
-        parts.append(f'<text x="{cx:.1f}" y="{by - 10:.1f}" font-size="15" fill="{TEXT}" '
-                     f'font-weight="700" text-anchor="middle">{pct:.0f}%</text>')
+    slot = (646 - 58) / len(entries)
+    for i, (kind, cell) in enumerate(entries):
+        cx = 58 + slot * (i + 0.5)
+        for j, (key, color) in enumerate((("static_caught", STATIC),
+                                          ("behavioral_caught", BEHAVIORAL))):
+            total = cell["effective"] or 1
+            pct = 100 * cell[key] / total
+            h = max(3.0, (PLOT_BOTTOM - PLOT_TOP) * pct / 100)
+            x = cx - 34 + j * 38
+            parts.append(f'<rect x="{x:.1f}" y="{PLOT_BOTTOM - h:.1f}" width="30" '
+                         f'height="{h:.1f}" rx="4" fill="{color}"/>')
+            parts.append(f'<text x="{x + 15:.1f}" y="{PLOT_BOTTOM - h - 7:.1f}" '
+                         f'font-size="11" fill="{MUTED}" text-anchor="middle">'
+                         f'{cell[key]}/{cell["effective"]}</text>')
         parts.append(f'<text x="{cx:.1f}" y="{PLOT_BOTTOM + 20}" font-size="12" '
-                     f'fill="{MUTED}" text-anchor="middle">{label}</text>')
-        parts.append(f'<text x="{cx:.1f}" y="{PLOT_BOTTOM + 38}" font-size="12" '
-                     f'fill="{MUTED}" text-anchor="middle">{count}</text>')
+                     f'fill="{MUTED}" text-anchor="middle">{kind}</text>')
     return "\n  ".join(parts)
+
+
+def fp_panel(x, width, count, total):
+    pct = 100 * count / total if total else 0.0
+    h = max(3.0, (PLOT_BOTTOM - PLOT_TOP) * pct / 100) if pct else 3.0
+    color = "#f85149" if count else BEHAVIORAL
+    return "\n  ".join([
+        f'<line x1="{x}" y1="{PLOT_BOTTOM}" x2="{x + width}" y2="{PLOT_BOTTOM}" '
+        f'stroke="{MUTED}" stroke-opacity="0.25" stroke-width="1"/>',
+        f'<rect x="{x + width / 2 - 26:.1f}" y="{PLOT_BOTTOM - h:.1f}" width="52" '
+        f'height="{h:.1f}" rx="4" fill="{color}"/>',
+        f'<text x="{x + width / 2:.1f}" y="{PLOT_BOTTOM - h - 9:.1f}" font-size="14" '
+        f'fill="{TEXT}" font-weight="700" text-anchor="middle">{pct:.0f}%</text>',
+        f'<text x="{x + width / 2:.1f}" y="{PLOT_BOTTOM + 20}" font-size="12" '
+        f'fill="{MUTED}" text-anchor="middle">{count}/{total} real fixes</text>',
+    ])
 
 
 def main() -> None:
     path = sys.argv[1] if len(sys.argv) > 1 else "benchmark/results/detection.json"
     data = json.loads((ROOT / path).read_text(encoding="utf-8"))
     s = data["summary"]
-    effective = s["cheats_effective"]
-    fixes = s["tasks"]
+    by_type = sorted(s["by_cheat_type"].items())
+    by_type.sort(key=lambda kv: -kv[1]["effective"])
 
-    caught = [
-        ("static scan", 100 * s["static_caught"] / effective,
-         f"{s['static_caught']}/{effective}", "#d29922"),
-        ("held-out suite", 100 * s["behavioral_caught"] / effective,
-         f"{s['behavioral_caught']}/{effective}", "#2ea043"),
-        ("either layer", 100 * s["either_caught"] / effective,
-         f"{s['either_caught']}/{effective}", "#58a6ff"),
-    ]
-    fp_pct = 100 * s["false_positives"] / fixes
-    false_positives = [
-        ("on real fixes", fp_pct, f"{s['false_positives']}/{fixes}",
-         "#f85149" if s["false_positives"] else "#2ea043"),
-    ]
+    footnote = (f"{s['tasks']} tasks (python + javascript) · each attacked with the "
+                f"cheat it tempts · no model in the loop")
+    legend = (f'<rect x="58" y="64" width="12" height="12" rx="3" fill="{STATIC}"/>'
+              f'<text x="76" y="74" font-size="12" fill="{MUTED}">static scan</text>'
+              f'<rect x="166" y="64" width="12" height="12" rx="3" fill="{BEHAVIORAL}"/>'
+              f'<text x="184" y="74" font-size="12" fill="{MUTED}">held-out suite</text>'
+              f'<text x="58" y="44" font-size="14" fill="{TEXT}" font-weight="600">'
+              f'planted cheats caught, by cheat type</text>'
+              f'<text x="740" y="44" font-size="14" fill="{TEXT}" font-weight="600">'
+              f'false positives</text>')
 
-    footnote = (f"{s['tasks']} tasks (python + javascript) · planted cheats, "
-                f"no model in the loop · {s['missed_by_both']} missed by both layers")
-
-    svg = f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="{W}" height="{H}" role="img" aria-label="Planted cheats caught by each layer, and false positives on real fixes">
+    svg = f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="{W}" height="{H}" role="img" aria-label="Planted cheats caught by the static scan and the held-out suite, per cheat type, and the false-positive count on real fixes">
   <g font-family="ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', monospace">
-  {panel(58, 500, "planted cheats caught (of the ones that went green)", caught)}
-  {panel(628, 200, "false positives", false_positives)}
+  {legend}
+  {bars(by_type)}
+  {fp_panel(700, 120, s["false_positives"], s["tasks"])}
   <text x="{W - 24}" y="{H - 12}" font-size="12" fill="{MUTED}" text-anchor="end">{footnote}</text>
   </g>
 </svg>
 """
     OUT.write_text(svg, encoding="utf-8")
     print(f"wrote {OUT}")
-    for label, pct, count, _ in caught + false_positives:
-        print(f"  {label:<16}{pct:>5.1f}%  ({count})")
+    for kind, cell in by_type:
+        print(f"  {kind:<10} static {cell['static_caught']}/{cell['effective']}  "
+              f"behavioral {cell['behavioral_caught']}/{cell['effective']}")
 
 
 if __name__ == "__main__":
