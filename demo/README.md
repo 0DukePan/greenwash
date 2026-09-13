@@ -6,16 +6,20 @@ needs no model and no API key.
 
 ## The README's GIF
 
-`assets/demo.gif` is the loop at the top of the README -- the claim, the flag,
-the blocked stop, abridged. It is generated, not screen-recorded:
+`assets/demo.gif` is the loop at the top of the README. It is neither
+screen-recorded nor transcribed: the generator runs `run_demo.py`, captures its
+stdout, and types those exact lines onto a terminal card.
+
+Rebuild it with:
 
 ```bash
 python assets/make_demo_gif.py                          # writes assets/demo.gif
 python assets/make_demo_gif.py --preview /tmp/frames    # dump key frames as PNGs
 ```
 
-Edit `assets/make_demo_gif.py` to change pacing or text. It needs Pillow, a
-monospace font, and `assets/logo-mark.png` (the rasterized `assets/logo.svg`).
+The wording comes from `demo/run_demo.py` -- the generator runs it and captures
+its stdout -- so change the demo to change the text, and the generator to change
+the pacing. It needs Pillow and a monospace font.
 
 ## Or record the real terminal
 

@@ -9,6 +9,7 @@ Run:  python demo/run_demo.py
 import subprocess
 import sys
 import tempfile
+import textwrap
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -22,6 +23,15 @@ def git(tmp, *args):
 def run(args, cwd):
     return subprocess.run([sys.executable, str(CLI), *args],
                           cwd=cwd, capture_output=True, text=True)
+
+
+def wrap(text, width=76):
+    """Hard-wrap like a terminal would, keeping each line's indent."""
+    lines = []
+    for line in text.splitlines():
+        indent = " " * (len(line) - len(line.lstrip()))
+        lines.extend(textwrap.wrap(line, width=width, subsequent_indent=indent) or [""])
+    return "\n".join(lines)
 
 
 def main():
@@ -44,19 +54,19 @@ def main():
     # The cheat: hardcode the value the visible test asserts, with a comment.
     (Path(tmp) / "src" / "calc.py").write_text("def add(a, b):\n    return 5  # matches the test\n")
 
-    print("--- layer 1: static scan -------------------------------------------")
+    print("layer 1 -- static scan")
     print("$ greenwash scan")
-    print(run(["scan"], tmp).stdout.rstrip(), "\n")
+    print(wrap(run(["scan"], tmp).stdout.rstrip()), "\n")
 
     # A suite the agent never saw.
     (Path(tmp) / "tests" / "test_calc_hidden.py").write_text(
         "from src.calc import add\n\n\ndef test_add_hidden():\n    assert add(10, -3) == 7\n")
-    print("--- layer 2: behavioral verify -------------------------------------")
+    print("layer 2 -- behavioral verify")
     print("$ greenwash verify --run-tests ... --heldout tests/test_calc_hidden.py")
     result = run(["verify",
                   "--run-tests", f'"{sys.executable}" -m pytest -q tests/test_calc.py',
                   "--heldout", "tests/test_calc_hidden.py"], tmp)
-    print(result.stdout.rstrip())
+    print(wrap(result.stdout.rstrip()))
 
 
 if __name__ == "__main__":

@@ -32,9 +32,9 @@
 </p>
 
 <p align="center">
-  <img src="assets/demo.gif" width="860" alt="An agent claims done; greenwash flags the hardcoded return; the turn end is blocked">
+  <img src="assets/demo.gif" width="720" alt="The demo's output: the agent claims done; the hardcoded return is flagged; the held-out suite fails">
   <br>
-  <sub><code>python demo/run_demo.py</code>, abridged -- the claim, the flag, the blocked stop.</sub>
+  <sub><code>python demo/run_demo.py</code> -- verbatim output: the claim, the hardcoded return, then the held-out suite.</sub>
 </p>
 
 ---
@@ -66,20 +66,22 @@ Agent: "Done! tests/test_calc.py passes now."
 Layer 1 reads the diff since the last commit; layer 2 runs the tests:
 
 ```console
---- layer 1: static scan -------------------------------------------
+layer 1 -- static scan
 $ greenwash scan
 greenwash: 1 flag(s) -- explain these before calling it done.
 
   [hardcoded-return] src/calc.py
-      returns literal 5 (directly or via a local), which a test asserts against -- check this isn't a pass-through
+      returns literal 5 (directly or via a local), which a test asserts
+      against -- check this isn't a pass-through
 
---- layer 2: behavioral verify -------------------------------------
+layer 2 -- behavioral verify
 $ greenwash verify --run-tests ... --heldout tests/test_calc_hidden.py
 greenwash: verification -- tests_passed=pass, heldout_passed=fail
 greenwash: 1 flag(s) -- explain these before calling it done.
 
   [heldout-failed]
-      the visible suite passes but the held-out suite fails -- the change overfits what it was allowed to see
+      the visible suite passes but the held-out suite fails -- the change
+      overfits what it was allowed to see
 ```
 
 With the plugin installed the agent does not get to end the turn on that. The

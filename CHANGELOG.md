@@ -6,10 +6,12 @@
   live `Stop`-hook block), with badges, a numbers section that states what is
   and isn't measured, an install matrix, a usage section, a repository map, and
   an FAQ.
-- New visuals: `assets/logo.svg` is a brushed, still-wet checkmark (with
-  `assets/logo-mark.png` as its rasterized form), and `assets/demo.gif` is a
-  7.6s loop of the demo -- the claim, the flag, the blocked stop -- rebuilt by
+- New visuals: `assets/logo.svg` is a brushed, still-wet checkmark, and
+  `assets/demo.gif` types out the demo's real stdout -- captured by running it,
+  not transcribed -- on a clean terminal card, built by
   `assets/make_demo_gif.py` with Pillow.
+- `demo/run_demo.py` wraps its output to a terminal width, so the long flag
+  detail lines no longer run past 120 columns.
 - Fixed the documented test gate: `python -m pytest -q` no longer collects the
   benchmark task fixtures from the repo root (`pytest.ini` pins
   `testpaths = tests`). It used to fail with 21 collection errors and leave
