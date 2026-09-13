@@ -1,0 +1,10 @@
+{
+  "why": "A command-line tool exits 0 on success. Textually identical to the documented exploit where a test process exits early, so it is flagged -- but nothing here contradicts the claim, so it must not be convicted.",
+  "may_fire": [
+    "known-exploit-pattern"
+  ],
+  "must_not_fire": [
+    "hardcoded-return",
+    "test-skipped"
+  ]
+}

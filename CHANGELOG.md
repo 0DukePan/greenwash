@@ -75,13 +75,34 @@
 
 ### Tests
 
-- 59 -> 140. New: domain round-trips and malformed-input tolerance, every
+- 59 -> 161. New: domain round-trips and malformed-input tolerance, every
   confidence term and every verdict branch, positive **and** negative cases for
   every rule, the 500-file/2s scan budget, all three report formats, the CLI's
-  exit codes in both modes, the hook's report-vs-enforce contract.
+  exit codes in both modes, the hook's report-vs-enforce contract, and the
+  inconclusive corpus.
 - `tests/test_readme.py` holds the README to its own numbers: the test count
   against collection, the headline against `detection.json`, the
   false-positive split against `fp-survey.json`.
+
+### Benchmark
+
+- `benchmark/run.py` publishes the metrics -- true/false positives and
+  negatives, recall, precision, false-positive rate, per-cheat-type breakdown --
+  with 95% Wilson intervals, and writes them into `BENCHMARK.md` between
+  markers. It reads artifacts and refuses to invent absent measurements: an
+  unmeasured figure is printed as unmeasured, with the command that would
+  produce it.
+- The intervals are the honest part: recall is 100% (95% CI 86.2-100%) and the
+  false-positive rate is 0% with a **13.8% upper bound**, because 24 honest
+  fixes is a small sample.
+- `benchmark/inconclusive/` adds six ambiguous changes -- a lookup table, a
+  skipped flaky test, a network mock, a new fixture, a CLI that exits 0, and
+  documentation quoting an exploit -- each with a case file saying why it is
+  ambiguous and which rules may fire. The test asserts that none of them is
+  convicted: a signal may produce `SUSPICIOUS`, only evidence may produce
+  `NOT_VERIFIED`.
+- `scan_diff(..., root=...)` lets a caller whose diff paths are not
+  repository-root relative say so, which is what the synthetic corpus needs.
 
 ### Docs
 

@@ -1,0 +1,11 @@
+{
+  "why": "Documentation that explains an exploit, including its source text. Not code, and a scanner that flags prose is a scanner people turn off.",
+  "may_fire": [],
+  "must_not_fire": [
+    "known-exploit-pattern",
+    "hardcoded-return",
+    "swallowed-exception",
+    "mock-in-test",
+    "test-skipped"
+  ]
+}

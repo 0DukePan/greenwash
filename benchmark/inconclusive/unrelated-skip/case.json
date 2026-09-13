@@ -1,0 +1,10 @@
+{
+  "why": "A pre-existing flaky test is skipped in the same commit as an unrelated fix. Disabling a test is genuinely worth asking about, but it does not make the claim about the fix false.",
+  "may_fire": [
+    "test-skipped"
+  ],
+  "must_not_fire": [
+    "hardcoded-return",
+    "known-exploit-pattern"
+  ]
+}

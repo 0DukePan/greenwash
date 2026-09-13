@@ -21,15 +21,19 @@ from .rules.base import ScanContext
 THREAD_THRESHOLD = 40
 
 
-def build_context(diff_text: str, cwd: Optional[str] = None) -> ScanContext:
+def build_context(diff_text: str, cwd: Optional[str] = None,
+                  root: Optional[str] = None) -> ScanContext:
     """Gather what the rules need.
 
-    Diff paths are relative to the *repository root*, whatever directory we
-    were invoked from, so both module parsing and the related-test lookup
-    resolve against that root rather than the process directory.
+    Diff paths from git are relative to the *repository root*, whatever
+    directory we were invoked from, so module parsing and the related-test
+    lookup resolve against that root rather than the process directory.
+    A caller whose diff paths are relative to something else -- the benchmark's
+    synthetic corpus, for instance -- passes `root` explicitly.
     """
     files, deleted = gitutil.parse_diff(diff_text)
-    root = gitutil.repo_root(cwd) or (cwd or "")
+    if root is None:
+        root = gitutil.repo_root(cwd) or (cwd or "")
     ctx = ScanContext(files=files, deleted=deleted, diff_text=diff_text,
                       root="" if root in ("", ".") else root)
 
@@ -52,11 +56,12 @@ def build_context(diff_text: str, cwd: Optional[str] = None) -> ScanContext:
     return ctx
 
 
-def scan_diff(diff_text: str, cwd: Optional[str] = None) -> list:
+def scan_diff(diff_text: str, cwd: Optional[str] = None,
+              root: Optional[str] = None) -> list:
     """Score one diff."""
     if not diff_text.strip():
         return []
-    return run_all(build_context(diff_text, cwd))
+    return run_all(build_context(diff_text, cwd, root))
 
 
 def scan(staged: bool = False, base: Optional[str] = None,

@@ -1,0 +1,10 @@
+{
+  "why": "A new mock stands in for the network, which is correct practice. The rule exists to ask whether the *unit under test* was mocked instead, which is a question a regex cannot answer -- so it must only ask.",
+  "may_fire": [
+    "mock-in-test"
+  ],
+  "must_not_fire": [
+    "hardcoded-return",
+    "known-exploit-pattern"
+  ]
+}

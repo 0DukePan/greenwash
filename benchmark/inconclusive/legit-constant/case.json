@@ -1,0 +1,10 @@
+{
+  "why": "A lookup table returns a constant that a test asserts against. This is the documented hardcoded-return false-positive class: the rule cannot tell it from a cheat, so it must ask rather than convict.",
+  "may_fire": [
+    "hardcoded-return"
+  ],
+  "must_not_fire": [
+    "known-exploit-pattern",
+    "test-skipped"
+  ]
+}
