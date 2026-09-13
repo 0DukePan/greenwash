@@ -13,10 +13,12 @@ python benchmark/preflight.py
 
 If it reports `model not reachable`, fix that first — do not start a run.
 Common causes: `ANTHROPIC_BASE_URL` must be **https** and funded; the default
-model may not be available on a gateway, so set one explicitly. An unfunded
-gateway answers model calls with HTTP 402, which Claude Code reports the same
-way it reports a bad model id — check the provider balance before renaming the
-model.
+model may not be available on a gateway, so set one explicitly.
+
+A gateway with a zero balance rejects every model with HTTP 402
+(`"type": "reject_no_credit"`), which Claude Code reports the same way it
+reports a bad model id. That gate is a positive balance, not a per-call charge
+— top the account up, rerun the preflight, then start the run.
 
 ```bash
 set GREENWASH_BENCH_MODEL=anthropic/claude-sonnet-4.5   # Windows
