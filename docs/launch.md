@@ -18,8 +18,8 @@ measured number, not the idea.** If the number isn't in yet, don't post the
 
 ## Demo
 
-Use the recording from `demo/README.md` (agent says "done", the hook blocks
-it). Post the GIF inline.
+Use `assets/demo.gif` -- the loop at the top of the README (agent says "done",
+the hook blocks the stop), built by `assets/make_demo_gif.py`. Post it inline.
 
 ## Show the honest limits up front
 

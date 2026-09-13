@@ -31,6 +31,12 @@
   </sub>
 </p>
 
+<p align="center">
+  <img src="assets/demo.gif" width="860" alt="An agent claims done; greenwash flags the hardcoded return; the turn end is blocked">
+  <br>
+  <sub><code>python demo/run_demo.py</code>, abridged -- the claim, the flag, the blocked stop.</sub>
+</p>
+
 ---
 
 ## Why
@@ -308,6 +314,7 @@ Because the cheapest thing to fake is the color of the check.
 | `scripts/greenwash/` | `scan` (language packs + AST), `verify`, discovery, diff plumbing |
 | `benchmark/` | 21 tasks, harness, Wilson-CI report, scripted agent, task template |
 | `adapters/`, `action.yml`, `.pre-commit-hooks.yaml` | the non-Claude-Code ways in |
+| `assets/` | the logo and the demo GIF, plus `make_demo_gif.py` that rebuilds it |
 | `tests/` | 46 tests -- scanner, verifier, hook contract, benchmark tasks; no model required |
 | `demo/` | the reproducible catch from the top of this file |
 

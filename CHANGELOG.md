@@ -5,7 +5,11 @@
 - Rewrote the README around real captured output (the demo's two layers and a
   live `Stop`-hook block), with badges, a numbers section that states what is
   and isn't measured, an install matrix, a usage section, a repository map, and
-  an FAQ; added `assets/logo.svg`.
+  an FAQ.
+- New visuals: `assets/logo.svg` is a brushed, still-wet checkmark (with
+  `assets/logo-mark.png` as its rasterized form), and `assets/demo.gif` is a
+  7.6s loop of the demo -- the claim, the flag, the blocked stop -- rebuilt by
+  `assets/make_demo_gif.py` with Pillow.
 - Fixed the documented test gate: `python -m pytest -q` no longer collects the
   benchmark task fixtures from the repo root (`pytest.ini` pins
   `testpaths = tests`). It used to fail with 21 collection errors and leave
