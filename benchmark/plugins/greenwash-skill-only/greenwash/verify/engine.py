@@ -21,6 +21,7 @@ from typing import Optional
 from ..domain import Evidence, Outcome, VerificationResult
 from . import baseline as baseline_mod
 from . import discovery, heldout as heldout_mod, results, signals
+from .results import runner_never_started
 
 DEFAULT_TIMEOUT = 120
 
@@ -78,6 +79,16 @@ def verify(run_tests=None, heldout=None, auto: bool = False, timeout: int = DEFA
             result.harness_error = run_result.error
             raised.append(signals.HARNESS.signal(
                 "", None, run_result.error, command=run_result.command))
+        elif (startup := runner_never_started(run_result, current)):
+            # An unrun check is not a failed one. Say "could not verify", and say
+            # what to do about it, rather than reporting a failure the work did
+            # not cause.
+            result.outcome = Outcome.UNAVAILABLE.value
+            result.harness_error = startup
+            result.notes.append("install the test runner, or pass --run-tests with a "
+                                "command this environment can execute")
+            raised.append(signals.HARNESS.signal("", None, startup,
+                                                 command=run_result.command))
         else:
             result.outcome = Outcome.PASS.value if current.ok else Outcome.FAIL.value
             if not current.counts_available:

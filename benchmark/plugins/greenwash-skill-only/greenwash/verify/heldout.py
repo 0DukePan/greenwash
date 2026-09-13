@@ -57,6 +57,12 @@ def run_heldout(spec, cwd=None, timeout: int = 120, label: str = "") -> HeldoutO
         held.outcome = Outcome.UNAVAILABLE.value
         held.detail["reason"] = result.error
         return held
+    if (startup := results.runner_never_started(result, outcome)):
+        # A held-out suite that never started tells us nothing -- and must not be
+        # reported as a held-out failure.
+        held.outcome = Outcome.UNAVAILABLE.value
+        held.detail["reason"] = startup
+        return held
 
     failed = outcome.failed if outcome.counts_available else None
     if failed is None:

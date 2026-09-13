@@ -18,6 +18,37 @@ from .runner import RunResult, run
 
 SUMMARY_RE = re.compile(r"(\d+)\s+(passed|failed|error|errors|skipped)", re.I)
 
+# "the runner never started", which is not the same as "the tests failed".
+# Checked only when a run produced no per-case counts, so a failing test whose
+# message happens to contain "not found" cannot be mistaken for a missing
+# runner -- pytest reports counts whenever it actually ran.
+RUNNER_MISSING = [
+    re.compile(r"No module named\s+'?([\w.]+)'?", re.I),
+    re.compile(r"([\w./\\-]+): (?:command )?not found", re.I),
+    re.compile(r"'?([\w./\\-]+)'? is not recognized as an internal or external command", re.I),
+    re.compile(r"can't open file\s+'?([^'\n]+)'?", re.I),
+    re.compile(r"no such file or directory", re.I),
+]
+
+
+def runner_never_started(result: RunResult, outcome: "TestOutcome") -> str:
+    """A message if the command itself could not run, else ''.
+
+    Without this, `python -m pytest` where pytest is not installed exits 1 with
+    "No module named pytest", which looks exactly like a failing suite -- and
+    the report would blame the work for the environment.
+    """
+    if outcome.counts_available:
+        return ""
+    if result.returncode in (127, 9009):        # POSIX shell / cmd.exe
+        return f"the command could not be found (exit {result.returncode})"
+    text = "\n".join(part for part in (result.stderr, result.stdout) if part)
+    for pattern in RUNNER_MISSING:
+        match = pattern.search(text)
+        if match:
+            return f"the command could not start: {match.group(0).strip()}"
+    return ""
+
 
 @dataclass
 class TestOutcome:

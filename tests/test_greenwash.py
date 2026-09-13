@@ -105,6 +105,36 @@ def test_verify_flags_heldout_failure(tmp_path, monkeypatch):
     assert outcome.result.evidence and outcome.result.evidence[0].expected
 
 
+def test_a_missing_test_runner_is_not_a_failing_suite(tmp_path, monkeypatch):
+    """An unrun check is not a failed one.
+
+    Found by installing the package into a venv without pytest: `python -m
+    pytest` exits 1 with "No module named pytest", the counts are absent, and
+    the naive reading -- non-zero exit means the tests failed -- produced
+    NOT_VERIFIED. Blaming the work for the environment is the worst kind of
+    wrong a verification tool can be.
+    """
+    monkeypatch.chdir(tmp_path)
+    write(tmp_path, "src/calc.py", "def add(a, b):\n    return 5\n")
+    outcome = verify_mod.verify(run_tests=f'"{sys.executable}" -m not_a_real_module -q')
+    assert outcome.result.outcome == "unavailable"
+    assert outcome.result.harness_error
+    assert "could not start" in outcome.result.harness_error
+    assert any(signal.rule_id == "verification-failed" for signal in outcome.signals)
+    assert not any(signal.rule_id == "tests-failed" for signal in outcome.signals)
+
+
+def test_a_missing_heldout_runner_is_not_a_heldout_failure(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    write(tmp_path, "visible.py", "def test_ok():\n    assert True\n")
+    outcome = verify_mod.verify(
+        run_tests=[sys.executable, "-m", "pytest", "-q", "visible.py"],
+        heldout=f'"{sys.executable}" -m not_a_real_module -q')
+    assert outcome.result.outcome == "pass"
+    assert outcome.result.heldout == "unavailable"
+    assert not any(signal.rule_id == "heldout-failed" for signal in outcome.signals)
+
+
 def test_discover_python_project(tmp_path):
     (tmp_path / "pyproject.toml").write_text("", encoding="utf-8")
     assert discover_mod.discover_test_command(tmp_path).endswith("-m pytest -q")

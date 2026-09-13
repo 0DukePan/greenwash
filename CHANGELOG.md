@@ -46,6 +46,18 @@
 
 ### Bugs found while building this
 
+- **A missing test runner was reported as a failing suite.** Installing the
+  package into a fresh venv without pytest and running it end to end is how this
+  surfaced: `python -m pytest` exits 1 with "No module named pytest", no counts
+  are reported, and the naive reading -- non-zero exit means the tests failed --
+  produced `NOT_VERIFIED`. Blaming the work for the environment is the worst
+  kind of wrong a verification tool can be. The verifier now recognises that the
+  command never started (missing module, unknown command, shell exit 127/9009,
+  unreadable file), reports `VERIFICATION_FAILED` with a hint, and does the same
+  for a held-out suite rather than calling it a held-out failure. The check only
+  runs when a run produced no per-case counts, so a failing test whose message
+  happens to contain "not found" is not mistaken for a missing runner.
+
 - **The package claimed `requires-python = ">=3.10"` while three lines needed
   3.12.** Two multi-line f-strings had a nested quote inside the expression and
   a third had a `\u` escape there, which is only legal from 3.12 (PEP 701). The
