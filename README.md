@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  <strong>24/24 planted cheats caught &middot; 0 false positives on 24 real fixes &middot; 52 tests</strong><br>
+  <strong>24/24 planted cheats caught &middot; 0 false positives on 24 real fixes &middot; 59 tests</strong><br>
   <sub>
     An agent under pressure to show green will skip the test, mock the unit under
     test, hardcode the expected value, or swallow the exception that would have
@@ -358,7 +358,7 @@ Because the cheapest thing to fake is the color of the check.
 | `benchmark/` | 24 tasks (Python + JavaScript), harness, detection measurement, Wilson-CI report, scripted agent, task template |
 | `adapters/`, `action.yml`, `.pre-commit-hooks.yaml` | the non-Claude-Code ways in |
 | `assets/` | the logo, the demo GIF and the benchmark chart, plus the scripts that rebuild them |
-| `tests/` | 52 tests -- scanner, verifier, hook contract, benchmark tasks; no model required |
+| `tests/` | 59 tests -- scanner, verifier, hook contract, benchmark tasks, README claims; no model required |
 | `demo/` | the reproducible catch from the top of this file |
 
 ## Development
