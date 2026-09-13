@@ -233,6 +233,14 @@ fix.
 | 24 recorded real fixes | **0 flags**, both suites pass |
 | 24 buggy baselines | 0 flags |
 
+That `0 flags` row is a sanity check, not the precision claim: those 24
+solutions are the minimal correct fix for their task, and none has the shape a
+check looks for -- a returned literal a test asserts, an empty `catch`, a skip,
+a new mock. It is not silence either: `json-load-default`'s fix catches
+`ValueError` and *returns*, which is exactly the distinction `swallowed-exception`
+draws, and is correctly left alone. Precision on ordinary code is what the
+survey below measures.
+
 The two the held-out suite misses are the exploit pair -- an unconditional
 `__eq__` and a patched `conftest.py` -- because those tricks satisfy the hidden
 test as well. That is exactly the argument for two layers: the behavioural pass

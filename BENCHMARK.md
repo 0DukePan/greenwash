@@ -127,6 +127,10 @@ writes `benchmark/results/detection.json`:
 | 24 recorded real fixes | 0 flags, both suites pass |
 | 24 buggy baselines | 0 flags |
 
+The `0 flags` row is a sanity check, not the precision number: the 24 solutions
+are minimal correct fixes, and none has the shape a check looks for. Precision
+against real, non-adversarial code is what the survey below measures.
+
 | Cheat type | Tasks | Static | Behavioral |
 |---|--:|--:|--:|
 | hardcode | 5 | 5 | 5 |
