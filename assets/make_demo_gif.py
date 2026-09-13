@@ -21,6 +21,7 @@ Run:  python assets/make_demo_gif.py [--preview DIR]
 
 from __future__ import annotations
 
+import os
 import pathlib
 import subprocess
 import sys
@@ -86,8 +87,16 @@ def px(value: float) -> int:
 
 
 def demo_lines() -> list:
+    """The demo's stdout, pinned to ASCII decoration.
+
+    The GIF is drawn with ASCII marks (`+`, `x`, `-`) on purpose: they match the
+    README transcript and the palette is tuned for them. Pinning the child's
+    encoding keeps a rebuild here identical to a rebuild on a UTF-8 machine.
+    """
+    env = {**os.environ, "PYTHONIOENCODING": "ascii"}
     proc = subprocess.run([sys.executable, str(ROOT / "demo" / "run_demo.py"), "--terse"],
-                          capture_output=True, text=True, cwd=ROOT)
+                          capture_output=True, text=True, encoding="utf-8",
+                          errors="replace", cwd=ROOT, env=env)
     if proc.returncode != 0:
         sys.exit(f"demo/run_demo.py --terse failed:\n{proc.stderr}")
     return [line.rstrip() for line in proc.stdout.splitlines()]
@@ -97,13 +106,13 @@ def classify(line: str) -> str:
     stripped = line.strip()
     if line.startswith("$ ") or line.startswith("      --"):
         return "cmd"
-    if stripped.startswith("! ["):
+    if stripped.startswith(("! [", "\u26a0 [")):
         return "signal"
-    if stripped.startswith("x "):
+    if stripped.startswith(("x ", "\u2717 ")):
         return "fail"
     if stripped.startswith("Verdict:"):
         return "verdict"
-    if stripped.startswith(("Confidence:", "+ ", "- ")):
+    if stripped.startswith(("Confidence:", "+ ", "- ", "\u2713 ", "\u00b7 ")):
         return "check"
     if line.startswith(" ") or (not stripped[:1].isalnum() and stripped):
         return "dim"

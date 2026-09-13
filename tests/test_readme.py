@@ -8,12 +8,16 @@ the same defect the rest of this repo exists to catch, so it is a test now.
 
 import collections
 import json
+import os
 import re
 import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+
+from greenwash.report import terminal  # noqa: E402
 
 ASK_FOR_EXPLANATION = {"mock-in-test", "swallowed-exception", "test-skipped",
                        "assertion-weakened", "conftest-changed"}
@@ -70,18 +74,33 @@ def test_readme_false_positive_split_matches_the_survey():
 def test_readme_transcript_is_the_demo_output():
     """The block under "What the report looks like" is a receipt, so it is checked.
 
-    It is the demo's stdout, verbatim -- including the wrapping, which is why
-    the demo pins COLUMNS. If the report changes, this fails before the
-    README can go stale.
+    It is the demo's stdout, verbatim -- including the wrapping, which is why the
+    demo pins COLUMNS. If the report changes, this fails before the README can go
+    stale.
+
+    One documented difference is normalised away: the renderer degrades its
+    decoration to ASCII when the stream cannot encode it (a default Windows
+    console is cp1252), so a transcript captured on Windows has `+`/`x` where a
+    UTF-8 terminal prints `✓`/`✗`. That fallback is behaviour, not content, and
+    the test should not care which platform it runs on.
+
+    The child's encoding is pinned so the *capture* is deterministic too:
+    decoding a UTF-8 child with the locale codec is how this compares mojibake.
     """
+    env = {**os.environ, "PYTHONIOENCODING": "utf-8"}
     proc = subprocess.run([sys.executable, str(ROOT / "demo" / "run_demo.py"), "--terse"],
-                          capture_output=True, text=True, cwd=ROOT)
+                          capture_output=True, cwd=ROOT, env=env,
+                          encoding="utf-8", errors="replace")
     assert proc.returncode == 0, proc.stderr
-    demo = proc.stdout.replace("\r\n", "\n").rstrip("\n")
+
+    def normalise(text: str) -> str:
+        text = text.replace("\r\n", "\n").rstrip("\n")
+        for fancy, plain in terminal.ASCII_FALLBACKS:
+            text = text.replace(fancy, plain)
+        return text
 
     blocks = re.findall(r"```[a-z]*\r?\n(.*?)\r?\n```", readme(), re.S)
-    transcripts = [block.replace("\r\n", "\n").rstrip("\n") for block in blocks
-                   if "GREENWASH TRUST REPORT" in block]
+    transcripts = [block for block in blocks if "GREENWASH TRUST REPORT" in block]
     assert transcripts, "the README has no transcript of the demo's output"
-    assert transcripts[0] == demo, (
+    assert normalise(transcripts[0]) == normalise(proc.stdout), (
         "the README transcript is not what `demo/run_demo.py --terse` prints")

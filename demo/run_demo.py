@@ -21,11 +21,26 @@ TERSE = "--terse" in sys.argv
 ROOT = Path(__file__).resolve().parent.parent
 COLUMNS = "74"          # so the report fits the README's GIF and the transcript
 
+sys.path.insert(0, str(ROOT))
+
+from greenwash.report import terminal  # noqa: E402
+
+
+def emit(text: str) -> None:
+    """Print the captured report through the same encoding choke point the CLI uses.
+
+    The report is captured as UTF-8; a default Windows console cannot print
+    `-`-style box characters, and this process is the one holding the console.
+    """
+    sys.stdout.write(terminal.encode_safe(text) + "\n")
+
 
 def run(args, cwd, env=None):
-    child = {**os.environ, "PYTHONPATH": str(ROOT), "COLUMNS": COLUMNS, **(env or {})}
+    child = {**os.environ, "PYTHONPATH": str(ROOT), "COLUMNS": COLUMNS,
+             "PYTHONIOENCODING": "utf-8", **(env or {})}
     return subprocess.run([sys.executable, "-m", "greenwash", *args], cwd=cwd,
-                          capture_output=True, text=True, env=child)
+                          capture_output=True, text=True, encoding="utf-8",
+                          errors="replace", env=child)
 
 
 def wrap(text: str) -> str:
@@ -80,7 +95,7 @@ def main():
                   "--run-tests", "python -m pytest -q tests/test_calc.py",
                   "--heldout", "python -m pytest -q tests/test_calc_hidden.py",
                   "--no-color"], tmp)
-    print(wrap(result.stdout.rstrip()))
+    emit(wrap(result.stdout.rstrip()))
 
 
 if __name__ == "__main__":

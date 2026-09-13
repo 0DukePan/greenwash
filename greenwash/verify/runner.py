@@ -53,16 +53,22 @@ def _cap(text: str, label: str, truncated: list) -> str:
 
 def run(command, cwd=None, timeout: int = DEFAULT_TIMEOUT, env=None,
         cap: bool = True) -> RunResult:
-    """Run a command, capturing redacted output. `command` may be a str or argv."""
+    """Run a command, capturing redacted output. `command` may be a str or argv.
+
+    The child is asked for UTF-8 and decoded as UTF-8, on every platform. Left
+    to the locale, a Python child on a UTF-8 console hands back bytes this
+    process then reads as cp1252 -- and the captured test output, which ends up
+    in reports, arrives as mojibake.
+    """
     started = time.monotonic()
     truncated: list = []
     display = command if isinstance(command, str) else " ".join(command)
-    child_env = {**os.environ, **(env or {})}
+    child_env = {**os.environ, "PYTHONIOENCODING": "utf-8", **(env or {})}
 
     try:
         proc = subprocess.run(
             command, cwd=cwd, capture_output=True, text=True, shell=isinstance(command, str),
-            timeout=timeout, env=child_env, errors="replace")
+            timeout=timeout, env=child_env, encoding="utf-8", errors="replace")
     except subprocess.TimeoutExpired as exc:
         stdout = _decode(exc.stdout)
         stderr = _decode(exc.stderr)
