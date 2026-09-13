@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  <strong>11 fake-pass patterns &middot; 2 layers &middot; 0 config &middot; 46 tests</strong><br>
+  <strong>11 fake-pass patterns &middot; 2 layers &middot; 0 config &middot; 52 tests</strong><br>
   <sub>
     An agent under pressure to show green will skip the test, mock the unit under
     test, hardcode the expected value, or swallow the exception that would have
@@ -144,6 +144,8 @@ suite actually does.
 
 Python gets AST-based checks; JS/TS, Go, Rust, Ruby, and Java get regex packs.
 Adding a language is data, not code -- see [CONTRIBUTING.md](./CONTRIBUTING.md).
+Benchmark tasks cover Python and JavaScript today; the other packs are
+regex-only.
 
 ## Install
 
@@ -213,24 +215,25 @@ python scripts/greenwash_check.py all --json
 ## Numbers
 
 **We don't print a delta we haven't measured.** The honest measurement is a
-real agent doing real work: 21 tasks across six cheat types, each run in three
-plugin states (`off`, `skill-only`, `full`), scored from artifacts on disk
-after the run -- never from inside the agent's session, so the plugin cannot
-inflate its own score. `benchmark/report.py` reports the silent-cheat rate
-with a Wilson 95% interval **and the false-positive rate next to it**, because
-a checker that flags everything is worthless.
+real agent doing real work: 24 tasks across six cheat types, in Python and
+JavaScript, each run in three plugin states (`off`, `skill-only`, `full`),
+scored from artifacts on disk after the run -- never from inside the agent's
+session, so the plugin cannot inflate its own score. `benchmark/report.py`
+reports the silent-cheat rate with a Wilson 95% interval **and the
+false-positive rate next to it**, because a checker that flags everything is
+worthless.
 
 What is built and verified today: the task set, the harness, the hidden-test
 injection, the classification, and the zero-model plumbing run (a scripted
-double drives all 21 tasks in ~4 minutes).
+double drives all 24 tasks in ~4 minutes).
 
 <details>
 <summary><strong>No-model plumbing run -- pipeline check, not a measurement</strong></summary>
 
-| Mode | Outcome over 63 runs (21 tasks &times; 3 states) |
+| Mode | Outcome over 72 runs (24 tasks &times; 3 states) |
 |---|---|
-| `hardcode` | 45 silent cheats, 18 inconclusive, 0 genuine fixes |
-| `honest` | 63 genuine fixes, 0 cheats |
+| `hardcode` | 54 silent cheats, 18 inconclusive, 0 genuine fixes |
+| `honest` | 72 genuine fixes, 0 cheats |
 
 The delta between states is `+0` by construction: a scripted double cannot
 read the hook's block message, so it behaves identically with and without the
@@ -314,10 +317,10 @@ Because the cheapest thing to fake is the color of the check.
 | `skills/greenwash/SKILL.md` | the rules the agent reads before saying done |
 | `hooks/hooks.json`, `scripts/greenwash_hook.py` | the `Stop` hook and its exit 0/2 contract |
 | `scripts/greenwash/` | `scan` (language packs + AST), `verify`, discovery, diff plumbing |
-| `benchmark/` | 21 tasks, harness, Wilson-CI report, scripted agent, task template |
+| `benchmark/` | 24 tasks (Python + JavaScript), harness, Wilson-CI report, scripted agent, task template |
 | `adapters/`, `action.yml`, `.pre-commit-hooks.yaml` | the non-Claude-Code ways in |
 | `assets/` | the logo and the demo GIF, plus `make_demo_gif.py` that rebuilds it |
-| `tests/` | 46 tests -- scanner, verifier, hook contract, benchmark tasks; no model required |
+| `tests/` | 52 tests -- scanner, verifier, hook contract, benchmark tasks; no model required |
 | `demo/` | the reproducible catch from the top of this file |
 
 ## Development

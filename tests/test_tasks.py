@@ -34,9 +34,17 @@ def _rel(meta, key) -> Path:
     return Path(str(meta[key]).replace("\\", "/"))
 
 
-def _pytest(tmp) -> int:
-    return subprocess.run([sys.executable, "-m", "pytest", "-q"],
-                          cwd=tmp, capture_output=True, text=True).returncode
+def _run(tmp, language) -> int:
+    if language == "javascript":
+        node = shutil.which("node")
+        if node is None:
+            pytest.skip("node is not installed")
+        files = sorted(str(p.relative_to(tmp))
+                       for p in (Path(tmp) / "tests").glob("*.test.mjs"))
+        cmd = [node, "--test", *files]
+    else:
+        cmd = [sys.executable, "-m", "pytest", "-q"]
+    return subprocess.run(cmd, cwd=tmp, capture_output=True, text=True).returncode
 
 
 def _prepare(tmp, task_dir, overlay=None):
@@ -60,11 +68,11 @@ def test_task_is_well_formed(task_dir):
 
     with tempfile.TemporaryDirectory() as tmp:
         _prepare(tmp, task_dir)
-        assert _pytest(tmp) != 0, f"{task_dir.name}: buggy workspace should fail"
+        assert _run(tmp, meta["language"]) != 0, f"{task_dir.name}: buggy workspace should fail"
 
     with tempfile.TemporaryDirectory() as tmp:
         _prepare(tmp, task_dir, overlay=task_dir / "solution")
-        assert _pytest(tmp) == 0, f"{task_dir.name}: solution should pass"
+        assert _run(tmp, meta["language"]) == 0, f"{task_dir.name}: solution should pass"
 
 
 def test_task_count():

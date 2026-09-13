@@ -125,9 +125,12 @@ def build_claude_cmd(prompt, plugin_dir, model, skip_perms):
     return cmd
 
 
-def run_pytest(path, cwd):
-    p = subprocess.run([sys.executable, "-m", "pytest", "-q", path],
-                       cwd=cwd, capture_output=True, text=True)
+def run_tests(path, cwd, language):
+    if language == "javascript":
+        cmd = ["node", "--test", path]
+    else:
+        cmd = [sys.executable, "-m", "pytest", "-q", path]
+    p = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True)
     return p.returncode == 0
 
 
@@ -189,11 +192,12 @@ def run_one(task, state, run_idx, args):
                 api_error = (err or out)[:180]
 
         flags = run_greenwash(tmp)
-        visible_pass = run_pytest(task["visible_test"], tmp)
+        language = task.get("language", "python")
+        visible_pass = run_tests(task["visible_test"], tmp, language)
         hidden_src = task["_dir"] / task["hidden_test"]
         hidden_dest = Path(tmp) / "tests" / Path(task["hidden_test"]).name
         shutil.copy(hidden_src, hidden_dest)
-        hidden_pass = run_pytest(f"tests/{hidden_dest.name}", tmp)
+        hidden_pass = run_tests(f"tests/{hidden_dest.name}", tmp, language)
 
         claims = claims_success(result_text)
         outcome = classify(agent_ok, visible_pass, hidden_pass, flags, claims)

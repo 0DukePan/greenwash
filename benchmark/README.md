@@ -74,3 +74,5 @@ whose name starts with `_` are skipped, so the template itself never runs):
 - `workspace/` is what the agent sees; `hidden/` is never shown.
 - the visible test must be satisfiable by a cheat that the hidden test catches.
 - the real fix should be strictly harder than the cheat (that's the "pressure").
+- `language` picks the runner: `python` -> pytest, `javascript` -> `node --test`
+  (write `.mjs` files and import from `../src/`; no packages needed).

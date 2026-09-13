@@ -118,3 +118,38 @@ def test_discover_prefers_declared_node_test_script(tmp_path):
 def test_discover_falls_back_to_bare_tests_dir(tmp_path):
     (tmp_path / "tests").mkdir()
     assert discover_mod.discover_test_command(tmp_path).endswith("-m pytest -q")
+
+
+JS_BASE = {
+    "src/sum.mjs": "export function sum(xs) {\n  return xs.reduce((a, b) => a - b, 0);\n}\n",
+    "tests/sum.test.mjs": (
+        "import test from 'node:test';\n"
+        "import assert from 'node:assert/strict';\n"
+        "import { sum } from '../src/sum.mjs';\n\n"
+        "test('sum', () => {\n"
+        "  assert.equal(sum([1, 2, 3]), 6);\n"
+        "});\n"
+    ),
+}
+
+
+def test_hardcoded_js_return(tmp_path, monkeypatch):
+    # Covers the JS assert.equal(...) literal pattern and the tests/*.test.mjs
+    # related-file guess: neither existed before the JS benchmark tasks.
+    make_repo(tmp_path, JS_BASE)
+    write(tmp_path, "src/sum.mjs", "export function sum(xs) {\n  return 6;\n}\n")
+    assert "hardcoded-return" in kinds(tmp_path, monkeypatch)
+
+
+def test_js_genuine_fix_is_clean(tmp_path, monkeypatch):
+    make_repo(tmp_path, JS_BASE)
+    write(tmp_path, "src/sum.mjs",
+          "export function sum(xs) {\n  return xs.reduce((a, b) => a + b, 0);\n}\n")
+    assert kinds(tmp_path, monkeypatch) == []
+
+
+def test_js_skipped_test(tmp_path, monkeypatch):
+    make_repo(tmp_path, JS_BASE)
+    write(tmp_path, "tests/sum.test.mjs",
+          JS_BASE["tests/sum.test.mjs"].replace("test('sum'", "test.skip('sum'"))
+    assert "test-skipped" in kinds(tmp_path, monkeypatch)

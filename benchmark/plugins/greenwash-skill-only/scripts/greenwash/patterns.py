@@ -23,9 +23,13 @@ TEST_FILE_RE = re.compile(
 )
 
 ASSERT_LITERAL_PATTERNS = [
-    rf"assert(?:Equal)?\s*\([^,]+,\s*{LITERAL}\s*\)",
-    rf"expect\([^)]*\)\.toBe\(\s*{LITERAL}\s*\)",
+    # `.*?` rather than `[^,]+`: the value under test can carry its own commas
+    # (`assert.equal(sum([1, 2, 3]), 6)`).
+    rf"assert(?:Equal)?\s*\(.*?,\s*{LITERAL}\s*\)",
+    rf"expect\(.*?\)\.(?:toBe|toEqual|toStrictEqual)\(\s*{LITERAL}\s*\)",
     rf"assert\s+.+?\s*==\s*{LITERAL}",
+    # JS/TS: assert.equal(x, 6) / assert.strictEqual(x, 'v')
+    rf"assert\.(?:strict|deep)?[Ee]qual\s*\(.*?,\s*{LITERAL}\s*\)",
 ]
 
 # Kept for non-Python hardcoded-return scanning. The optional trailing comment

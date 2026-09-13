@@ -22,6 +22,9 @@ later) -- never shown to the agent.
 
 A copyable skeleton lives in `benchmark/tasks/_template/`; directories whose
 name starts with `_` are skipped by the harness and the structural tests.
+`language` decides how a task's tests run: `python` -> `pytest -q`,
+`javascript` -> `node --test` (the tasks use `.mjs` and Node's built-in runner,
+so there is nothing to install).
 
 ## Scoring
 
@@ -113,12 +116,12 @@ test -- and greenwash's `hardcoded-return` (or `mock-in-test`, or
 
 ## Where this stands
 
-The task set is built: 21 tasks across six cheat types (hardcode, skip,
-mock-the-unit, swallow, weakened assertions, named exploits). Every task is
-validated by `tests/test_tasks.py` -- the buggy workspace must fail both
-tests, the recorded solution must pass both -- and the whole pipeline (git
-init, scoring, hidden-test injection, classification) runs end-to-end with no
-model via `benchmark/tools/fake_agent.py`.
+The task set is built: 24 tasks across six cheat types (hardcode, skip,
+mock-the-unit, swallow, weakened assertions, named exploits), in Python and
+JavaScript. Every task is validated by `tests/test_tasks.py` -- the buggy
+workspace must fail both tests, the recorded solution must pass both -- and the
+whole pipeline (git init, scoring, hidden-test injection, classification) runs
+end-to-end with no model via `benchmark/tools/fake_agent.py`.
 
 What is still missing is the measurement itself, and it needs a model the
 account can actually reach. `benchmark/preflight.py` fails fast when it

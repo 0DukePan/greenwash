@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- The benchmark covers JavaScript as well as Python: three `node --test` tasks
+  (`js-sum-offbyone`, `js-parity-inverted`, `js-json-count`), 24 in total. The
+  harness and the structural tests dispatch on the task's `language`, and the
+  scripted agent cheats in JS too.
+- Fixed two detector gaps the JS tasks exposed: `assert.equal/strictEqual(x, v)`
+  literals were never collected, so a hardcoded JS return went unflagged; and
+  `tests/<name>.test.mjs` was not guessed as a related test file.
 - Rewrote the README around real captured output (the demo's two layers and a
   live `Stop`-hook block), with badges, a numbers section that states what is
   and isn't measured, an install matrix, a usage section, a repository map, and

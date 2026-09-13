@@ -86,8 +86,12 @@ def find_related_test_files(impl_path: str) -> list:
         os.path.join(dirname, f"{stem}.spec{ext}"),
         os.path.join(dirname, "tests", f"test_{stem}{ext}"),
         os.path.join(dirname, "tests", f"{stem}_test{ext}"),
+        os.path.join(dirname, "tests", f"{stem}.test{ext}"),
+        os.path.join(dirname, "tests", f"{stem}.spec{ext}"),
         os.path.join("tests", f"test_{stem}{ext}"),
         os.path.join("tests", f"{stem}_test{ext}"),
+        os.path.join("tests", f"{stem}.test{ext}"),
+        os.path.join("tests", f"{stem}.spec{ext}"),
         os.path.join("test", f"test_{stem}{ext}"),
         os.path.join("__tests__", f"{stem}{ext}"),
     ]
