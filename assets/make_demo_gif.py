@@ -4,7 +4,9 @@
 
 Nothing here is a mock-up: the generator runs the demo and captures its stdout,
 so the GIF cannot drift from what the command prints. The only styling it adds
-is a tint and amber tag on the flag lines; the text is verbatim.
+is the tint and amber tag on the flag lines; the text is verbatim. The two-line
+kicker above the terminal is the one thing that is not output -- it is there so
+the clip reads as a catch without needing its caption.
 
 The clip opens on the caught state, so the poster frame GitHub and social
 previews grab is the catch rather than an empty terminal, and it loops back
@@ -29,12 +31,13 @@ ROOT = HERE.parent
 OUT = HERE / "demo.gif"
 
 S = 2                    # supersampling factor
-W, H = 768, 420          # final canvas
+W, H = 768, 482          # final canvas
 INSET = 14               # card distance from the canvas edge
+CARD_TOP = 76            # room above the card for the kicker
 RADIUS = 12
 HEADER = 26              # terminal chrome strip
 TEXT_LEFT = 34
-TEXT_TOP = 50
+TEXT_TOP = CARD_TOP + 36
 LINE_H = 25
 SIZE = 17
 
@@ -43,7 +46,13 @@ CARD, BORDER, DIVIDER = (14, 18, 24), (31, 38, 47), (26, 32, 40)
 DOTS = [(255, 95, 86), (255, 189, 46), (39, 201, 63)]
 PROMPT, CMD = (63, 185, 80), (230, 237, 243)
 BODY, FLAG, DIM = (201, 209, 217), (240, 136, 62), (139, 148, 158)
+FLASH = (255, 176, 104)  # the tag's first 140ms, so the catch registers
 TINT = (35, 29, 24)      # card colour, warmed up: the flag-row highlight
+
+# Above the card: two lines of framing, so the clip reads without its caption.
+KICKER = [('An agent "fixed" the failing test.', SIZE, CMD),
+          ("It hardcoded the answer.", SIZE - 2, DIM)]
+KICKER_TOP, KICKER_L1, KICKER_L2, KICKER_X = 18, 24, 22, INSET + 6
 
 FONT_DIRS = [
     pathlib.Path(r"C:\Windows\Fonts"),
@@ -58,12 +67,12 @@ FONT_FILES = {
 }
 
 
-def font(style: str):
+def font(style: str, size: int = SIZE):
     for directory in FONT_DIRS:
         for name in FONT_FILES[style]:
             path = directory / name
             if path.is_file():
-                return ImageFont.truetype(str(path), SIZE * S)
+                return ImageFont.truetype(str(path), size * S)
     return ImageFont.load_default()
 
 
@@ -99,7 +108,7 @@ def classify(lines: list[str]) -> list[str]:
 
 def card() -> Image.Image:
     img = Image.new("RGB", (W * S, H * S), BG)
-    x0, y0 = px(INSET), px(INSET)
+    x0, y0 = px(INSET), px(CARD_TOP)
     x1, y1 = px(W - INSET), px(H - INSET)
 
     shadow = Image.new("L", img.size, 0)
@@ -116,6 +125,11 @@ def card() -> Image.Image:
     for i, color in enumerate(DOTS):
         cx, cy = x0 + px(16 + 15 * i), y0 + px(13)
         d.ellipse([cx - px(4.5), cy - px(4.5), cx + px(4.5), cy + px(4.5)], fill=color)
+
+    y = px(KICKER_TOP)
+    for text, size, color in KICKER:
+        d.text((px(KICKER_X), y), text, font=font("regular", size), fill=color)
+        y += px(KICKER_L1 if size == SIZE else KICKER_L2)
     return img
 
 
@@ -133,7 +147,7 @@ def runs(rows) -> list[list[int]]:
     return out
 
 
-def render(visible, cursor=None) -> Image.Image:
+def render(visible, cursor=None, flash=()) -> Image.Image:
     img = BASE.copy()
     d = ImageDraw.Draw(img)
 
@@ -156,7 +170,8 @@ def render(visible, cursor=None) -> Image.Image:
     for run in runs(tinted):
         y0 = px(TEXT_TOP + run[0] * LINE_H) - px(3)
         y1 = px(TEXT_TOP + run[-1] * LINE_H) + px(20)
-        d.rectangle([px(INSET + 5), y0, px(INSET + 8), y1], fill=FLAG)
+        edge = FLASH if run[0] in flash else FLAG
+        d.rectangle([px(INSET + 5), y0, px(INSET + 8), y1], fill=edge)
 
     for row, (line, kind) in enumerate(visible):
         y = px(TEXT_TOP + row * LINE_H)
@@ -166,7 +181,8 @@ def render(visible, cursor=None) -> Image.Image:
             d.text((px(x), y), line[2:], font=FONT, fill=CMD)
         elif kind == "flag":
             end = line.index("]") + 1
-            d.text((px(TEXT_LEFT), y), line[:end], font=FONT, fill=FLAG)
+            tag = FLASH if row in flash else FLAG
+            d.text((px(TEXT_LEFT), y), line[:end], font=FONT, fill=tag)
             x = TEXT_LEFT + d.textlength(line[:end], font=FONT) / S
             d.text((px(x), y), line[end:], font=FONT, fill=CMD)
         else:
@@ -194,7 +210,7 @@ def story_frames():
     for k, start in enumerate(commands):
         end = commands[k + 1] if k + 1 < len(commands) else len(lines)
         command = lines[start]
-        step = 2 if len(command) <= 20 else 6         # long commands paste faster
+        step = 2 if len(command) <= 20 else 8         # long commands paste faster
         for n in range(step, len(command), step):
             frames.append((render(visible + [(command[:n], "cmd")], len(visible)), 45))
         frames.append((render(visible + [(command, "cmd")], len(visible)), 90))
@@ -202,8 +218,12 @@ def story_frames():
         add(200)
         for i in range(start + 1, end):               # this command's output
             visible.append((lines[i], kinds[i]))
+            if kinds[i] == "flag":                    # pulse, then settle
+                row = len(visible) - 1
+                for ms in (70, 70):
+                    frames.append((render(visible, None, flash={row}), ms))
             add(45 if not lines[i].strip() else (135 if kinds[i] != "dim" else 120))
-        add(1000 if k == 0 else 1400)                 # let the catch land
+        add(1000 if k == 0 else 1500)                 # let the catch land
     return frames
 
 
@@ -234,7 +254,7 @@ def palette(frames) -> Image.Image:
         for n, color in img.getcolors(1 << 22):
             counts[color] = counts.get(color, 0) + n
 
-    colors = [c for c, _ in sorted(counts.items(), key=lambda kv: -kv[1])][:128]
+    colors = [c for c, _ in sorted(counts.items(), key=lambda kv: -kv[1])][:96]
     for accent in ACCENTS:
         if all(sum((a - b) ** 2 for a, b in zip(accent, c)) > 144 for c in colors):
             colors.append(accent)

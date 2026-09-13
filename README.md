@@ -33,9 +33,9 @@
 </p>
 
 <p align="center">
-  <img src="assets/demo.gif" width="768" alt="The demo's terse output: the scan flags a hardcoded return in amber, then the held-out suite flags the overfit">
+  <img src="assets/demo.gif" width="768" alt="An agent 'fixes' a failing test by hardcoding the answer; greenwash flags the hardcoded return in amber, then the held-out suite flags the overfit">
   <br>
-  <sub><code>python demo/run_demo.py --terse</code> -- verbatim output, both flag blocks highlighted: the scan catches the hardcoded return, then the held-out suite catches the overfit.</sub>
+  <sub><code>python demo/run_demo.py --terse</code> -- everything inside the terminal is verbatim output: the scan catches the hardcoded return, then the held-out suite catches the overfit. The kicker above the window is the one added line.</sub>
 </p>
 
 ---

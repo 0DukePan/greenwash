@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Upgraded `assets/demo.gif` again: a two-line kicker above the terminal
+  (`An agent "fixed" the failing test.` / `It hardcoded the answer.`), so the
+  clip explains itself without its caption, and each flag tag brightens for
+  140ms as it lands so the catch registers while it is happening. 768x482,
+  6.5s loop, 748 KB. The kicker is the only non-verbatim element and the
+  caption says so.
+- Trimmed the GIF's palette to 96 colours plus forced accents; the pulse
+  colour costs a few KB and the frame count went up, and this pays it back.
+
 - Rebuilt `assets/demo.gif` again, this time for density: `run_demo.py` grew a
   `--terse` mode (commands and output only), so the GIF carries 13 lines
   instead of 21 at roughly a third larger type in a 768x420 frame, with each
