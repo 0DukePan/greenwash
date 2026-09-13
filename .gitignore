@@ -6,3 +6,7 @@ __pycache__/
 uv.lock
 .greenwash/
 
+# harness run output: volatile, and mock runs write here too
+benchmark/results/rows.jsonl
+benchmark/results/ci.json
+
