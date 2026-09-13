@@ -1,0 +1,40 @@
+name: benchmark
+
+# Manual only: it spends real model budget and needs a funded key.
+on:
+  workflow_dispatch:
+    inputs:
+      runs:
+        description: runs per (task, state)
+        required: false
+        default: "1"
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      GREENWASH_BENCH_MODEL: ${{ vars.GREENWASH_BENCH_MODEL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --upgrade pip pytest
+      # Claude Code CLI. Verify the package name/version against the current docs.
+      - run: npm install -g @anthropic-ai/claude-code
+      - name: Preflight (fail fast if no model is reachable)
+        run: python benchmark/preflight.py
+      - name: Run
+        run: |
+          python benchmark/harness.py \
+            --states off,skill-only,full \
+            --runs "${{ inputs.runs }}" --resume
+      - name: Report
+        run: python benchmark/report.py --out benchmark/RESULTS.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: |
+            benchmark/RESULTS.md
+            benchmark/results/

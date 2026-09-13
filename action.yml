@@ -1,0 +1,35 @@
+name: greenwash
+description: Flag an agent's diff that fakes a passing test suite
+author: greenwash
+
+inputs:
+  base:
+    description: "Git ref to diff against (default: HEAD)"
+    required: false
+    default: ""
+  run-tests:
+    description: Command that runs the project's tests (optional)
+    required: false
+    default: ""
+  heldout:
+    description: Path to (or command running) a suite the agent never saw (optional)
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: greenwash
+      shell: bash
+      run: |
+        set -euo pipefail
+        cmd=(python "${{ github.action_path }}/scripts/greenwash_check.py" all)
+        [ -n "${{ inputs.base }}" ]      && cmd+=(--base "${{ inputs.base }}")
+        [ -n "${{ inputs.run-tests }}" ] && cmd+=(--run-tests "${{ inputs.run-tests }}")
+        [ -n "${{ inputs.heldout }}" ]   && cmd+=(--heldout "${{ inputs.heldout }}")
+        if "${cmd[@]}"; then
+          echo "greenwash: clean"
+        else
+          echo "::error::greenwash flagged a faked passing suite (see log above)"
+          exit 1
+        fi

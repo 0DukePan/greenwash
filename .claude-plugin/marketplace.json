@@ -1,0 +1,14 @@
+{
+  "name": "greenwash",
+  "description": "Catches coding agents that fake a passing test suite, and verifies the tests actually pass.",
+  "owner": {
+    "name": "greenwash contributors"
+  },
+  "plugins": [
+    {
+      "name": "greenwash",
+      "source": "./",
+      "description": "Catches coding agents that fake a passing test suite, and verifies the tests actually pass."
+    }
+  ]
+}

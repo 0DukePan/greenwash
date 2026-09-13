@@ -1,0 +1,17 @@
+{
+  "description": "Blocks the agent from ending its turn when the diff since HEAD shows a known way of faking a passing test suite.",
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/greenwash_hook.py"],
+            "timeout": 180
+          }
+        ]
+      }
+    ]
+  }
+}

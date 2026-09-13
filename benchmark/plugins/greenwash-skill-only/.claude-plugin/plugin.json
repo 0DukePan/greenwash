@@ -1,0 +1,8 @@
+{
+  "name": "greenwash-skill-only",
+  "description": "Control variant for the greenwash benchmark: the same skill and checker script as the full plugin, but with NO Stop hook. Isolates the hook's causal effect from the skill's.",
+  "version": "0.3.0",
+  "author": {
+    "name": "greenwash contributors"
+  }
+}

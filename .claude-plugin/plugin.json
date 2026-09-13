@@ -1,0 +1,8 @@
+{
+  "name": "greenwash",
+  "description": "Verifies an agent's \"done\" and \"tests pass\" claims are real. Statically scans the diff (skipped tests, mocked units-under-test, hardcoded returns, swallowed exceptions, the sys.exit(0)/AlwaysEqual/conftest.py exploits from Anthropic's reward-hacking research), and runs the project's tests -- including a baseline-vs-current differential -- for a real pass/fail signal, blocking the agent from stopping until it explains what it finds.",
+  "version": "0.3.0",
+  "author": {
+    "name": "greenwash contributors"
+  }
+}

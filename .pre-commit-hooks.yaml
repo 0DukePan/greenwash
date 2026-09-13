@@ -1,0 +1,7 @@
+- id: greenwash
+  name: greenwash (did the agent really fix it?)
+  description: Flag staged diffs that fake a passing test suite -- skipped/disabled tests, hardcoded returns, mocked units-under-test, swallowed exceptions.
+  entry: python scripts/greenwash_check.py scan --staged
+  language: system
+  pass_filenames: false
+  always_run: true
