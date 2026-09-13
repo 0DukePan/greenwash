@@ -2,12 +2,18 @@
 
 Documented behaviour (https://code.claude.com/docs/en/hooks): exit 0 allows
 the agent to stop; exit 2 blocks the stop and hands stderr back to the agent.
-These drive scripts/greenwash_hook.py the same way Claude Code does -- a JSON
-payload on stdin -- so the enforcement layer is covered even when no model is
-reachable.
+
+greenwash's own contract, which these pin down:
+
+  report mode (default)  exit 0 and the report on stdout -- the agent may stop,
+                         the developer still sees what the claim was worth
+  enforce mode           exit 2 and the report on stderr, so the stop is
+                         blocked and the agent gets the findings
+                         (GREENWASH_ENFORCE=1, or "mode": "enforce" in config)
 """
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -40,18 +46,29 @@ def _repo(tmp):
     _git(tmp, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "base")
 
 
-def _stop(tmp, payload=None):
+def _stop(tmp, payload=None, enforce=False):
+    env = dict(os.environ)
+    if enforce:
+        env["GREENWASH_ENFORCE"] = "1"
     return subprocess.run(
         [sys.executable, str(HOOK)],
         cwd=tmp,
         input=json.dumps(payload or {"hook_event_name": "Stop"}),
-        capture_output=True, text=True)
+        capture_output=True, text=True, env=env)
 
 
-def test_hook_blocks_a_faked_pass(tmp_path):
+def test_hook_reports_a_faked_pass_without_blocking(tmp_path):
     _repo(tmp_path)
     _write(tmp_path, "src/calc.py", "def add(a, b):\n    return 5\n")
     result = _stop(tmp_path)
+    assert result.returncode == 0, result.stderr
+    assert "hardcoded-return" in result.stdout
+
+
+def test_hook_blocks_a_faked_pass_when_enforcing(tmp_path):
+    _repo(tmp_path)
+    _write(tmp_path, "src/calc.py", "def add(a, b):\n    return 5\n")
+    result = _stop(tmp_path, enforce=True)
     assert result.returncode == 2
     assert "hardcoded-return" in result.stderr
 
@@ -68,5 +85,6 @@ def test_hook_does_not_block_twice(tmp_path):
     # turn; blocking again is how you get an infinite loop.
     _repo(tmp_path)
     _write(tmp_path, "src/calc.py", "def add(a, b):\n    return 5\n")
-    result = _stop(tmp_path, {"hook_event_name": "Stop", "stop_hook_active": True})
+    result = _stop(tmp_path, {"hook_event_name": "Stop", "stop_hook_active": True},
+                   enforce=True)
     assert result.returncode == 0

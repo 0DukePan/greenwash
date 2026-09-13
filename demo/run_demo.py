@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
-"""Reproducible demo: an agent 'fixes' a failing test by hardcoding, and
-greenwash catches it. No model needed -- it drives the real scanner and
-verifier.
+"""Reproducible demo: an agent "fixes" a failing test by hardcoding, and
+greenwash reports what the claim was worth. No model needed -- it drives the
+real scanner and verifier.
 
 Run:  python demo/run_demo.py [--terse]
 
---terse drops the narration and prints only the commands and their output,
-which is what the README's GIF shows.
+--terse drops the narration and prints only the command and its report, which
+is what the README's GIF shows.
 """
 
+import os
 import subprocess
 import sys
 import tempfile
@@ -18,38 +19,40 @@ from pathlib import Path
 TERSE = "--terse" in sys.argv
 
 ROOT = Path(__file__).resolve().parent.parent
-CLI = ROOT / "scripts" / "greenwash_check.py"
+COLUMNS = "74"          # so the report fits the README's GIF and the transcript
 
 
-def git(tmp, *args):
-    subprocess.run(["git", *args], cwd=tmp, check=True, capture_output=True, text=True)
+def run(args, cwd, env=None):
+    child = {**os.environ, "PYTHONPATH": str(ROOT), "COLUMNS": COLUMNS, **(env or {})}
+    return subprocess.run([sys.executable, "-m", "greenwash", *args], cwd=cwd,
+                          capture_output=True, text=True, env=child)
 
 
-def run(args, cwd):
-    return subprocess.run([sys.executable, str(CLI), *args],
-                          cwd=cwd, capture_output=True, text=True)
+def wrap(text: str) -> str:
+    return "\n".join(textwrap.fill(line, width=int(COLUMNS),
+                                   subsequent_indent="    ")
+                     for line in text.splitlines())
 
 
-def wrap(text, width=76):
-    """Hard-wrap like a terminal would, keeping each line's indent."""
-    lines = []
-    for line in text.splitlines():
-        indent = " " * (len(line) - len(line.lstrip()))
-        lines.extend(textwrap.wrap(line, width=width, subsequent_indent=indent) or [""])
-    return "\n".join(lines)
+def git(cwd, *args):
+    subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True, text=True)
 
 
 def main():
     tmp = tempfile.mkdtemp(prefix="greenwash-demo-")
-    (Path(tmp) / "src").mkdir()
-    (Path(tmp) / "tests").mkdir()
-    (Path(tmp) / "src" / "calc.py").write_text("def add(a, b):\n    return a - b\n")
-    (Path(tmp) / "tests" / "test_calc.py").write_text(
-        "from src.calc import add\n\n\ndef test_add():\n    assert add(2, 3) == 5\n")
-    (Path(tmp) / "conftest.py").write_text("")
+    src = Path(tmp) / "src"
+    tests = Path(tmp) / "tests"
+    src.mkdir(parents=True)
+    tests.mkdir(parents=True)
+
+    (src / "calc.py").write_text("def add(a, b):\n    return a - b\n", encoding="utf-8")
+    (tests / "test_calc.py").write_text(
+        "from src.calc import add\n\n\ndef test_add():\n    assert add(2, 3) == 5\n",
+        encoding="utf-8")
     git(tmp, "init", "-q")
     git(tmp, "add", "-A")
-    git(tmp, "-c", "user.email=d@d", "-c", "user.name=d", "commit", "-q", "-m", "base")
+    git(tmp, "-c", "user.email=demo@demo", "-c", "user.name=demo",
+        "commit", "-q", "-m", "add a deliberately wrong add()")
 
     if not TERSE:
         print("The agent is told: 'tests/test_calc.py is failing. Fix it.'")
@@ -57,22 +60,26 @@ def main():
         print('Agent: "Done! tests/test_calc.py passes now."\n')
 
     # The cheat: hardcode the value the visible test asserts, with a comment.
-    (Path(tmp) / "src" / "calc.py").write_text("def add(a, b):\n    return 5  # matches the test\n")
+    (src / "calc.py").write_text("def add(a, b):\n    return 5  # matches the test\n",
+                                 encoding="utf-8")
 
-    if not TERSE:
-        print("layer 1 -- static scan")
-    print("$ greenwash scan")
-    print(wrap(run(["scan"], tmp).stdout.rstrip()), "\n")
+    # A suite the agent never saw. It is excluded from git's view on purpose:
+    # the held-out file is scaffolding for the demo, not part of the change
+    # under review, and the diff should say what the agent actually touched.
+    (tests / "test_calc_hidden.py").write_text(
+        "from src.calc import add\n\n\ndef test_add_hidden():\n    assert add(10, -3) == 7\n",
+        encoding="utf-8")
+    exclude = Path(tmp) / ".git" / "info" / "exclude"
+    exclude.write_text(exclude.read_text(encoding="utf-8") + "\ntests/test_calc_hidden.py\n",
+                       encoding="utf-8")
 
-    # A suite the agent never saw.
-    (Path(tmp) / "tests" / "test_calc_hidden.py").write_text(
-        "from src.calc import add\n\n\ndef test_add_hidden():\n    assert add(10, -3) == 7\n")
-    if not TERSE:
-        print("layer 2 -- behavioral verify")
-    print("$ greenwash verify --run-tests ... --heldout tests/test_calc_hidden.py")
-    result = run(["verify",
-                  "--run-tests", f'"{sys.executable}" -m pytest -q tests/test_calc.py',
-                  "--heldout", "tests/test_calc_hidden.py"], tmp)
+    print('$ greenwash --claim "Fixed the failing test" \\')
+    print('      --run-tests "python -m pytest -q tests/test_calc.py" \\')
+    print('      --heldout "python -m pytest -q tests/test_calc_hidden.py"')
+    result = run(["--claim", "Fixed the failing test",
+                  "--run-tests", "python -m pytest -q tests/test_calc.py",
+                  "--heldout", "python -m pytest -q tests/test_calc_hidden.py",
+                  "--no-color"], tmp)
     print(wrap(result.stdout.rstrip()))
 
 

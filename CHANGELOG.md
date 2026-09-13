@@ -2,6 +2,102 @@
 
 ## Unreleased
 
+### The v1 surface: a trust report instead of a flag list
+
+- **A package you can install.** `greenwash/` is a real package with
+  `pyproject.toml` and a console script, so `pipx install greenwash` works.
+  `scripts/greenwash_check.py` stays as the compatibility entry point that the
+  Action, the pre-commit hook, CI, the benchmark harness and the demo all call,
+  with its command line, stdout and exit codes unchanged.
+- **A domain model with a versioned wire format** (`greenwash/domain.py`):
+  `Run`, `Claim`, `FileChange`, `Evidence`, `Signal`, `VerificationResult`,
+  `Verdict`, `Confidence`, `TrustReport`. `schema_version: "1"`. Serialization
+  never raises: unknown keys are ignored, wrong types degrade to defaults, and
+  a malformed report becomes an empty one rather than a traceback.
+- **A verdict** (`VERIFIED`, `PARTIALLY_VERIFIED`, `SUSPICIOUS`,
+  `NOT_VERIFIED`, `VERIFICATION_FAILED`, `INCONCLUSIVE`) from a documented
+  decision table, and **a deterministic confidence score** whose every point is
+  a sentence in the report. No percentages -- see `docs/confidence.md`.
+- **Signals carry their own metadata**: rule id, stable code (`GW-TEST-004`),
+  title, category, severity, confidence, files, line, evidence, remediation,
+  and `requires_review` for the two rules that ask rather than accuse.
+- **Three report formats** (terminal, JSON, markdown) from one `TrustReport`,
+  with `--quiet` and `--verbose`. Every failing verdict carries
+  expected-vs-observed evidence; there is no path that prints a bare `FAILED`.
+- **Zero-config activation**: `greenwash init` detects the repo and the test
+  command, writes `.greenwash/config.json`, and says what it could not find;
+  `greenwash doctor` diagnoses the same things. The report is the default
+  action: `greenwash` with no arguments.
+- **Enforcement is opt-in** (`--enforce` or `"mode": "enforce"`) with stable
+  exit codes 0/1/2/3. Report mode always exits 0 -- the report is the product.
+- **The Stop hook reports by default** and only blocks the agent's turn in
+  enforce mode. 0.3 always blocked; that was the wrong default for a tool whose
+  value is being believed.
+
+### Verification
+
+- Evidence on every failure: expected, observed, source, command, case id.
+- Secret redaction on all captured output, output capped per stream, a timeout
+  on every run, and `harness_error` to distinguish "we could not check" from
+  "the check failed".
+- `coverage` is computed and **named as the proxy it is** (share of changed
+  source files with an associated test file), and the note saying so travels
+  with the number in the report.
+
+### Bugs found while building this
+
+- **`git add -N -A` without a pathspec** indexed the entire enclosing
+  repository. In a subdirectory of a monorepo -- or in a temp directory sitting
+  under a `git init`-ed home directory, which is exactly what happened here --
+  that is minutes of work and an index belonging to someone else. Now scoped
+  with `-- .`, with regression tests for both the scope and the related-test
+  lookup (diff paths are repository-root relative).
+- **The exploit rule ran the regex table over Python**, which contains those
+  very patterns as string literals, so the scanner flagged its own pattern
+  table and its own docstrings. Python is AST-only now; a test pins it.
+- **`endswith(".py")` misread a command as a file path**, turning
+  `python -m pytest -q tests/x.py` into `pytest -q "python -m pytest ..."` --
+  which fails with "file or directory not found" and looks like a real
+  held-out failure.
+- **The CLI forced ANSI colour on when piped**, so `greenwash > report.txt` and
+  every CI log filled up with escapes. Colour is now decided from the stream,
+  with `--color` to force it.
+- **A report with no behavioral evidence claimed MEDIUM confidence**, because
+  the neutral base of 50 maps to MEDIUM. Confidence is now capped below MEDIUM
+  when nothing ran: neutral is not confident.
+- **`git diff HEAD` in a repository with no commits** surfaced git's three
+  different wordings ("bad revision", "ambiguous argument", "does not have any
+  commits yet") as a raw error. It is checked up front and reported as one
+  clear sentence.
+- **`assertion-weakened` is count-based**, so a real assertion replaced by a
+  useless one has an unchanged count and is not flagged. Documented in
+  `docs/false-positives.md` rather than left as a surprise.
+
+### Tests
+
+- 59 -> 140. New: domain round-trips and malformed-input tolerance, every
+  confidence term and every verdict branch, positive **and** negative cases for
+  every rule, the 500-file/2s scan budget, all three report formats, the CLI's
+  exit codes in both modes, the hook's report-vs-enforce contract.
+- `tests/test_readme.py` holds the README to its own numbers: the test count
+  against collection, the headline against `detection.json`, the
+  false-positive split against `fp-survey.json`.
+
+### Docs
+
+- `docs/confidence.md` (the arithmetic and the verdict table) and
+  `docs/false-positives.md` (measured classes, known limitations, how to
+  suppress a rule).
+- README rewritten around the report.
+
+### Demo
+
+- `demo/run_demo.py` now drives the real CLI and prints a trust report; the GIF
+  is generated from it, and since the report is taller than the window the
+  generator scrolls the viewport the way a terminal does and settles on the
+  verdict. `--terse` is what the GIF shows.
+
+
 - Upgraded `assets/demo.gif` again: a two-line kicker above the terminal
   (`An agent "fixed" the failing test.` / `It hardcoded the answer.`), so the
   clip explains itself without its caption, and each flag tag brightens for

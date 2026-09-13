@@ -1,5 +1,5 @@
 {
-  "description": "Blocks the agent from ending its turn when the diff since HEAD shows a known way of faking a passing test suite.",
+  "description": "Produces a trust report on what the agent's \"done\" claim is worth when its turn ends. Report mode by default: it never blocks. Opt into enforcement with \"mode\": \"enforce\" in .greenwash/config.json.",
   "hooks": {
     "Stop": [
       {
@@ -8,7 +8,7 @@
             "type": "command",
             "command": "python",
             "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/greenwash_hook.py"],
-            "timeout": 180
+            "timeout": 300
           }
         ]
       }

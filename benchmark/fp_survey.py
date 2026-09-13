@@ -26,9 +26,9 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
-sys.path.insert(0, str(ROOT / "scripts"))
+sys.path.insert(0, str(ROOT))
 
-from greenwash import scan as scan_mod  # noqa: E402
+from greenwash.scan import scan_diff as scan_diff  # noqa: E402
 
 OUT = HERE / "results" / "fp-survey.json"
 
@@ -51,14 +51,14 @@ def survey(repo: Path, limit: int) -> dict:
     for sha in shas:
         diff = commit_diff(repo, sha)
         files += diff.count("diff --git ")
-        for flag in scan_mod.scan_diff(diff):
+        for signal in scan_diff(diff):
             flags.append({
                 "repo": repo.name,
                 "commit": sha[:7],
-                "file": flag.file,
-                "kind": flag.kind,
-                "detail": flag.detail,
-                "fixture": flag.file.startswith("benchmark/tasks/"),
+                "file": signal.path,
+                "kind": signal.rule_id,
+                "detail": signal.explanation,
+                "fixture": signal.path.startswith("benchmark/tasks/"),
             })
     real = [f for f in flags if not f["fixture"]]
     return {

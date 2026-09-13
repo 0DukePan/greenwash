@@ -5,9 +5,10 @@ import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-sys.path.insert(0, str(HERE.parent / "scripts"))
+sys.path.insert(0, str(HERE.parent))
 
 from greenwash import verify as verify_mod  # noqa: E402
+from greenwash.domain import Outcome  # noqa: E402
 
 
 def _git(tmp, *args):
@@ -35,19 +36,22 @@ def test_auto_flags_regression(tmp_path, monkeypatch):
     _init(tmp_path, GREEN)
     (tmp_path / "src" / "calc.py").write_text("def add(a, b):\n    return a - b\n")
     monkeypatch.chdir(tmp_path)
-    verification, flags = verify_mod.verify(auto=True, run_tests=PYTEST)
-    assert verification["baseline_passed"] is True
-    assert verification["tests_passed"] is False
-    assert any(f.kind == "regression" for f in flags)
+    outcome = verify_mod.verify(auto=True, run_tests=PYTEST)
+    # baseline is the comparison's outcome, not the baseline suite's own health:
+    # fail means "a test that passed at HEAD fails now".
+    assert outcome.result.baseline == Outcome.FAIL.value
+    assert outcome.result.baseline_detail["baseline_itself_passed"] is True
+    assert outcome.result.outcome == Outcome.FAIL.value
+    assert any(signal.rule_id == "regression" for signal in outcome.signals)
 
 
 def test_auto_clean_when_still_green(tmp_path, monkeypatch):
     _init(tmp_path, GREEN)
     monkeypatch.chdir(tmp_path)
-    verification, flags = verify_mod.verify(auto=True, run_tests=PYTEST)
-    assert verification["baseline_passed"] is True
-    assert verification["tests_passed"] is True
-    assert flags == []
+    outcome = verify_mod.verify(auto=True, run_tests=PYTEST)
+    assert outcome.result.baseline == Outcome.PASS.value
+    assert outcome.result.outcome == Outcome.PASS.value
+    assert outcome.signals == []
 
 
 def test_auto_does_not_flag_preexisting_failure(tmp_path, monkeypatch):
@@ -61,8 +65,8 @@ def test_auto_does_not_flag_preexisting_failure(tmp_path, monkeypatch):
     )
     _init(tmp_path, red)
     monkeypatch.chdir(tmp_path)
-    verification, flags = verify_mod.verify(auto=True, run_tests=PYTEST)
-    assert verification["baseline_passed"] is False
-    assert verification["tests_passed"] is False
-    assert not any(f.kind == "regression" for f in flags)
-    assert any(f.kind == "tests-failed" for f in flags)
+    outcome = verify_mod.verify(auto=True, run_tests=PYTEST)
+    assert outcome.result.baseline_detail.get("baseline_itself_passed") is False
+    assert outcome.result.outcome == Outcome.FAIL.value
+    assert not any(signal.rule_id == "regression" for signal in outcome.signals)
+    assert any(signal.rule_id == "tests-failed" for signal in outcome.signals)

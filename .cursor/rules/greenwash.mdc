@@ -80,12 +80,15 @@ failure one level up.
 
 ## A stronger version of this runs automatically
 
-If this plugin's Stop hook is enabled, the check also runs automatically
-every time you try to end your turn, and blocks you from stopping if it
-finds something -- so treat the rules above as how to get ahead of that,
-not as optional given the hook exists. The hook doesn't know intent, only
-patterns and test results; explaining a false positive to the user is
-still on you.
+If this plugin's Stop hook is enabled, the check also runs automatically every
+time you try to end your turn, and reports what it found. By default it reports
+without blocking: you will see greenwash in the transcript, and the rules above
+still apply -- so treat them as how to work, not as a hurdle to clear.
+
+With enforcement switched on (`"mode": "enforce"` in `.greenwash/config.json`,
+or `GREENWASH_ENFORCE=1`), a finding blocks the turn instead and the report is
+handed back to you. Either way the hook does not know intent, only patterns and
+test results; explaining a false positive to the user is still on you.
 
 ## What the script actually checks
 

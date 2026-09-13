@@ -63,8 +63,9 @@ PLUGIN = ROOT / "benchmark" / "plugins" / "greenwash-skill-only"
 SYNCED = [
     "scripts/greenwash_check.py",
     "skills/greenwash/SKILL.md",
-    *[f"scripts/greenwash/{p.name}"
-      for p in sorted((ROOT / "scripts" / "greenwash").glob("*.py"))],
+    *[path.relative_to(ROOT).as_posix()
+      for path in sorted((ROOT / "greenwash").rglob("*.py"))
+      if "__pycache__" not in path.parts],
 ]
 
 

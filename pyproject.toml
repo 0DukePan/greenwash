@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "greenwash"
+version = "0.4.0"
+description = "A trust report on what a coding agent's \"done\" claim is actually worth: static diff analysis plus behavioral verification, offline and local."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "greenwash contributors" }]
+keywords = ["agents", "verification", "testing", "static-analysis", "claude-code"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Software Development :: Quality Assurance",
+  "Topic :: Software Development :: Testing",
+]
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+
+[project.scripts]
+greenwash = "greenwash.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/0DukePan/greenwash"
+Changelog = "https://github.com/0DukePan/greenwash/blob/main/CHANGELOG.md"
+
+[tool.setuptools]
+packages = [
+  "greenwash",
+  "greenwash.scan",
+  "greenwash.scan.rules",
+  "greenwash.scan.languages",
+  "greenwash.verify",
+  "greenwash.report",
+]
+
+[tool.setuptools.package-data]
+greenwash = ["py.typed"]

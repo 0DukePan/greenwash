@@ -34,7 +34,8 @@ def flat_readme() -> str:
 
 
 def test_readme_test_count_matches_the_suite():
-    claimed = set(re.findall(r"([\d,]+) tests", readme()))
+    # a digit is required: `says "done, tests pass"` is prose, not a claim
+    claimed = set(re.findall(r"(\d[\d,]*) tests", readme()))
     actual = collected()
     assert claimed == {str(actual)}, (
         f"README claims {sorted(claimed)} tests; the suite collects {actual}")

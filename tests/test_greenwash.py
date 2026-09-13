@@ -8,11 +8,11 @@ import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-sys.path.insert(0, str(HERE.parent / "scripts"))
+sys.path.insert(0, str(HERE.parent))
 
-from greenwash import discover as discover_mod  # noqa: E402
 from greenwash import scan as scan_mod  # noqa: E402
 from greenwash import verify as verify_mod  # noqa: E402
+from greenwash.verify import discovery as discover_mod  # noqa: E402
 
 BASE = {
     "src/calc.py": "def add(a, b):\n    return a - b\n",
@@ -41,7 +41,7 @@ def write(tmp, rel, content):
 
 def kinds(tmp, monkeypatch):
     monkeypatch.chdir(tmp)
-    return [f.kind for f in scan_mod.scan()]
+    return [signal.rule_id for signal in scan_mod.scan()]
 
 
 def test_hardcoded_plain(tmp_path, monkeypatch):
@@ -96,16 +96,33 @@ def test_verify_flags_heldout_failure(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     write(tmp_path, "visible.py", "def test_ok():\n    assert True\n")
     write(tmp_path, "heldout.py", "def test_bad():\n    assert False\n")
-    verification, flags = verify_mod.verify(
-        [sys.executable, "-m", "pytest", "-q", "visible.py"], "heldout.py")
-    assert verification["tests_passed"] is True
-    assert verification["heldout_passed"] is False
-    assert any(f.kind == "heldout-failed" for f in flags)
+    outcome = verify_mod.verify(
+        run_tests=[sys.executable, "-m", "pytest", "-q", "visible.py"], heldout="heldout.py")
+    assert outcome.result.outcome == "pass"
+    assert outcome.result.heldout == "fail"
+    assert any(signal.rule_id == "heldout-failed" for signal in outcome.signals)
+    # the failure has to carry evidence, not just a verdict
+    assert outcome.result.evidence and outcome.result.evidence[0].expected
 
 
 def test_discover_python_project(tmp_path):
     (tmp_path / "pyproject.toml").write_text("", encoding="utf-8")
     assert discover_mod.discover_test_command(tmp_path).endswith("-m pytest -q")
+
+
+def test_heldout_command_is_not_mistaken_for_a_path(tmp_path):
+    """Regression: `... tests/test_hidden.py` is a command, not a file.
+
+    Reading it as a path produced `pytest -q "python -m pytest -q tests/..."`,
+    which fails with "file or directory not found" and looks like a real
+    held-out failure.
+    """
+    from greenwash.verify.heldout import _as_command
+
+    command = "python -m pytest -q tests/test_calc_hidden.py"
+    assert _as_command(command) == command
+    assert _as_command("tests/test_calc_hidden.py").endswith('"tests/test_calc_hidden.py"')
+    assert _as_command("python -m pytest -q").endswith("python -m pytest -q")
 
 
 def test_discover_prefers_declared_node_test_script(tmp_path):

@@ -1,7 +1,7 @@
 {
   "name": "greenwash",
-  "description": "Verifies an agent's \"done\" and \"tests pass\" claims are real. Statically scans the diff (skipped tests, mocked units-under-test, hardcoded returns, swallowed exceptions, the sys.exit(0)/AlwaysEqual/conftest.py exploits from Anthropic's reward-hacking research), and runs the project's tests -- including a baseline-vs-current differential -- for a real pass/fail signal, blocking the agent from stopping until it explains what it finds.",
-  "version": "0.3.0",
+  "description": "Reports what an agent's \"done\" and \"tests pass\" claims are actually worth. Reads the diff (skipped tests, mocked units-under-test, hardcoded returns, swallowed exceptions, the sys.exit(0)/AlwaysEqual/conftest.py exploits from Anthropic's reward-hacking research) and runs the project's tests -- including a baseline differential and a held-out suite -- then prints a trust report with a verdict, a confidence, and the evidence behind both. Reports by default; enforcement is opt-in.",
+  "version": "0.4.0",
   "author": {
     "name": "greenwash contributors"
   }
