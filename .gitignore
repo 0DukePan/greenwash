@@ -2,3 +2,7 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 .commandcode/
+*.egg-info/
+uv.lock
+.greenwash/
+

@@ -21,6 +21,7 @@ import textwrap
 from ..domain import Level, Outcome, TrustReport, Verdict
 
 RULE = "\u2500"          # box drawing horizontal
+SEP = " \u00b7 "         # the separator between run details
 RESET, BOLD, DIM = "\033[0m", "\033[1m", "\033[2m"
 RED, GREEN, YELLOW, CYAN = "\033[31m", "\033[32m", "\033[33m", "\033[36m"
 
@@ -146,7 +147,9 @@ def render(report: TrustReport, color=None, verbose: bool = False,
     if report.run and (report.run.agent or report.run.changed_files):
         bits = [b for b in (report.run.agent, report.run.mode and f"mode: {report.run.mode}")
                 if b]
-        lines.append(f"{'Run':<13}{' \u00b7 '.join(bits)}")
+        # SEP rather than an escape inside the expression: a backslash there is
+        # illegal before Python 3.12, like the nested quotes above
+        lines.append(f"{'Run':<13}{SEP.join(bits)}")
 
     lines.append("")
     lines.append("Changes:")
@@ -211,8 +214,10 @@ def render(report: TrustReport, color=None, verbose: bool = False,
                          f"{'  ' + location if location else ''}")
             lines.append(wrap("      " + signal.explanation, 6))
             if signal.requires_review:
-                lines.append(f"      {_paint('requires review -- not a failure by itself',
-                                             DIM, color)}")
+                # hoisted: an f-string whose expression spills across lines with
+                # nested quotes is a syntax error before Python 3.12 (PEP 701)
+                note = _paint("requires review -- not a failure by itself", DIM, color)
+                lines.append("      " + note)
             elif verbose and signal.remediation:
                 lines.append(wrap("      " + _paint("to resolve: ", DIM, color)
                                   + signal.remediation, 6))
@@ -234,8 +239,10 @@ def render(report: TrustReport, color=None, verbose: bool = False,
                 lines.append(wrap("  Summary:  " + item.summary, 2))
 
     lines.append("")
-    lines.append(f"Verdict: {_paint(report.verdict, BOLD + VERDICT_COLOR.get(
-        report.verdict, ''), color)} -- {VERDICT_BLURB.get(report.verdict, '')}")
+    # built in pieces rather than one multi-line f-string: a nested quote inside
+    # an expression that spans lines is a syntax error before Python 3.12
+    verdict = _paint(report.verdict, BOLD + VERDICT_COLOR.get(report.verdict, ""), color)
+    lines.append(f"Verdict: {verdict} -- {VERDICT_BLURB.get(report.verdict, '')}")
     if report.confidence:
         lines.append(f"Confidence: {report.confidence.level} "
                      f"(score {report.confidence.score}/100)")

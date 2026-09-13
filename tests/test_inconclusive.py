@@ -28,20 +28,27 @@ CORPUS = ROOT / "benchmark" / "inconclusive"
 CASES = sorted(path.name for path in CORPUS.iterdir() if (path / "case.json").is_file())
 
 
+TEXT_SUFFIXES = {".py", ".md", ".txt", ".js", ".ts", ".json", ".cfg", ".toml"}
+
+
 def synth_diff(case_dir: Path) -> str:
-    """Every file in the case is new, so every line is an addition."""
+    """Every file in the case is new, so every line is an addition.
+
+    Only source-like files: a stray `__pycache__` from a local `compileall`
+    (which is how this broke the first time) is not part of the case.
+    """
     chunks = []
     for path in sorted((case_dir / "files").rglob("*")):
-        if not path.is_file():
+        if not path.is_file() or "__pycache__" in path.parts:
+            continue
+        if path.suffix not in TEXT_SUFFIXES:
             continue
         rel = path.relative_to(case_dir / "files").as_posix()
         lines = path.read_text(encoding="utf-8").splitlines()
-        local = case_dir / "files"
         body = "".join(f"+{line}\n" for line in lines)
         chunks.append(
             f"diff --git a/{rel} b/{rel}\nnew file mode 100644\n--- /dev/null\n+++ b/{rel}\n"
             f"@@ -0,0 +1,{len(lines)} @@\n{body}")
-        assert local.is_dir()
     return "".join(chunks)
 
 

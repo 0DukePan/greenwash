@@ -46,6 +46,14 @@
 
 ### Bugs found while building this
 
+- **The package claimed `requires-python = ">=3.10"` while three lines needed
+  3.12.** Two multi-line f-strings had a nested quote inside the expression and
+  a third had a `\u` escape there, which is only legal from 3.12 (PEP 701). The
+  guard test compiles every directory with a real 3.10 interpreter; the obvious
+  `ast.parse(feature_version=(3, 10))` check does **not** catch it -- the grammar
+  is fine, the tokenizer objects -- and reported "0 files needing more than 3.10"
+  while CI was red.
+
 - **`git add -N -A` without a pathspec** indexed the entire enclosing
   repository. In a subdirectory of a monorepo -- or in a temp directory sitting
   under a `git init`-ed home directory, which is exactly what happened here --
