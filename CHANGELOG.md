@@ -5,8 +5,8 @@
 - Rebuilt `assets/demo.gif` again, this time for density: `run_demo.py` grew a
   `--terse` mode (commands and output only), so the GIF carries 13 lines
   instead of 21 at roughly a third larger type in a 768x420 frame, with each
-  flag block tinted behind an amber tag. 6.2s loop, 695 KB, frame accuracy
-  re-verified after paletting.
+  flag block tinted behind an amber tag and an amber edge down its left side.
+  6.2s loop, 687 KB, frame accuracy re-verified after paletting.
 - The GIF's palette is now built from the art's own colours with the accents
   forced in: Pillow's adaptive quantisation was silently dropping the green
   `$` -- 52 green pixels in, 0 out.

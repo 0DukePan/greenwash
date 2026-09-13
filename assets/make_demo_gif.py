@@ -122,6 +122,17 @@ def card() -> Image.Image:
 BASE = card()
 
 
+def runs(rows) -> list[list[int]]:
+    """Contiguous runs of row indices, so a flagged block gets one edge."""
+    out: list[list[int]] = []
+    for row in sorted(rows):
+        if out and row == out[-1][-1] + 1:
+            out[-1].append(row)
+        else:
+            out.append([row])
+    return out
+
+
 def render(visible, cursor=None) -> Image.Image:
     img = BASE.copy()
     d = ImageDraw.Draw(img)
@@ -142,6 +153,10 @@ def render(visible, cursor=None) -> Image.Image:
     for row in tinted:
         y = px(TEXT_TOP + row * LINE_H)
         d.rectangle([px(INSET + 5), y - px(3), px(W - INSET - 5), y + px(20)], fill=TINT)
+    for run in runs(tinted):
+        y0 = px(TEXT_TOP + run[0] * LINE_H) - px(3)
+        y1 = px(TEXT_TOP + run[-1] * LINE_H) + px(20)
+        d.rectangle([px(INSET + 5), y0, px(INSET + 8), y1], fill=FLAG)
 
     for row, (line, kind) in enumerate(visible):
         y = px(TEXT_TOP + row * LINE_H)
