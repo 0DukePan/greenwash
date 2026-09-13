@@ -33,9 +33,9 @@
 </p>
 
 <p align="center">
-  <img src="assets/demo.gif" width="720" alt="The demo's output: the agent claims done; the hardcoded return is flagged; the held-out suite fails">
+  <img src="assets/demo.gif" width="720" alt="The demo's output: the agent claims done; the hardcoded return is flagged in amber; the held-out suite then fails">
   <br>
-  <sub><code>python demo/run_demo.py</code> -- verbatim output: the claim, the hardcoded return, then the held-out suite.</sub>
+  <sub><code>python demo/run_demo.py</code> -- verbatim output, the two flag lines highlighted: the claim, the hardcoded return, then the held-out suite.</sub>
 </p>
 
 ---

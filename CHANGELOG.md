@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Restyled `assets/demo.gif` after a frame-by-frame review. The poster frame is
+  now the caught state rather than an empty terminal, the flag tags are
+  highlighted so the catch reads at thumbnail size, the dead beats at the loop
+  point are gone (6.1s loop), and the frames are actually downsampled from the
+  2x render -- the GIF had been shipping at 1440x1120 and 1.9 MB; it is now
+  720x550 and 1.0 MB.
 - `benchmark/detection.py` measures the checker against the corpus with no
   model: 18/18 planted cheats caught (13 of them by the static scan alone),
   0 false positives on the 24 recorded real fixes. `assets/benchmark.svg`

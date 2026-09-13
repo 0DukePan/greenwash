@@ -8,7 +8,8 @@ needs no model and no API key.
 
 `assets/demo.gif` is the loop at the top of the README. It is neither
 screen-recorded nor transcribed: the generator runs `run_demo.py`, captures its
-stdout, and types those exact lines onto a terminal card.
+stdout, and types those exact lines onto a terminal card. The only styling it
+adds is the highlighted flag lines; the text is verbatim.
 
 Rebuild it with:
 
