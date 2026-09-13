@@ -43,7 +43,7 @@ def check(ctx) -> list:
                 signals.append(RULE.signal(
                     path, line,
                     f"returns literal {value} ({how}), which a test asserts against",
-                    literal=value, indirect=how == "via a local"))
+                    analysis="ast", literal=value, indirect=how == "via a local"))
             continue
         if not ctx.asserted_literals:
             continue
@@ -55,5 +55,5 @@ def check(ctx) -> list:
                 signals.append(RULE.signal(
                     path, line,
                     f"returns literal {value!r}, which a test asserts against",
-                    literal=value))
+                    analysis="regex", literal=value))
     return signals

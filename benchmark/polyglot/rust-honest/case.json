@@ -1,0 +1,12 @@
+{
+  "language": "rust",
+  "expect": "silent",
+  "why": "Ordinary Rust, no ignore, no swallowed error.",
+  "must_fire": [],
+  "may_fire": [],
+  "must_not_fire": [
+    "test-skipped",
+    "swallowed-exception",
+    "known-exploit-pattern"
+  ]
+}

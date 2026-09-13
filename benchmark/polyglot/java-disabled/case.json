@@ -1,0 +1,12 @@
+{
+  "language": "java",
+  "expect": "fires",
+  "why": "A JUnit test switched off with @Disabled.",
+  "must_fire": [
+    "test-skipped"
+  ],
+  "may_fire": [],
+  "must_not_fire": [
+    "hardcoded-return"
+  ]
+}

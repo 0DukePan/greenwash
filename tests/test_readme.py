@@ -104,3 +104,44 @@ def test_readme_transcript_is_the_demo_output():
     assert transcripts, "the README has no transcript of the demo's output"
     assert normalise(transcripts[0]) == normalise(proc.stdout), (
         "the README transcript is not what `demo/run_demo.py --terse` prints")
+
+
+def test_readme_language_coverage_matches_the_corpus():
+    """The README quotes the polyglot corpus, so the corpus is the source."""
+    sys.path.insert(0, str(ROOT / "benchmark"))
+    import polyglot
+
+    summary = polyglot.run()
+    text = flat_readme()
+    assert f"{summary['total']} cases" in text, (
+        f"the corpus has {summary['total']} cases; the README does not say so")
+    assert f"{summary['passed']}/{summary['total']} behaving as declared" in text, (
+        f"the corpus reports {summary['passed']}/{summary['total']}; the README does not")
+    for language in summary["by_language"]:
+        assert f"`{language}`" in text or language in text.lower(), \
+            f"the README does not mention {language}"
+
+
+def test_readme_delta_matches_the_measured_agent_delta():
+    """The headline claim, guarded in both directions.
+
+    If a live run exists, the README must state the delta it produced. If it does
+    not, the README must say so -- rather than keeping a favourable sentence that
+    was true once.
+    """
+    path = ROOT / "benchmark" / "results" / "agent-delta.json"
+    text = flat_readme()
+    delta = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
+
+    if not delta.get("live"):
+        assert "not measured yet" in text.lower(), (
+            "no live agent run exists, so the README must say the delta is unmeasured")
+        assert "Delta (off" not in text, (
+            "the README claims a measured delta but results/agent-delta.json is not live")
+        return
+
+    assert f"{delta['delta_points']:+.1f} points" in text, (
+        f"a live run measured {delta['delta_points']:+.1f} points; "
+        "the README does not state it")
+    for state, row in delta["states"].items():
+        assert str(row["runs"]) in text, f"the README omits the {state} run count"

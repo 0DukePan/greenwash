@@ -10,7 +10,32 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parent.parent
+
+
+def test_workflow_and_action_are_valid_yaml():
+    """A YAML error here is not a red CI job, it is no CI job at all.
+
+    GitHub skips a workflow it cannot parse, and it skipped this repository's
+    Action once already. The check is cheap and the failure mode is silent,
+    which is the worst combination.
+    """
+    yaml = pytest.importorskip("yaml", reason="PyYAML is not installed")
+
+    workflow = yaml.safe_load((ROOT / ".github" / "workflows" / "ci.yml")
+                              .read_text(encoding="utf-8"))
+    assert workflow["jobs"], "the workflow has no jobs"
+    for name, job in workflow["jobs"].items():
+        assert job.get("runs-on"), f"{name} has no runner"
+        assert job.get("steps"), f"{name} has no steps"
+        for step in job["steps"]:
+            assert step.get("uses") or step.get("run"), f"{name}: empty step {step}"
+
+    action = yaml.safe_load((ROOT / "action.yml").read_text(encoding="utf-8"))
+    assert action["runs"]["using"] == "composite"
+    assert action["runs"]["steps"], "the Action does nothing"
 
 
 def test_plugin_manifest():

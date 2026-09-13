@@ -34,14 +34,22 @@ class Rule:
     languages: tuple = ()
 
     def signal(self, path: str = "", line: Optional[int] = None,
-               explanation: str = "", **evidence) -> Signal:
+               explanation: str = "", analysis: Optional[str] = None, **evidence) -> Signal:
+        confidence = self.confidence
+        if analysis and analysis != "ast" and confidence == Level.HIGH.value:
+            # A regex cannot parse the language beneath it, so a rule that is
+            # HIGH confidence on a parsed file is only MEDIUM confidence here.
+            # The severity is unchanged: a skipped test is a skipped test.
+            confidence = Level.MEDIUM.value
+        if analysis:
+            evidence["analysis"] = analysis
         return Signal(
             rule_id=self.id,
             code=self.code,
             title=self.title,
             category=self.category,
             severity=self.severity,
-            confidence=self.confidence,
+            confidence=confidence,
             explanation=explanation or self.description,
             files=[path] if path else [],
             line=line,

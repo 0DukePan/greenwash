@@ -2,6 +2,41 @@
 
 ## Unreleased
 
+### Closing the three gaps in the 9/10
+
+- **Language coverage is measured now, not implied.** `benchmark/polyglot/`
+  holds 14 static cases across Go, Rust, Ruby, Java and JavaScript -- a positive
+  and a negative case per language, no toolchain required, so it runs on every
+  CI runner. `benchmark/polyglot.py` reports 14/14 behaving as declared, and
+  `tests/test_polyglot.py` makes it a gate.
+- **Signals say how they were produced.** A rule that ran a regex over a
+  language it cannot parse marks its evidence `analysis: regex` and its
+  confidence is capped at `MEDIUM`. Severity is unchanged -- a skipped test is a
+  skipped test -- but the tool no longer claims the certainty of a parser it
+  did not use.
+- **`npx greenwash` exists.** `npm/` is a shim that finds Python, checks the
+  package is importable, and forwards argv and the exit code untouched. Packed
+  and installed with `npm pack` + `npm install`, then run: `--version` prints
+  `greenwash 0.4.0`, report mode exits 0, `scan` exits 1 on a planted cheat, and
+  a missing Python or a missing package produces one actionable message and exit
+  3. It is not a second implementation -- two codebases that can disagree about
+  whether your tests pass is the failure this tool exists to catch.
+- **The agent-facing delta is turnkey.** `benchmark/report.py` now writes
+  `results/agent-delta.json` alongside its markdown; `benchmark/run.py` renders
+  the off/skill-only/full table from it into `BENCHMARK.md` between the metrics
+  markers; and `tests/test_readme.py` checks the README against it in both
+  directions -- a live run must be stated, and no live run must not be. A
+  plumbing run can never be published as the effect.
+
+### Bugs found while building this
+
+- **The literal extractor read the wrong literal out of a nested assertion.**
+  `assert.equal(sum(2, 3), 5)` yielded `3` -- the argument, not the expected
+  value -- because the pattern's `.*?` stopped at the inner comma. The JS and
+  non-Python `hardcoded-return` path could therefore not fire on the most common
+  shape of JavaScript assertion. Found by the new polyglot corpus on its first
+  run; the patterns are greedy now.
+
 ### The v1 surface: a trust report instead of a flag list
 
 - **A package you can install.** `greenwash/` is a real package with

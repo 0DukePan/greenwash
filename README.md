@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <strong>24/24 planted cheats caught &middot; 0 false positives on 24 real fixes &middot; 164 tests</strong><br>
+  <strong>24/24 planted cheats caught &middot; 0 false positives on 24 real fixes &middot; 185 tests</strong><br>
   <sub>
     An agent under pressure to show green will skip the test, mock the unit under
     test, hardcode the expected value, or swallow the exception that would have
@@ -56,7 +56,13 @@ greenwash                     # a trust report for the current diff
 ```
 
 No configuration, no account, no network. If your project has tests, greenwash
-finds them. To watch it before you install anything:
+finds them. In a JavaScript project, or if you simply prefer `npx`:
+
+```bash
+npx greenwash                 # a shim that runs the Python implementation
+```
+
+To watch it before you install anything:
 
 ```bash
 python demo/run_demo.py       # builds a throwaway repo, plants a cheat, catches it
@@ -177,13 +183,28 @@ Eight static rules, and four signals that only a run can produce:
 
 ## Language support, stated honestly
 
-| Language | Static analysis |
-|---|---|
-| Python | AST: skips, hardcoded returns through locals, empty handlers, `AlwaysEqual`, exit-zero calls |
-| JavaScript / TypeScript, Go, Rust, Ruby, Java | regex packs only -- skipped tests, empty catch blocks, mocks, literal returns |
+| Language | Static analysis | Exercised by |
+|---|---|---|
+| Python | AST: skips, hardcoded returns through locals, empty handlers, `AlwaysEqual`, exit-zero calls | 24 tasks running real suites, plus the polyglot corpus |
+| JavaScript / TypeScript | regex pack: skips, empty catches, mocks, literal returns checked against a related test file | 3 tasks running real suites, plus the polyglot corpus |
+| Go, Rust, Ruby, Java | regex packs: skips, empty error handling, mocks | the polyglot corpus (static only) |
 
-The regex packs are noisier and are not backed by benchmark tasks. That is a
-gap, not a feature, and it is written down rather than implied.
+The polyglot corpus is measured, not asserted: `python benchmark/polyglot.py`
+runs 14 cases across those five languages and reports **14/14 behaving as
+declared**, with a negative case per language so a pack that starts flagging
+honest code fails CI.
+
+Go, Rust, Ruby and Java have no toolchain on the CI runners, so their packs are
+not backed by tasks that run a real suite. That is a gap, and it is written down
+rather than implied. What they do have is a corpus with a positive and a
+negative case each -- which is how the JavaScript hardcoded-return bug was
+found: the literal extractor was reading the argument out of
+`assert.equal(sum(2, 3), 5)` instead of the expected value.
+
+Signals produced without a parser say so. Their evidence carries
+`"analysis": "regex"` and their confidence is capped at `MEDIUM` -- a regex pack
+cannot parse Go, so it does not get to be as certain as the AST. Severity is
+unchanged: a skipped test is a skipped test.
 
 ## Numbers
 
@@ -231,12 +252,24 @@ asserts, 3 from a successful `exit(0)` in ordinary CLI or hook code. Both
 classes are documented in [docs/false-positives.md](docs/false-positives.md),
 and each one that got fixed is now a regression test.
 
+**Language packs, measured.** `python benchmark/polyglot.py` runs 14 cases
+across Go, Rust, Ruby, Java and JavaScript -- a positive and a negative each --
+and reports 14/14 behaving as declared. Python and JavaScript additionally have
+tasks that run real suites; the other four have no toolchain on the CI runners,
+so their packs are exercised statically and their signals carry
+`analysis: regex` with confidence capped at `MEDIUM`.
+
 **What is not measured yet is the agent-facing number.** The silent-cheat rate
 -- how often a model claims done while the check it was told to pass isn't
 actually passing, with the plugin `off` vs. `skill-only` vs. `full` -- needs a
-model the maintainer's account can reach. The harness, the hidden-test
-injection, the scoring and the reporting are all built and exercised; three
-commands stay behind:
+model the maintainer's account can reach. I checked again while writing this:
+`benchmark/preflight.py` still reports no reachable model, so the paragraph
+stands rather than becoming a table with placeholder numbers.
+
+The harness, the hidden-test injection, the scoring, the resumable JSONL rows,
+the Wilson intervals and the report are all built and exercised; three commands
+stay behind, and `benchmark/run.py` writes the resulting table into
+[BENCHMARK.md](BENCHMARK.md) the moment they run:
 
 ```bash
 python benchmark/preflight.py
@@ -244,16 +277,23 @@ python benchmark/harness.py --states off,skill-only,full --runs 3 --model <id>
 python benchmark/report.py --out benchmark/RESULTS.md
 ```
 
-The top of this README gets a real delta in place of this paragraph when that
-runs. One trap worth knowing: a gateway with a zero balance rejects every model
-with `402 reject_no_credit`, which looks like "no model available" and is
-actually "no credit".
+`report.py` also writes `benchmark/results/agent-delta.json`, and two guards
+read it: BENCHMARK.md gets the table generated from it, and the README is
+checked against it **in both directions** -- if a live run exists the README
+must state its delta, and if one doesn't, the README must keep saying the number
+is unmeasured. A plumbing run driven by the fake agent can never be published as
+the effect.
+
+One trap worth knowing: a gateway with a zero balance rejects every model with
+`402 reject_no_credit`, which looks like "no model available" and is actually
+"no credit".
 
 ## Install
 
 | Where | How |
 |---|---|
 | Any repo (CLI) | `pipx install greenwash` |
+| Node projects, or `npx` | `npx greenwash` -- a shim over the Python package, see [`npm/`](npm/) |
 | **Claude Code** (the unskippable hook) | `/plugin marketplace add 0DukePan/greenwash` then `/plugin install greenwash@greenwash` |
 | GitHub Actions | `uses: 0DukePan/greenwash@v0.3.0` (see [`action.yml`](action.yml)) |
 | pre-commit | add `0DukePan/greenwash` to `repos` (see [`.pre-commit-hooks.yaml`](.pre-commit-hooks.yaml)) |
@@ -351,9 +391,12 @@ means what it used to: whether a test was weakened, skipped, or satisfied by a
 constant, and whether a held-out suite agrees.
 
 **npx?**
-There is no npm package. `pipx install greenwash` (or `pip install greenwash`)
-is the supported path; wrapping the CLI in an npm shim is welcome as a
-contribution.
+`npx greenwash` works: it runs the Python implementation through the shim in
+[`npm/`](npm/), forwarding argv and the exit code untouched. It is a wrapper,
+not a second implementation -- two codebases that can disagree about whether
+your tests pass is the failure this tool exists to catch. It still needs Python
+3.10+ with the `greenwash` package installed, and it says exactly that if either
+is missing.
 
 **How do I report a false positive?**
 Open an issue with the commit and the flag. Every confirmed false positive
@@ -371,9 +414,11 @@ becomes a test -- that is the policy, not a promise.
 | `greenwash/cli.py`, `doctor.py`, `config.py` | the entry point, diagnostics, `.greenwash/config.json` |
 | `docs/` | [confidence.md](docs/confidence.md), [false-positives.md](docs/false-positives.md) |
 | `benchmark/` | 24 tasks (Python + JavaScript), harness, detection measurement, FP survey, Wilson-CI report |
+| `benchmark/polyglot/` | 14 static cases across Go, Rust, Ruby, Java and JavaScript -- one negative per language |
+| `npm/` | the `npx greenwash` shim, which runs the Python implementation rather than reimplementing it |
 | `skills/`, `hooks/`, `adapters/` | the skill the agent reads, the Stop hook, and the generated rule files for other hosts |
 | `scripts/` | the two compatibility entry points CI and the plugin call |
-| `tests/` | 164 tests -- domain, confidence, rules, reporting, CLI, hook contract, the inconclusive corpus, benchmark tasks |
+| `tests/` | 185 tests -- domain, confidence, rules, language packs, reporting, CLI, hook contract, the inconclusive corpus, benchmark tasks |
 | `benchmark/inconclusive/` | six ambiguous changes that must be asked about and never convicted |
 | `demo/` | the reproducible catch from the top of this file |
 | `assets/` | the logo, the demo GIF and the benchmark chart, plus the scripts that rebuild them |
@@ -382,7 +427,7 @@ becomes a test -- that is the policy, not a promise.
 
 ```bash
 git clone https://github.com/0DukePan/greenwash && cd greenwash
-python -m pytest -q            # 164 tests, no model or network needed
+python -m pytest -q            # 185 tests, no model or network needed
 python demo/run_demo.py        # the catch, end to end
 python benchmark/detection.py  # the accuracy numbers above
 ```

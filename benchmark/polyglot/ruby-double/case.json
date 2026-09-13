@@ -1,0 +1,13 @@
+{
+  "language": "ruby",
+  "expect": "fires",
+  "why": "A new test double -- normal practice, worth a look.",
+  "must_fire": [
+    "mock-in-test"
+  ],
+  "may_fire": [],
+  "must_not_fire": [
+    "test-skipped",
+    "known-exploit-pattern"
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "language": "go",
+  "expect": "fires",
+  "why": "A Go test disabled with t.Skip instead of fixed.",
+  "must_fire": [
+    "test-skipped"
+  ],
+  "may_fire": [],
+  "must_not_fire": [
+    "hardcoded-return"
+  ]
+}

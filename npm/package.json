@@ -1,0 +1,38 @@
+{
+  "name": "greenwash",
+  "version": "0.4.0",
+  "description": "A trust report on what a coding agent's \"done\" claim is actually worth. This package is a thin wrapper: it runs the Python implementation.",
+  "bin": {
+    "greenwash": "cli.js"
+  },
+  "files": [
+    "cli.js",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "os": [
+    "linux",
+    "darwin",
+    "win32"
+  ],
+  "keywords": [
+    "agents",
+    "verification",
+    "testing",
+    "claude-code",
+    "reward-hacking",
+    "static-analysis"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/0DukePan/greenwash.git",
+    "directory": "npm"
+  },
+  "homepage": "https://github.com/0DukePan/greenwash#readme",
+  "bugs": {
+    "url": "https://github.com/0DukePan/greenwash/issues"
+  }
+}

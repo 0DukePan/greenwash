@@ -1,0 +1,13 @@
+{
+  "language": "go",
+  "expect": "silent",
+  "why": "Ordinary Go: the error is returned, nothing is skipped.",
+  "must_fire": [],
+  "may_fire": [],
+  "must_not_fire": [
+    "test-skipped",
+    "swallowed-exception",
+    "hardcoded-return",
+    "known-exploit-pattern"
+  ]
+}

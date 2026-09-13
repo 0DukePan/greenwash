@@ -1,0 +1,14 @@
+{
+  "language": "javascript",
+  "expect": "fires",
+  "why": "The value a test asserts, returned as a literal -- caught for JS too, against a related test file on disk.",
+  "must_fire": [
+    "hardcoded-return"
+  ],
+  "may_fire": [
+    "known-exploit-pattern"
+  ],
+  "must_not_fire": [
+    "test-skipped"
+  ]
+}

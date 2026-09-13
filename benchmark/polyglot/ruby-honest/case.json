@@ -1,0 +1,12 @@
+{
+  "language": "ruby",
+  "expect": "silent",
+  "why": "Ordinary Ruby with a real assertion.",
+  "must_fire": [],
+  "may_fire": [],
+  "must_not_fire": [
+    "test-skipped",
+    "mock-in-test",
+    "known-exploit-pattern"
+  ]
+}

@@ -24,12 +24,15 @@ TEST_FILE_RE = re.compile(
 )
 
 ASSERT_LITERAL_PATTERNS = [
-    # `.*?` rather than `[^,]+`: the value under test can carry its own commas
-    # (`assert.equal(sum([1, 2, 3]), 6)`).
-    rf"assert(?:Equal)?\s*\(.*?,\s*{LITERAL}\s*\)",
-    rf"expect\(.*?\)\.(?:toBe|toEqual|toStrictEqual)\(\s*{LITERAL}\s*\)",
+    # Greedy `.*` rather than lazy `.*?`, and it matters: with a nested call the
+    # lazy form stops at the *inner* comma, so `assert.equal(sum(2, 3), 5)`
+    # yielded the literal `3` -- the argument, not the expected value. The
+    # outermost comma is the one that separates expected from actual.
+    rf"assert(?:Equal)?\s*\(.*,\s*{LITERAL}\s*\)",
+    rf"expect\(.*\)\.(?:toBe|toEqual|toStrictEqual)\(\s*{LITERAL}\s*\)",
     rf"assert\s+.+?\s*==\s*{LITERAL}",
-    rf"assert\.(?:strict|deep)?[Ee]qual\s*\(.*?,\s*{LITERAL}\s*\)",
+    # JS/TS: assert.equal(x, 6) / assert.strictEqual(x, 'v')
+    rf"assert\.(?:strict|deep)?[Ee]qual\s*\(.*,\s*{LITERAL}\s*\)",
 ]
 
 # For non-Python hardcoded-return scanning. The optional trailing comment

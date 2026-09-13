@@ -31,12 +31,12 @@ def check(ctx) -> list:
         if language == "python":
             for line, detail in ctx.module(path).skip_sites(added_lines):
                 signals.append(RULE.signal(path, line, f"{detail} -- the test no longer runs",
-                                           marker=detail))
+                                           analysis="ast", marker=detail))
             continue
         for pattern, label in PACKS.get(language, {}).get("skip", []):
             import re
             for match in re.finditer(pattern, ctx.added_code(path)):
                 line = ctx.added_text(path)[:match.start()].count("\n") + 1
                 signals.append(RULE.signal(path, line, f"{label} -- the test no longer runs",
-                                           marker=label))
+                                           analysis="regex", marker=label))
     return signals

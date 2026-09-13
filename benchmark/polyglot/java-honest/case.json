@@ -1,0 +1,12 @@
+{
+  "language": "java",
+  "expect": "silent",
+  "why": "Ordinary Java that rethrows instead of swallowing.",
+  "must_fire": [],
+  "may_fire": [],
+  "must_not_fire": [
+    "test-skipped",
+    "swallowed-exception",
+    "known-exploit-pattern"
+  ]
+}

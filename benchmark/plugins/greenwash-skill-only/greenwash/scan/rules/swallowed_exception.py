@@ -33,12 +33,12 @@ def check(ctx) -> list:
             for line in ctx.module(path).swallowed_handlers(ctx.added_lines(path)):
                 signals.append(RULE.signal(
                     path, line, "except block catches the error and drops it "
-                                "(only a pass or a bare literal inside)"))
+                                "(only a pass or a bare literal inside)", analysis="ast"))
             continue
         code = ctx.added_code(path)
         for pattern, label in PACKS.get(language, {}).get("swallow", []):
             for match in re.finditer(pattern, code):
                 line = code[:match.start()].count("\n") + 1
                 signals.append(RULE.signal(path, line, f"{label} -- the error is dropped",
-                                           marker=label))
+                                           analysis="regex", marker=label))
     return signals

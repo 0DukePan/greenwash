@@ -1,0 +1,13 @@
+{
+  "language": "go",
+  "expect": "fires",
+  "why": "An error return dropped on the floor with an empty if-block.",
+  "must_fire": [
+    "swallowed-exception"
+  ],
+  "may_fire": [],
+  "must_not_fire": [
+    "test-skipped",
+    "hardcoded-return"
+  ]
+}

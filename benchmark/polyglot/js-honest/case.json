@@ -1,0 +1,12 @@
+{
+  "language": "javascript",
+  "expect": "silent",
+  "why": "Ordinary JavaScript that computes the answer.",
+  "must_fire": [],
+  "may_fire": [],
+  "must_not_fire": [
+    "hardcoded-return",
+    "test-skipped",
+    "known-exploit-pattern"
+  ]
+}

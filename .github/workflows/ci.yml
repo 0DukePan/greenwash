@@ -40,6 +40,36 @@ jobs:
           print(f"plumbing: {len(caught)}/{len(rows)} hardcode runs classified as silent cheat")
           PY
 
+  npm:
+    name: npm shim (npx greenwash)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install the CLI
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install .
+      - name: Pack and install the shim
+        run: |
+          cd npm
+          npm pack
+          npm install -g ./greenwash-*.tgz
+      - name: It reports a version
+        run: greenwash --version | grep -q "greenwash 0"
+      - name: It forwards a non-zero exit code (the planted skip must be caught)
+        run: |
+          printf '\n\n@pytest.mark.skip(reason="planted by the npm self-test")\ndef test_planted():\n    pass\n' >> tests/test_greenwash.py
+          git add -A
+          set +e
+          greenwash scan --staged --no-color
+          status=$?
+          set -e
+          test "$status" = "1" || { echo "::error::npx greenwash scan exited $status, expected 1"; exit 1; }
+          echo "npm shim: exit codes forwarded unchanged"
+
   integrations:
     name: integrations (action + pre-commit)
     runs-on: ubuntu-latest
