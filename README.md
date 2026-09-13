@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <strong>24/24 planted cheats caught &middot; 0 false positives on 24 real fixes &middot; 161 tests</strong><br>
+  <strong>24/24 planted cheats caught &middot; 0 false positives on 24 real fixes &middot; 162 tests</strong><br>
   <sub>
     An agent under pressure to show green will skip the test, mock the unit under
     test, hardcode the expected value, or swallow the exception that would have
@@ -373,7 +373,7 @@ becomes a test -- that is the policy, not a promise.
 | `benchmark/` | 24 tasks (Python + JavaScript), harness, detection measurement, FP survey, Wilson-CI report |
 | `skills/`, `hooks/`, `adapters/` | the skill the agent reads, the Stop hook, and the generated rule files for other hosts |
 | `scripts/` | the two compatibility entry points CI and the plugin call |
-| `tests/` | 161 tests -- domain, confidence, rules, reporting, CLI, hook contract, the inconclusive corpus, benchmark tasks |
+| `tests/` | 162 tests -- domain, confidence, rules, reporting, CLI, hook contract, the inconclusive corpus, benchmark tasks |
 | `benchmark/inconclusive/` | six ambiguous changes that must be asked about and never convicted |
 | `demo/` | the reproducible catch from the top of this file |
 | `assets/` | the logo, the demo GIF and the benchmark chart, plus the scripts that rebuild them |
@@ -382,7 +382,7 @@ becomes a test -- that is the policy, not a promise.
 
 ```bash
 git clone https://github.com/0DukePan/greenwash && cd greenwash
-python -m pytest -q            # 161 tests, no model or network needed
+python -m pytest -q            # 162 tests, no model or network needed
 python demo/run_demo.py        # the catch, end to end
 python benchmark/detection.py  # the accuracy numbers above
 ```

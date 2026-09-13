@@ -1,8 +1,9 @@
 """The README states numbers, so the numbers get checked.
 
-The suite grew 52 -> 56 and the README kept saying 52 in its headline metrics
-line for several commits. A published count that drifts is the same defect the
-rest of this repo exists to catch, so it is a test now.
+Two published counts drifted before this file existed: the suite grew 52 -> 56
+while the README kept saying 52 in its headline, and the demo's output changed
+while the transcript stayed put. A published number or receipt that drifts is
+the same defect the rest of this repo exists to catch, so it is a test now.
 """
 
 import collections
@@ -64,3 +65,23 @@ def test_readme_false_positive_split_matches_the_survey():
     assert f"{len(rows)} flags" in text, f"README does not state the {len(rows)} flags"
     assert f"{asked} are the rules that always ask for an explanation" in text
     assert f"{genuine} are genuine false positives" in text
+
+
+def test_readme_transcript_is_the_demo_output():
+    """The block under "What the report looks like" is a receipt, so it is checked.
+
+    It is the demo's stdout, verbatim -- including the wrapping, which is why
+    the demo pins COLUMNS. If the report changes, this fails before the
+    README can go stale.
+    """
+    proc = subprocess.run([sys.executable, str(ROOT / "demo" / "run_demo.py"), "--terse"],
+                          capture_output=True, text=True, cwd=ROOT)
+    assert proc.returncode == 0, proc.stderr
+    demo = proc.stdout.replace("\r\n", "\n").rstrip("\n")
+
+    blocks = re.findall(r"```[a-z]*\r?\n(.*?)\r?\n```", readme(), re.S)
+    transcripts = [block.replace("\r\n", "\n").rstrip("\n") for block in blocks
+                   if "GREENWASH TRUST REPORT" in block]
+    assert transcripts, "the README has no transcript of the demo's output"
+    assert transcripts[0] == demo, (
+        "the README transcript is not what `demo/run_demo.py --terse` prints")
