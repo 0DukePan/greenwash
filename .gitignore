@@ -3,6 +3,8 @@ __pycache__/
 .pytest_cache/
 .commandcode/
 *.egg-info/
+build/
+dist/
 uv.lock
 .greenwash/
 
