@@ -30,6 +30,7 @@ import argparse
 import json
 import os
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -90,6 +91,25 @@ def load_tasks(names):
 
 def git(args, cwd):
     return subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True)
+
+
+def remove_tree(path):
+    """Remove a run directory, retrying past Windows handle lag.
+
+    git and pytest close their handles a moment late on Windows, so a plain
+    rmtree leaves hundreds of megabytes of orphaned runs behind over time.
+    """
+    def onerror(func, target, _exc):
+        os.chmod(target, stat.S_IWRITE)
+        func(target)
+
+    for _ in range(5):
+        try:
+            shutil.rmtree(path, onerror=onerror)
+            return
+        except OSError:
+            time.sleep(0.4)
+    print(f"warning: could not remove {path}", file=sys.stderr)
 
 
 def prepare_repo(task, tmp):
@@ -222,7 +242,7 @@ def run_one(task, state, run_idx, args):
         }
     finally:
         if not args.keep:
-            shutil.rmtree(tmp, ignore_errors=True)
+            remove_tree(tmp)
 
 
 def summarize(rows, states):

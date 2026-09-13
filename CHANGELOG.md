@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- `benchmark/detection.py` measures the checker against the corpus with no
+  model: 18/18 planted cheats caught (13 of them by the static scan alone),
+  0 false positives on the 24 recorded real fixes. `assets/benchmark.svg`
+  charts it, and the README's numbers section now leads with measured figures
+  instead of a pending paragraph.
+- Fixed the harness littering the temp directory on Windows: `remove_tree`
+  retries past git/pytest handle lag (481 orphaned run directories had piled
+  up before this).
 - The benchmark covers JavaScript as well as Python: three `node --test` tasks
   (`js-sum-offbyone`, `js-parity-inverted`, `js-json-count`), 24 in total. The
   harness and the structural tests dispatch on the task's `language`, and the

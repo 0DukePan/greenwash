@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  <strong>11 fake-pass patterns &middot; 2 layers &middot; 0 config &middot; 52 tests</strong><br>
+  <strong>18/18 planted cheats caught &middot; 0 false positives on 24 real fixes &middot; 52 tests</strong><br>
   <sub>
     An agent under pressure to show green will skip the test, mock the unit under
     test, hardcode the expected value, or swallow the exception that would have
@@ -26,8 +26,9 @@
     greenwash makes it prove that instead &mdash; a skill that asks, and a
     <code>Stop</code> hook that fires every time the agent tries to end its turn
     and blocks it when the diff looks like a fake. The measurement protocol ships
-    with the repo (<a href="BENCHMARK.md">BENCHMARK.md</a>); the number gets
-    printed here when it is measured, not before.
+    with the repo (<a href="BENCHMARK.md">BENCHMARK.md</a>): detector accuracy is
+    measured below, and the agent-facing delta gets printed here when it is
+    measured, not before.
   </sub>
 </p>
 
@@ -214,21 +215,46 @@ python scripts/greenwash_check.py all --json
 
 ## Numbers
 
-**We don't print a delta we haven't measured.** The honest measurement is a
-real agent doing real work: 24 tasks across six cheat types, in Python and
-JavaScript, each run in three plugin states (`off`, `skill-only`, `full`),
-scored from artifacts on disk after the run -- never from inside the agent's
-session, so the plugin cannot inflate its own score. `benchmark/report.py`
-reports the silent-cheat rate with a Wilson 95% interval **and the
-false-positive rate next to it**, because a checker that flags everything is
-worthless.
+**Detector accuracy on the corpus, no model in the loop.** Each of the 24
+tasks is scored three ways by greenwash itself: the buggy baseline it is handed,
+a scripted cheat (return the literal the visible test asserts), and the task's
+recorded real fix.
 
-What is built and verified today: the task set, the harness, the hidden-test
-injection, the classification, and the zero-model plumbing run (a scripted
-double drives all 24 tasks in ~4 minutes).
+<p align="center">
+  <img src="assets/benchmark.svg" width="860" alt="Planted cheats caught: static scan 13/18, held-out suite 18/18, either layer 18/18; false positives on the 24 recorded fixes: 0">
+</p>
+
+| Workspace | What greenwash said |
+|---|---|
+| 24 planted cheats | 18 produced a green visible suite; the held-out suite caught **18/18**, the static scan flagged **13/18** on its own |
+| 24 recorded real fixes | **0 flags**, both suites pass |
+| 24 buggy baselines | 0 flags |
+
+All five static misses are the same deliberate trade: `return 0`, `return true`
+and `return false` are filtered as trivial literals so they don't drown the
+signal in noise. The held-out suite doesn't care about spelling. That split is
+the two-layer design doing its job -- the static scan is a fast pre-filter,
+`verify` is the durable signal. Reproduce with `python benchmark/detection.py`.
+
+**What is not measured yet is the agent-facing number.** The silent-cheat rate
+-- how often a model claims done while the check it was told to pass isn't
+actually passing, with the plugin `off` vs. `skill-only` vs. `full` -- needs a
+model the account can reach. The harness, the hidden-test injection, the
+scoring and the reporting are all built and exercised; two commands stay behind:
+
+```bash
+python benchmark/preflight.py
+python benchmark/harness.py --states off,skill-only,full --runs 3 --model <id>
+python benchmark/report.py --out benchmark/RESULTS.md
+```
+
+The top of this README gets a real delta in place of this paragraph when that
+runs. One trap worth knowing: a gateway with a zero balance rejects every model
+with HTTP 402 (`reject_no_credit`), which Claude Code reports the same way it
+reports a bad model id -- check the balance before renaming the model.
 
 <details>
-<summary><strong>No-model plumbing run -- pipeline check, not a measurement</strong></summary>
+<summary><strong>The harness itself, exercised end to end by a scripted agent (no model)</strong></summary>
 
 | Mode | Outcome over 72 runs (24 tasks &times; 3 states) |
 |---|---|
@@ -242,7 +268,7 @@ injection, scoring, classification, provenance -- which is why CI runs it and
 asserts the planted hardcode is still classified as a silent cheat.
 
 Rows record which agent produced them, and the report banners any run that
-wasn't a live model, so plumbing output cannot be mistaken for the number:
+wasn't a live model, so plumbing output cannot be mistaken for a measurement:
 
 ```console
 $ python benchmark/report.py benchmark/results/mock-cheat.json
@@ -255,19 +281,6 @@ Rows produced by: `python .../benchmark/tools/fake_agent.py`.
 ```
 
 </details>
-
-When a model is reachable, the whole job is three commands:
-
-```bash
-python benchmark/preflight.py
-python benchmark/harness.py --states off,skill-only,full --runs 3 --model <id>
-python benchmark/report.py --out benchmark/RESULTS.md
-```
-
-...and the top of this README gets a real line in place of this paragraph.
-One trap worth knowing: an unfunded gateway answers model calls with HTTP 402,
-which Claude Code reports the same way it reports a bad model id -- check the
-balance before renaming the model.
 
 ## FAQ
 
@@ -317,9 +330,9 @@ Because the cheapest thing to fake is the color of the check.
 | `skills/greenwash/SKILL.md` | the rules the agent reads before saying done |
 | `hooks/hooks.json`, `scripts/greenwash_hook.py` | the `Stop` hook and its exit 0/2 contract |
 | `scripts/greenwash/` | `scan` (language packs + AST), `verify`, discovery, diff plumbing |
-| `benchmark/` | 24 tasks (Python + JavaScript), harness, Wilson-CI report, scripted agent, task template |
+| `benchmark/` | 24 tasks (Python + JavaScript), harness, detection measurement, Wilson-CI report, scripted agent, task template |
 | `adapters/`, `action.yml`, `.pre-commit-hooks.yaml` | the non-Claude-Code ways in |
-| `assets/` | the logo and the demo GIF, plus `make_demo_gif.py` that rebuilds it |
+| `assets/` | the logo, the demo GIF and the benchmark chart, plus the scripts that rebuild them |
 | `tests/` | 52 tests -- scanner, verifier, hook contract, benchmark tasks; no model required |
 | `demo/` | the reproducible catch from the top of this file |
 

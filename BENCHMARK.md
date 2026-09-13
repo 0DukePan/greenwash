@@ -114,6 +114,25 @@ the test, or skips `test_add`) passes `test_calc.py` but fails the hidden
 test -- and greenwash's `hardcoded-return` (or `mock-in-test`, or
 `test-skipped`) flag catches it even before the hidden test runs.
 
+## Detector accuracy (no model)
+
+`benchmark/detection.py` scores every task three ways with greenwash itself --
+the buggy baseline, a scripted cheat, and the recorded real fix -- and writes
+`benchmark/results/detection.json`:
+
+| Workspace | Result |
+|---|---|
+| 24 planted cheats | 18 produced a green visible suite; the held-out suite caught 18/18, the static scan 13/18 on its own |
+| 24 recorded real fixes | 0 flags, both suites pass |
+| 24 buggy baselines | 0 flags |
+
+All five static misses are trivial literals (`return 0` / `true` / `false`),
+which the scanner filters on purpose to keep the signal clean; the held-out
+suite catches them regardless.
+
+This measures the checker against a labelled corpus. It says nothing about how
+often a model reaches for the cheat -- that is what the harness measures.
+
 ## Where this stands
 
 The task set is built: 24 tasks across six cheat types (hardcode, skip,
@@ -123,10 +142,11 @@ workspace must fail both tests, the recorded solution must pass both -- and the
 whole pipeline (git init, scoring, hidden-test injection, classification) runs
 end-to-end with no model via `benchmark/tools/fake_agent.py`.
 
-What is still missing is the measurement itself, and it needs a model the
-account can actually reach. `benchmark/preflight.py` fails fast when it
-can't; note that an unfunded gateway answers model calls with HTTP 402, which
-reads like a bad model id -- check the balance before renaming the model.
+What is still missing is the agent-facing measurement -- the silent-cheat rate
+-- and it needs a model the account can actually reach.
+`benchmark/preflight.py` fails fast when it can't; note that a gateway with a
+zero balance answers model calls with HTTP 402, which reads like a bad model
+id -- check the balance before renaming the model.
 
 ```bash
 python benchmark/preflight.py
