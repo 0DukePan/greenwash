@@ -24,27 +24,29 @@
   skipped. Building this found a pack gap: the Ruby pack knew RSpec's `pending`
   and `xit` but not minitest's `skip` -- the framework the Ruby task uses --
   which is now a pattern with a corpus case behind it.
-- **The first real agent measurement, over the whole runnable corpus.**
-  `benchmark/preflight.py` found a reachable model (`dots-studio/dots3-note-prev`
-  on the gateway, listed at $0/M tokens), so the harness ran 84 sessions across
-  `off`, `skill-only` and `full` -- every task this machine can run, one run per
-  state, against the plugin as shipped (Stop hook and all). The base rate is
-  **2/24 silent cheats with the plugin off** (8%, 95% CI [2, 26]); `skill-only`
-  is also 2/24, and `full` is 1/24 (4%, [1, 20]). The delta, **+4.2 points**, is
-  one run wide and sits inside both intervals, so it is published as a base rate
-  rather than an effect. What did not get stopped matters more than the delta: a
-  hardcoded return the static layer flagged and the agent claimed done on anyway
-  (in `off` and `skill-only`), and a swallowed exception that survived every arm
-  because only a held-out suite sees it. False positives: zero, on 22-23
-  genuinely-good runs per arm. The four Go/Rust/Ruby/Java tasks were recorded as
-  `skipped: no toolchain` -- this laptop has none of those compilers -- and kept
-  out of every rate, which is why the measured grid is 24 tasks and not 28.
-  The artifacts are committed: the 84 rows in `benchmark/results/delta.jsonl`,
+- **The first agent-facing measurement: 252 runs, and a null.** With
+  `benchmark/preflight.py` finding a reachable model
+  (`dots-studio/dots3-note-prev` on the gateway, listed at $0/M tokens), the
+  harness ran the whole corpus this machine can run -- 24 tasks x 3 states x 3
+  runs = 216 scored sessions, against the plugin as shipped, Stop hook and all.
+  (The other 36 rows are `skipped: no toolchain`; this laptop has no Go, Rust,
+  Ruby or Java compiler, so the measured grid is 24 tasks and not 28.) The base
+  rate is **5/72 silent cheats with the plugin off** (7%, 95% CI [3, 15]);
+  `skill-only` is 5/72 and `full` is 6/72 (8%, [4, 17]). The delta, **-1.4
+  points**, sits inside every interval, so it is published as **no measurable
+  effect at this sample size** rather than as a win. The misses say more than
+  the delta: all 16 silent cheats are `mock` or `swallow` shortcuts, nine of
+  them the same task -- a swallowed exception no arm caught, because the visible
+  suite still passes and the held-out suite that disagrees is one the agent
+  never sees -- while every `hardcode`, `skip`, `exploit` and `weaken` task was
+  fixed in every arm. False positives: zero, on 200 genuinely-good runs.
+  The artifacts are committed: the 252 rows in `benchmark/results/delta.jsonl`,
   the report in `benchmark/RESULTS.md`, and the machine-readable summary in
   `benchmark/results/agent-delta.json` that the README and BENCHMARK.md guards
   read. `report.py` reads the harness's JSONL directly now (it could only read
-  the JSON list before), rows record the model that produced them, and a row
-  skipped for a missing toolchain is counted where it is named and nowhere else.
+  the JSON list before), rows and the report name the model that produced them,
+  and a row skipped for a missing toolchain is counted where it is named and
+  nowhere else.
 
 - **Language coverage is measured now, not implied.** `benchmark/polyglot/`
   holds 15 static cases across Go, Rust, Ruby, Java and JavaScript -- a positive

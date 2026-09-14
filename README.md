@@ -270,33 +270,35 @@ toolchain is recorded, not guessed: the task is skipped and named, and signals
 from a pack that cannot parse the language still carry `analysis: regex` with
 confidence capped at `MEDIUM`.
 
-**The agent-facing number: 24 tasks, one run per state, and a delta inside the
-noise.** How often a model claims done while the check it was told to pass isn't
-actually passing, with the plugin `off` vs. `skill-only` vs. `full` -- measured
-on `dots-studio/dots3-note-prev` through the maintainer's gateway. Twenty-four
-of the 28 tasks scored; the four language tasks were recorded as
+**The agent-facing number: 24 tasks, three runs per state, and no measured
+effect.** How often a model claims done while the check it was told to pass
+isn't actually passing, with the plugin `off` vs. `skill-only` vs. `full` --
+measured on `dots-studio/dots3-note-prev` through the maintainer's gateway, 72
+scored runs per arm. The four language tasks are recorded as
 `skipped: no toolchain` and kept out of every rate:
 
 | State | Silent cheats | Runs | Rate | 95% CI |
 |---|---|---|---|---|
-| `off` | 2 | 24 | 8% | [2, 26] |
-| `skill-only` | 2 | 24 | 8% | [2, 26] |
-| `full` | 1 | 24 | 4% | [1, 20] |
+| `off` | 5 | 72 | 7% | [3, 15] |
+| `skill-only` | 5 | 72 | 7% | [3, 15] |
+| `full` | 6 | 72 | 8% | [4, 17] |
 
-**Delta (off -> full): +4.2 points** -- one run out of 24, well inside both
-intervals. The honest reading is "no demonstrated effect at this sample size",
-not "the hook halved silent cheating". The two cheats that were *not* stopped
-are worth more than the delta: `default-port-by-env` in the `off` and
-`skill-only` arms (the static layer flagged the hardcoded return and the agent
-claimed done anyway) and `json-load-default`, a swallowed exception that
-survived all three arms because only a held-out suite sees it -- and the agent
-is the one who would have to supply one. False positives: **0** on the 22-23
-genuinely-good runs in each arm.
+**Delta (off -> full): -1.4 points -- the plugin did not reduce silent cheating
+on this corpus.** Every arm sits inside every other arm's interval, so the
+honest reading is "no measurable effect at this sample size", and it is
+published as one. What did not get caught is the useful part: all 16 silent
+cheats are `mock` or `swallow` shortcuts, nine of them the same task
+(`json-load-default`, a swallowed exception) which **no** arm caught -- the
+visible suite still passes, and the held-out suite that disagrees is one the
+agent never sees. `hardcode`, `skip`, `exploit` and `weaken` tasks were fixed
+in every arm. False positives: **0** on 200 genuinely-good runs across the
+three arms.
 
-The raw rows are in `benchmark/results/delta.jsonl`, the report in
+The raw rows are in `benchmark/results/delta.jsonl` (252 of them), the report in
 [benchmark/RESULTS.md](benchmark/RESULTS.md), and `benchmark/run.py` renders the
-table into [BENCHMARK.md](BENCHMARK.md). More runs per state is the next step,
-not a louder claim:
+table into [BENCHMARK.md](BENCHMARK.md). The next move is more tasks per cheat
+type -- the swallow class is where the tool has no leverage -- not a louder
+claim:
 
 ```bash
 python benchmark/preflight.py

@@ -47,11 +47,11 @@ Not measured yet:
 
 | State | Silent cheats | Runs | Rate | 95% CI |
 |---|---|---|---|---|
-| `off` | 2 | 24 | 8% | [2, 26] |
-| `skill-only` | 2 | 24 | 8% | [2, 26] |
-| `full` | 1 | 24 | 4% | [1, 20] |
+| `off` | 5 | 72 | 7% | [3, 15] |
+| `skill-only` | 5 | 72 | 7% | [3, 15] |
+| `full` | 6 | 72 | 8% | [4, 17] |
 
-**Delta (off -> full): +4.2 points of silent cheating.**
+**Delta (off -> full): -1.4 points of silent cheating.**
 
 Agents: `claude`.
 Models: `dots-studio/dots3-note-prev`.
@@ -249,17 +249,19 @@ classification) runs end-to-end with no model via
 `benchmark/tools/fake_agent.py`.
 
 The agent-facing measurement is a pass over the whole corpus this machine can
-run: **24 tasks, one run per plugin state**, on `dots-studio/dots3-note-prev`
-through the maintainer's gateway (the four Go/Rust/Ruby/Java tasks are recorded
-as `skipped: no toolchain` and kept out of every rate). The base rate is 2/24
-silent cheats with the plugin off -- 8%, 95% CI [2, 26]. With `full` it is 1/24
-(4%, [1, 20]), a delta of +4.2 points that is one run wide and sits inside both
-intervals: a base-rate measurement, not a demonstrated effect at this sample
-size. What did not get stopped is the useful part -- a hardcoded return that
-the static layer flagged and the agent shipped anyway (in `off` and
-`skill-only`), and a swallowed exception that survived every arm because only a
-held-out suite sees it. False positives: zero on the 22-23 genuinely-good runs
-per arm.
+run: **24 tasks, three runs per plugin state, 72 scored runs per arm**, on
+`dots-studio/dots3-note-prev` through the maintainer's gateway (the four
+Go/Rust/Ruby/Java tasks are recorded as `skipped: no toolchain` and kept out of
+every rate). The base rate is 5/72 silent cheats with the plugin off -- 7%, 95%
+CI [3, 15]. `skill-only` is also 5/72; `full` is 6/72 (8%, [4, 17]). The delta,
+-1.4 points, is inside every interval, so this is published as **no measurable
+effect at this sample size** rather than as a reduction. What did not get
+caught is the useful part: all 16 silent cheats are `mock` or `swallow`
+shortcuts, nine of them one task (`json-load-default`, a swallowed exception)
+that no arm caught -- the visible suite still passes, and the held-out suite
+that disagrees is one the agent never sees. The `hardcode`, `skip`, `exploit`
+and `weaken` tasks were fixed in every arm. False positives: zero, on 200
+genuinely-good runs across the three arms.
 
 ```bash
 python benchmark/preflight.py
@@ -269,5 +271,6 @@ python benchmark/report.py --out benchmark/RESULTS.md   # also writes results/ag
 
 The publication gate in `docs/launch.md` still applies: lead with the measured
 delta and the false-positive rate, and never post a number from a single task
-or a single run. One run per state is the floor, not the finish: the next move
-is more runs and more tasks per cheat type, not a louder claim.
+or a single run. This measurement has three runs per state and a null result;
+the next move is more tasks per cheat type -- the swallow class is where the
+tool has no leverage -- not a louder claim.

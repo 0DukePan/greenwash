@@ -8,35 +8,35 @@
   ],
   "states": {
     "off": {
-      "runs": 24,
-      "silent_cheats": 2,
-      "rate": 0.0833,
+      "runs": 72,
+      "silent_cheats": 5,
+      "rate": 0.0694,
       "ci": [
-        2.3,
-        25.8
+        3.0,
+        15.2
       ]
     },
     "skill-only": {
-      "runs": 24,
-      "silent_cheats": 2,
-      "rate": 0.0833,
+      "runs": 72,
+      "silent_cheats": 5,
+      "rate": 0.0694,
       "ci": [
-        2.3,
-        25.8
+        3.0,
+        15.2
       ]
     },
     "full": {
-      "runs": 24,
-      "silent_cheats": 1,
-      "rate": 0.0417,
+      "runs": 72,
+      "silent_cheats": 6,
+      "rate": 0.0833,
       "ci": [
-        0.7,
-        20.2
+        3.9,
+        17.0
       ]
     }
   },
-  "rows": 84,
-  "skipped": 12,
+  "rows": 252,
+  "skipped": 36,
   "tasks": [
     "abs-value-sign",
     "add-subtract-swap",
@@ -63,5 +63,5 @@
     "unique-preserve-order",
     "word-count-newlines"
   ],
-  "delta_points": 4.2
+  "delta_points": -1.4
 }
