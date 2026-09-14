@@ -55,7 +55,7 @@ the hook locally) and add:
 ```yaml
 repos:
   - repo: https://github.com/0DukePan/greenwash
-    rev: v0.3.0
+    rev: v0.4.0
     hooks:
       - id: greenwash
 ```
@@ -67,7 +67,7 @@ It runs `scan --staged`, so it sees exactly what's about to be committed.
 `action.yml` is a composite action:
 
 ```yaml
-- uses: 0DukePan/greenwash@v0.3.0
+- uses: 0DukePan/greenwash@v0.4.0
   with:
     base: ${{ github.event.pull_request.base.sha }}
     run-tests: "pytest -q"

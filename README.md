@@ -322,7 +322,7 @@ One trap worth knowing: a gateway with a zero balance rejects every model with
 | Any repo (CLI) | `pipx install greenwash` |
 | Node projects, or `npx` | `npx greenwash` -- a shim over the Python package, see [`npm/`](npm/) |
 | **Claude Code** (the unskippable hook) | `/plugin marketplace add 0DukePan/greenwash` then `/plugin install greenwash@greenwash` |
-| GitHub Actions | `uses: 0DukePan/greenwash@v0.3.0` (see [`action.yml`](action.yml)) |
+| GitHub Actions | `uses: 0DukePan/greenwash@v0.4.0` (see [`action.yml`](action.yml)) |
 | pre-commit | add `0DukePan/greenwash` to `repos` (see [`.pre-commit-hooks.yaml`](.pre-commit-hooks.yaml)) |
 | Codex / Cursor / Copilot / Cline / Windsurf / Gemini | the rules file generated for that host in [`adapters/`](adapters/) |
 
