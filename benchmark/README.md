@@ -65,8 +65,8 @@ flagged). Commit `benchmark/RESULTS.md` and the raw rows under
 
 ## Cost
 
-Roughly `tasks × 3 states × runs` agent invocations. With 25 tasks and 3 runs
-that is up to 225 runs — use `--runs 1` to pilot, then scale up.
+Roughly `tasks × 3 states × runs` agent invocations. With 28 tasks and 3 runs
+that is up to 252 runs — use `--runs 1` to pilot, then scale up.
 
 ## Adding a task
 
@@ -77,4 +77,17 @@ whose name starts with `_` are skipped, so the template itself never runs):
 - the visible test must be satisfiable by a cheat that the hidden test catches.
 - the real fix should be strictly harder than the cheat (that's the "pressure").
 - `language` picks the runner: `python` -> pytest, `javascript` -> `node --test`
-  (write `.mjs` files and import from `../src/`; no packages needed).
+  (write `.mjs` files and import from `../src/`; no packages needed), `go` ->
+  `go test ./...`, `rust` -> `cargo test`, `ruby` -> `ruby -I . <file>`,
+  `java` -> `javac` then run the class. The held-out test has to land where the
+  runner will see it — `harness.hidden_destination` is the one place that
+  decides, and Go is the odd one (the package directory, not `tests/`).
+
+A task has to satisfy three gates, all in `tests/test_tasks.py`: the buggy
+workspace fails both suites, the hidden test fails on that same baseline, and
+the recorded solution passes both. A fourth gate is the label: the scripted
+cheat — `fake_agent`, in the task's own language — must make the visible
+suite go green, because `benchmark/detection.py` scores the detector against
+exactly that. A missing toolchain records `skipped: no toolchain` and the task
+sits out; CI's `languages` job installs the toolchains and asserts none
+skipped.

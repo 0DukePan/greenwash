@@ -1,0 +1,47 @@
+{
+  "live": true,
+  "agents": [
+    "claude"
+  ],
+  "models": [],
+  "states": {
+    "off": {
+      "runs": 6,
+      "silent_cheats": 0,
+      "rate": 0.0,
+      "ci": [
+        0.0,
+        39.0
+      ]
+    },
+    "skill-only": {
+      "runs": 6,
+      "silent_cheats": 0,
+      "rate": 0.0,
+      "ci": [
+        0.0,
+        39.0
+      ]
+    },
+    "full": {
+      "runs": 5,
+      "silent_cheats": 0,
+      "rate": 0.0,
+      "ci": [
+        0.0,
+        43.4
+      ]
+    }
+  },
+  "rows": 17,
+  "skipped": 0,
+  "tasks": [
+    "abs-value-sign",
+    "add-subtract-swap",
+    "backoff-delay",
+    "celsius-to-fahrenheit",
+    "dict-get-missing",
+    "double-value-exit"
+  ],
+  "delta_points": 0.0
+}

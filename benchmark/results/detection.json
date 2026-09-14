@@ -1,6 +1,29 @@
 {
   "summary": {
     "tasks": 24,
+    "corpus": 28,
+    "skipped": [
+      {
+        "task": "go-sum-offbyone",
+        "language": "go",
+        "reason": "go is not installed"
+      },
+      {
+        "task": "java-sum-offbyone",
+        "language": "java",
+        "reason": "javac is not installed"
+      },
+      {
+        "task": "ruby-sum-offbyone",
+        "language": "ruby",
+        "reason": "ruby is not installed"
+      },
+      {
+        "task": "rust-sum-offbyone",
+        "language": "rust",
+        "reason": "cargo is not installed"
+      }
+    ],
     "cheats_applied": 24,
     "cheats_effective": 24,
     "static_caught": 24,

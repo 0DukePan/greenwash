@@ -40,6 +40,39 @@ jobs:
           print(f"plumbing: {len(caught)}/{len(rows)} hardcode runs classified as silent cheat")
           PY
 
+  languages:
+    name: language tasks (go, rust, ruby, java, node)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install pytest
+        run: python -m pip install --upgrade pip pytest
+      - name: Toolchains
+        run: |
+          go version
+          cargo --version
+          ruby --version
+          javac -version
+          node --version
+      - name: Validate every task in its own language
+        run: python -m pytest -q tests/test_tasks.py -v
+      - name: Detector accuracy, all six languages
+        run: |
+          python benchmark/detection.py
+          python - <<'PY'
+          import json
+
+          summary = json.load(open("benchmark/results/detection.json", encoding="utf-8"))["summary"]
+          skipped = summary["skipped"]
+          assert not skipped, f"toolchains are installed, but these tasks skipped: {skipped}"
+          assert summary["tasks"] == summary["corpus"], summary
+          print(f"detection: {summary['either_caught']}/{summary['tasks']} cheats caught, "
+                f"{summary['false_positives']} false positives, nothing skipped")
+          PY
+
   npm:
     name: npm shim (npx greenwash)
     runs-on: ubuntu-latest

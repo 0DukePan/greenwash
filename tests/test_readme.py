@@ -57,6 +57,23 @@ def test_readme_headline_matches_the_detection_results():
             f"{summary['solutions_clean']} real fixes") in headline
 
 
+def test_readme_corpus_size_matches_the_detector_run():
+    """The sentence around the detector table states what ran and what did not.
+
+    `detection.py` records a task whose toolchain is missing as skipped rather
+    than scoring it, so the README has to say how much of the corpus its table
+    covers -- otherwise a shrunken run reads as a full one.
+    """
+    summary = json.loads(
+        (ROOT / "benchmark" / "results" / "detection.json").read_text(encoding="utf-8")
+    )["summary"]
+    text = flat_readme()
+    assert f"{summary['corpus']} tasks across six languages" in text, (
+        f"the corpus holds {summary['corpus']} tasks; the README does not say so")
+    assert f"{summary['tasks']} of the {summary['corpus']} scored" in text, (
+        f"{summary['tasks']} of {summary['corpus']} scored; the README does not say so")
+
+
 def test_readme_false_positive_split_matches_the_survey():
     survey = json.loads(
         (ROOT / "benchmark" / "results" / "fp-survey.json").read_text(encoding="utf-8"))

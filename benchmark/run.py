@@ -96,6 +96,8 @@ def metrics() -> dict:
         false_positives = summary.get("false_positives", 0)
         out["measured"] = {
             "tasks": tasks,
+            "corpus": summary.get("corpus", tasks),
+            "skipped": len(summary.get("skipped", [])),
             "cheats": summary.get("cheats_applied", 0),
             "effective_cheats": summary.get("cheats_effective", 0),
             "true_positives": caught,
@@ -128,8 +130,8 @@ def metrics() -> dict:
     else:
         out["not_measured"].append("false-positive survey (run benchmark/fp_survey.py)")
 
-    out["not_measured"].append(
-        "the agent-facing delta -- needs a reachable model, spelled out below")
+    # The agent-facing delta is rendered separately, from its own artifact:
+    # either as the measured table or as the command that would produce it.
     return out
 
 
@@ -157,11 +159,12 @@ def render(data: dict) -> str:
             "**Language packs, measured** (`python benchmark/polyglot.py`)",
             "",
             f"{summary} -- {coverage['passed']}/{coverage['total']} cases behave as declared. "
-            "Python and JavaScript additionally have real tasks that run their test "
-            "suites; the others have no toolchain on CI runners, so their packs are "
-            "exercised statically. Signals from a pack that cannot parse the language "
-            "carry `analysis: regex` in their evidence and their confidence is capped "
-            "at `MEDIUM`.",
+            "Each of those languages now has at least one task behind its pack, run "
+            "with the language's own test runner, and a CI job installs the "
+            "toolchains; a task whose toolchain is missing records "
+            "`skipped: no toolchain` and stays out of every rate. Signals from a "
+            "pack that cannot parse the language carry `analysis: regex` in their "
+            "evidence and their confidence is capped at `MEDIUM`.",
             "",
         ]
 
@@ -174,10 +177,13 @@ def render(data: dict) -> str:
         _, fpr_hi = wilson(measured["false_positives"],
                            measured["true_negatives"] + measured["false_positives"])
 
+        corpus_cell = f"{measured['tasks']} of {measured.get('corpus', measured['tasks'])} tasks"
+        if measured.get("skipped"):
+            corpus_cell += f" ({measured['skipped']} skipped: no toolchain)"
         lines += [
             "| Metric | Value |",
             "|---|---|",
-            f"| Corpus | {measured['tasks']} tasks, "
+            f"| Corpus | {corpus_cell}, "
             f"{measured['effective_cheats']} of {measured['cheats']} planted cheats "
             "verified to make the visible suite pass |",
             f"| True positives (cheats caught) | {measured['true_positives']} |",
@@ -246,6 +252,8 @@ def render_delta(delta: dict) -> str:
                          "of silent cheating.**")
             lines.append("")
         lines.append(f"Agents: {', '.join('`' + a + '`' for a in delta.get('agents', []))}.")
+        if delta.get("models"):
+            lines.append(f"Models: {', '.join('`' + m + '`' for m in delta['models'])}.")
         lines.append("")
     elif delta["state"] == "plumbing":
         lines.append("**The agent-facing delta is not measured yet.** The rows in "

@@ -106,6 +106,7 @@ PACKS = {
         "skip": [
             (r"^\s*x(?:it|describe)\b", "RSpec xit/xdescribe"),
             (r"\bpending\s*[\(\"']", "RSpec pending"),
+            (r"(?<![\w.])skip\s*(?:\(|['\"])", "minitest skip"),
         ],
         "swallow": [],
         "mock": [

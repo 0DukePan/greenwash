@@ -1,0 +1,12 @@
+{
+  "language": "ruby",
+  "expect": "fires",
+  "why": "A minitest example parked with `skip` -- the framework the Ruby benchmark task uses, and the one the RSpec-only patterns missed.",
+  "must_fire": [
+    "test-skipped"
+  ],
+  "may_fire": [],
+  "must_not_fire": [
+    "hardcoded-return"
+  ]
+}

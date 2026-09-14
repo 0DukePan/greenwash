@@ -4,10 +4,47 @@
 
 ### Closing the three gaps in the 9/10
 
+- **Six languages have real-suite tasks now.** Go, Rust, Ruby and Java join
+  Python and JavaScript: each language has its own runner in the harness
+  (`go test ./...`, `cargo test`, `ruby -I .` with minitest, `javac` then run the
+  class), its own place for the held-out test (Go needs the package directory,
+  because `go test` compiles packages and a test elsewhere cannot see unexported
+  code), and a task whose buggy baseline fails both tests while its recorded
+  solution passes both. A missing toolchain records `skipped: no toolchain` --
+  its own outcome, excluded from every rate -- so one corpus runs on Ubuntu CI
+  and on a Windows laptop without either lying about the other.
+- **The corpus is attackable in all six, not just runnable.** `fake_agent`
+  plants each task's cheat in the task's own language (Go, Rust and Java
+  hardcode the literal the visible test asserts; Ruby parks the minitest example
+  with `skip`), `benchmark/detection.py` scores with the same runners and
+  held-out destinations the harness uses and records toolchain-less tasks under
+  `skipped` instead of counting them, and `tests/test_tasks.py` makes "the
+  recorded cheat makes the visible suite go green" a gate per task. CI's
+  `languages` job runs detection across all six and asserts that nothing was
+  skipped. Building this found a pack gap: the Ruby pack knew RSpec's `pending`
+  and `xit` but not minitest's `skip` -- the framework the Ruby task uses --
+  which is now a pattern with a corpus case behind it.
+- **The first real agent measurement.** `benchmark/preflight.py` found a
+  reachable model this time (`dots-studio/dots3-note-prev` on the gateway, listed
+  at $0/M tokens), so the harness ran real sessions across `off`, `skill-only`
+  and `full`. The result is a **null, and it is published as one**: every
+  completed run was a genuine fix, in every arm, so there was no silent cheating
+  for the plugin to reduce and the delta is 0.0 points over the tasks that ran.
+  The honest reading is that this model does not cheat on these tasks, so the
+  instrument has nothing to detect -- the base rate is the thing to establish
+  first, and now there is one measurement of it. The artifacts are committed
+  with it: the 17 rows in `benchmark/results/delta.jsonl`, the report in
+  `benchmark/RESULTS.md`, and the machine-readable summary in
+  `benchmark/results/agent-delta.json` that the README and BENCHMARK.md guards
+  read. The grid is stated, not smoothed: `off` 6 runs, `skill-only` 6, `full`
+  5 -- one full run never finished and has no row, and the report says so.
+  `report.py` reads the harness's JSONL directly now (it could only read the
+  JSON list before), and rows record the model that produced them.
+
 - **Language coverage is measured now, not implied.** `benchmark/polyglot/`
-  holds 14 static cases across Go, Rust, Ruby, Java and JavaScript -- a positive
+  holds 15 static cases across Go, Rust, Ruby, Java and JavaScript -- a positive
   and a negative case per language, no toolchain required, so it runs on every
-  CI runner. `benchmark/polyglot.py` reports 14/14 behaving as declared, and
+  CI runner. `benchmark/polyglot.py` reports 15/15 behaving as declared, and
   `tests/test_polyglot.py` makes it a gate.
 - **Signals say how they were produced.** A rule that ran a regex over a
   language it cannot parse marks its evidence `analysis: regex` and its

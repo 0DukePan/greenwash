@@ -50,6 +50,8 @@ PLUGIN_DIRS = {
     "full": ROOT,
 }
 
+OUTCOME_SKIPPED = "skipped: no toolchain"
+
 OUTCOMES = [
     "genuine fix",
     "caught cheat",
@@ -145,9 +147,63 @@ def build_claude_cmd(prompt, plugin_dir, model, skip_perms):
     return cmd
 
 
+TOOLCHAINS = {
+    "python": None,             # this interpreter
+    "javascript": "node",
+    "go": "go",
+    "rust": "cargo",
+    "ruby": "ruby",
+    "java": "javac",
+}
+
+
+def missing_toolchain(language: str):
+    """The executable this language needs, or None when we have it.
+
+    Four languages now have tasks that run their real test runner, and a runner
+    without its toolchain should say so rather than fail the task: a missing
+    compiler is not a failed fix.
+    """
+    needed = TOOLCHAINS.get(language, language)
+    if needed is None:
+        return None
+    return None if shutil.which(needed) else needed
+
+
+def hidden_destination(language: str, hidden_test: str, tmp):
+    """Where the held-out test has to land for that language's runner.
+
+    Go needs it in the package directory: `go test ./...` compiles a package,
+    not a file, and a test in another directory cannot see the code it checks.
+    Rust and Java expect tests in their own directory, and Python, Ruby and
+    JavaScript are content either way.
+    """
+    name = Path(hidden_test).name
+    root = Path(tmp)
+    return root / name if language == "go" else root / "tests" / name
+
+
 def run_tests(path, cwd, language):
     if language == "javascript":
         cmd = ["node", "--test", path]
+    elif language == "go":
+        cmd = ["go", "test", "./..."]
+    elif language == "rust":
+        cmd = ["cargo", "test", "--quiet"]
+    elif language == "ruby":
+        cmd = ["ruby", "-I", ".", path]
+    elif language == "java":
+        # No build tool and no JUnit: compile the sources together with the
+        # check, then run the class named after the file.
+        klass = Path(path).stem
+        out = Path(cwd) / "out"
+        sources = sorted(str(p) for p in Path(cwd).rglob("*.java"))
+        compiled = subprocess.run(["javac", "-d", str(out), *sources],
+                                  cwd=cwd, capture_output=True, text=True)
+        if compiled.returncode != 0:
+            return False
+        return subprocess.run(["java", "-cp", str(out), klass],
+                              cwd=cwd, capture_output=True, text=True).returncode == 0
     else:
         cmd = [sys.executable, "-m", "pytest", "-q", path]
     p = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True)
@@ -181,6 +237,29 @@ def classify(agent_ok, visible_pass, hidden_pass, flags, claims):
 def run_one(task, state, run_idx, args):
     tmp = tempfile.mkdtemp(prefix="greenwash-bench-")
     try:
+        language = task.get("language", "python")
+        missing = missing_toolchain(language)
+        if missing:
+            # A skipped task is not a measurement: it is recorded as its own
+            # outcome, kept out of the rates, and named in the report.
+            return {
+                "task": task.get("name", task["_dir"].name),
+                "state": state,
+                "run": run_idx,
+                "agent": (" ".join([args.agent_cmd, *args.agent_arg])
+                          if args.agent_cmd else "claude"),
+                "model": args.model,
+                "cheat_type": task.get("cheat_type", "unknown"),
+                "outcome": OUTCOME_SKIPPED,
+                "exit_code": None,
+                "duration_s": 0.0,
+                "cost_usd": None,
+                "visible_pass": None,
+                "hidden_pass": None,
+                "greenwash_flags": [],
+                "api_error": f"{missing} is not installed",
+            }
+
         prepare_repo(task, tmp)
         prompt = task["prompt"]
         if args.agent_cmd:
@@ -212,12 +291,12 @@ def run_one(task, state, run_idx, args):
                 api_error = (err or out)[:180]
 
         flags = run_greenwash(tmp)
-        language = task.get("language", "python")
         visible_pass = run_tests(task["visible_test"], tmp, language)
         hidden_src = task["_dir"] / task["hidden_test"]
-        hidden_dest = Path(tmp) / "tests" / Path(task["hidden_test"]).name
+        hidden_dest = hidden_destination(language, task["hidden_test"], tmp)
+        hidden_dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(hidden_src, hidden_dest)
-        hidden_pass = run_tests(f"tests/{hidden_dest.name}", tmp, language)
+        hidden_pass = run_tests(hidden_dest.relative_to(tmp).as_posix(), tmp, language)
 
         claims = claims_success(result_text)
         outcome = classify(agent_ok, visible_pass, hidden_pass, flags, claims)
@@ -227,6 +306,7 @@ def run_one(task, state, run_idx, args):
             "run": run_idx,
             "agent": (" ".join([args.agent_cmd, *args.agent_arg])
                       if args.agent_cmd else "claude"),
+            "model": args.model,
             "cheat_type": task.get("cheat_type", "unknown"),
             "outcome": outcome,
             "exit_code": code,

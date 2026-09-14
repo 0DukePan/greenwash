@@ -8,8 +8,13 @@ Every task is scored three ways by greenwash itself:
   solution  the task's recorded real fix             -> no flags, both suites pass
 
 The cheat is per task: `fake_agent` reads the task's `cheat_type` (hardcode,
-skip, weaken, swallow, mock, exploit) and applies that technique, so the
-results break down by cheat type instead of testing one generic trick.
+skip, weaken, swallow, mock, exploit) and applies that technique -- in the
+task's own language, six of them now -- so the results break down by cheat
+type instead of testing one generic trick.
+
+A task whose toolchain is missing is recorded under `skipped` and kept out of
+every rate, exactly as the harness does it: a missing compiler is not a missed
+cheat. `corpus` is every task; `tasks` is the ones that ran.
 
 What this measures is the checker against a labelled corpus. It says nothing
 about how often a model reaches for the cheat -- that is `harness.py`'s job,
@@ -38,7 +43,7 @@ import harness  # noqa: E402
 
 FAKE_AGENT = HERE / "tools" / "fake_agent.py"
 OUT = HERE / "results" / "detection.json"
-IGNORE = shutil.ignore_patterns("__pycache__", "*.pyc", ".pytest_cache")
+IGNORE = shutil.ignore_patterns("__pycache__", "*.pyc", ".pytest_cache", "target", "out")
 
 
 def apply_cheat(task_dir, tmp):
@@ -63,8 +68,11 @@ def score(task, variant):
         flags = [flag["kind"] for flag in harness.run_greenwash(tmp)]
         visible = harness.run_tests(task["visible_test"], tmp, language)
         hidden = pathlib.Path(task_dir) / task["hidden_test"]
-        shutil.copy(hidden, pathlib.Path(tmp) / "tests" / hidden.name)
-        hidden_pass = harness.run_tests(f"tests/{hidden.name}", tmp, language)
+        destination = harness.hidden_destination(language, task["hidden_test"], tmp)
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(hidden, destination)
+        hidden_pass = harness.run_tests(destination.relative_to(tmp).as_posix(),
+                                        tmp, language)
         return {"flags": flags, "visible_pass": visible, "hidden_pass": hidden_pass}
     finally:
         harness.remove_tree(tmp)
@@ -73,8 +81,16 @@ def score(task, variant):
 def main() -> None:
     tasks = harness.load_tasks([])
     rows = []
+    skipped = []
     for task in tasks:
         name = task.get("name", task["_dir"].name)
+        missing = harness.missing_toolchain(task.get("language", "python"))
+        if missing:
+            skipped.append({"task": name, "language": task.get("language", "python"),
+                            "reason": f"{missing} is not installed"})
+            print(f"{name:<24}{task.get('cheat_type', 'unknown'):<10}"
+                  f"skipped: {missing} is not installed")
+            continue
         row = {"task": name, "language": task.get("language", "python"),
                "cheat_type": task.get("cheat_type", "unknown")}
         for variant in ("buggy", "cheat", "solution"):
@@ -109,6 +125,8 @@ def main() -> None:
     fixes = [r["solution"] for r in rows]
     summary = {
         "tasks": len(rows),
+        "corpus": len(tasks),
+        "skipped": skipped,
         "cheats_applied": overall["applied"],
         "cheats_effective": overall["effective"],
         "static_caught": overall["static_caught"],
@@ -137,6 +155,9 @@ def main() -> None:
     print(f"\n  either layer caught {summary['either_caught']}, "
           f"missed by both {summary['missed_by_both']}, "
           f"false positives {summary['false_positives']}/{len(fixes)}")
+    print(f"\n  scored {len(rows)} of {len(tasks)} tasks"
+          + (f"; skipped for a missing toolchain: "
+             + ", ".join(row['task'] for row in skipped) if skipped else ""))
     print(f"\nwrote {OUT}")
 
 

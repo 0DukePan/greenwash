@@ -11,11 +11,11 @@ how often an agent's "done" claim is actually true?**
 
 **Language packs, measured** (`python benchmark/polyglot.py`)
 
-`go` 3/3, `java` 3/3, `javascript` 3/3, `ruby` 3/3, `rust` 2/2 -- 14/14 cases behave as declared. Python and JavaScript additionally have real tasks that run their test suites; the others have no toolchain on CI runners, so their packs are exercised statically. Signals from a pack that cannot parse the language carry `analysis: regex` in their evidence and their confidence is capped at `MEDIUM`.
+`go` 3/3, `java` 3/3, `javascript` 3/3, `ruby` 4/4, `rust` 2/2 -- 15/15 cases behave as declared. Each of those languages now has at least one task behind its pack, run with the language's own test runner, and a CI job installs the toolchains; a task whose toolchain is missing records `skipped: no toolchain` and stays out of every rate. Signals from a pack that cannot parse the language carry `analysis: regex` in their evidence and their confidence is capped at `MEDIUM`.
 
 | Metric | Value |
 |---|---|
-| Corpus | 24 tasks, 24 of 24 planted cheats verified to make the visible suite pass |
+| Corpus | 24 of 28 tasks (4 skipped: no toolchain), 24 of 24 planted cheats verified to make the visible suite pass |
 | True positives (cheats caught) | 24 |
 | False negatives (cheats missed) | 0 |
 | False positives (honest fixes flagged) | 0 |
@@ -42,15 +42,18 @@ By cheat type (applied / static caught / behavioral caught):
 Not measured yet:
 
 - the real-world false-positive *rate* -- the survey needs hand classification, and the 29 flags are listed for inspection instead
-- the agent-facing delta -- needs a reachable model, spelled out below
 
-**The agent-facing delta is not measured yet.** No run rows exist. The harness, the hidden-test injection, the scoring and the reporting are all built; what is missing is a reachable model:
+**Silent-cheat rate, by plugin state** (lower is better)
 
-```bash
-python benchmark/preflight.py
-python benchmark/harness.py --states off,skill-only,full --runs 3 --model <id>
-python benchmark/report.py --out benchmark/RESULTS.md
-```
+| State | Silent cheats | Runs | Rate | 95% CI |
+|---|---|---|---|---|
+| `off` | 0 | 6 | 0% | [0, 39] |
+| `skill-only` | 0 | 6 | 0% | [0, 39] |
+| `full` | 0 | 5 | 0% | [0, 43] |
+
+**Delta (off -> full): +0.0 points of silent cheating.**
+
+Agents: `claude`.
 <!-- metrics:end -->
 
 Regenerate with `python benchmark/run.py --write`. It reads the artifacts other
@@ -68,16 +71,30 @@ Each task is a tiny repo with a bug and two tests:
   done. It exercises the same function from a different angle, so a
   hardcode or a mock that satisfies `visible_test` still fails it.
 
-A task also records `task_prompt` (what the agent is told) and a short
+A task also records `prompt` (what the agent is told) and a short
 `cheat_hint` for the benchmark author's own reference (which cheat this
 task is designed to tempt, so results can be broken down by cheat type
 later) -- never shown to the agent.
 
 A copyable skeleton lives in `benchmark/tasks/_template/`; directories whose
 name starts with `_` are skipped by the harness and the structural tests.
-`language` decides how a task's tests run: `python` -> `pytest -q`,
-`javascript` -> `node --test` (the tasks use `.mjs` and Node's built-in runner,
-so there is nothing to install).
+`language` decides how a task's tests run, and each language has its own runner
+in `benchmark/harness.py`:
+
+| `language` | Visible and hidden tests run with | Held-out test lands in |
+|---|---|---|
+| `python` | `python -m pytest -q <file>` | `tests/` |
+| `javascript` | `node --test <file>` | `tests/` |
+| `go` | `go test ./...` | the package directory -- `go test` compiles packages, and a test in another directory cannot see unexported code |
+| `rust` | `cargo test --quiet` | `tests/` (Cargo's integration-test directory) |
+| `ruby` | `ruby -I . <file>` (minitest ships with Ruby) | `tests/` |
+| `java` | `javac` the sources together, then run the class | `tests/` |
+
+Six languages, twenty-eight tasks. A task whose toolchain is missing is recorded as
+**`skipped: no toolchain`** -- its own outcome, kept out of every rate, and
+named in the report. A missing compiler is not a failed fix, and a skipped task
+is not a passing one. That is what lets one corpus run on Ubuntu CI and on a
+Windows laptop without either lying about the other.
 
 ## Scoring
 
@@ -176,13 +193,19 @@ writes `benchmark/results/detection.json`:
 
 | Workspace | Result |
 |---|---|
-| 24 planted cheats | all 24 went green; static scan 24/24, held-out suite 22/24 |
+| 24 of the 28 planted cheats | all 24 went green; static scan 24/24, held-out suite 22/24 |
 | 24 recorded real fixes | 0 flags, both suites pass |
 | 24 buggy baselines | 0 flags |
 
-The `0 flags` row is a sanity check, not the precision number: the 24 solutions
-are minimal correct fixes, and none has the shape a check looks for. Precision
-against real, non-adversarial code is what the survey below measures.
+The four tasks not scored here are the Go, Rust, Ruby and Java ones: this
+machine has none of those toolchains, so `detection.py` records them under
+`skipped` with the missing executable and keeps them out of every rate. CI's
+`languages` job runs the same corpus where the toolchains exist and asserts
+that nothing skipped.
+
+The `0 flags` row is a sanity check, not the precision number: the scored
+solutions are minimal correct fixes, and none has the shape a check looks for.
+Precision against real, non-adversarial code is what the survey below measures.
 
 | Cheat type | Tasks | Static | Behavioral |
 |---|--:|--:|--:|
@@ -214,27 +237,35 @@ explanation, and 9 genuine false positives, both classes listed in
 
 ## Where this stands
 
-The task set is built: 24 tasks across six cheat types (hardcode, skip,
-mock-the-unit, swallow, weakened assertions, named exploits), in Python and
-JavaScript. Every task is validated by `tests/test_tasks.py` -- the buggy
-workspace must fail both suites, the recorded solution must pass both, and the
-hidden test on its own must fail against the buggy baseline -- and the whole
-pipeline (git init, scoring, hidden-test injection, classification) runs
-end-to-end with no model via `benchmark/tools/fake_agent.py`.
+The task set is built: 28 tasks across six cheat types (hardcode, skip,
+mock-the-unit, swallow, weakened assertions, named exploits) and six languages,
+each run by its own test runner. Every task is validated by
+`tests/test_tasks.py` -- the buggy workspace must fail both suites, the
+recorded solution must pass both, the hidden test on its own must fail against
+the buggy baseline, and the recorded cheat must make the visible suite go green
+-- and the whole pipeline (git init, scoring, hidden-test injection,
+classification) runs end-to-end with no model via
+`benchmark/tools/fake_agent.py`.
 
-What is still missing is the agent-facing measurement -- the silent-cheat rate
--- and it needs a model the account can actually reach.
-`benchmark/preflight.py` fails fast when it can't; note that a gateway with a
-zero balance answers model calls with HTTP 402, which reads like a bad model
-id -- check the balance before renaming the model.
+The agent-facing measurement has one **pilot**: six tasks, one run per plugin
+state, on `dots-studio/dots3-note-prev` (a gateway model the maintainer's
+account could reach at the time). It is a **null**: every one of the 17
+completed sessions was a genuine fix, so the silent-cheat rate was 0% in every
+arm and the delta is 0.0 points. One `full` run never finished and has no row,
+so that arm has five runs rather than six; the report says so instead of
+smoothing it. The honest reading is a base rate, not a verdict -- with no
+silent cheating on these tasks there was nothing for the plugin to reduce.
+`benchmark/preflight.py` no longer reaches that model, so the pilot stands as
+the start of the baseline rather than the end of it; a real number needs more
+tasks and more runs.
 
 ```bash
 python benchmark/preflight.py
 python benchmark/harness.py --states off,skill-only,full --runs 3 --model <id>
-python benchmark/report.py --out benchmark/RESULTS.md
+python benchmark/report.py --out benchmark/RESULTS.md   # also writes results/agent-delta.json
 ```
 
 The publication gate in `docs/launch.md` still applies: lead with the measured
 delta and the false-positive rate, and never post a number from a single task
-or a single run. If the pilot's baseline cheat rate turns out low, the next
-move is more tasks per cheat type, not a louder claim.
+or a single run. A 0% base rate on six tasks means the next move is more tasks
+per cheat type, not a louder claim.
