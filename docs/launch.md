@@ -12,9 +12,12 @@ measured number, not the idea.** If the number isn't in yet, don't post the
 2. greenwash runs a check that the agent cannot skip: a `Stop` hook that fires
    on every turn end, static analysis plus an actual test run against the
    committed baseline.
-3. Measured: silent-cheat rate went from **X%** (no plugin) to **Y%** (skill +
-   hook), false-positive rate **Z%** — n=NN across NN tasks. *(`X/Y/Z` filled
-   in from `benchmark/RESULTS.md`.)*
+3. Measured: the base rate is **7%** silent cheating without the plugin (95% CI
+   [3, 15]) — 5 of 72 runs over 24 tasks, three runs each — and **8%** with the
+   skill and hook ([4, 17]): a null, inside the noise. False positives **0%**
+   across 200 genuinely-good runs. Lead with the base rate and the misses, not
+   with a reduction; there isn't one to claim. *(Artifacts:
+   `benchmark/RESULTS.md`, 252 rows in `benchmark/results/delta.jsonl`.)*
 
 ## Demo
 
@@ -37,12 +40,19 @@ Owning the limits is what stops the "just grep lol" comment from landing.
   expensive and forces an explanation. Say that.
 - Don't post the number from a single task or a single run. The report prints a
   confidence interval for a reason.
+- **The first measured delta is a null, and that gets said first.** The tool
+  moved nothing on this corpus; what it did do is measure the base rate (7%) and
+  show where it has no leverage (a swallowed exception the visible suite does
+  not notice, with no held-out suite to disagree). Publishing a null is the
+  credibility move; hiding it is the one that gets caught.
 - Cite the paper as motivation, not as proof that greenwash works:
   <https://arxiv.org/abs/2511.18397>.
 
 ## Checklist
 
-- [ ] `benchmark/RESULTS.md` exists and is committed
-- [ ] README headline replaced with the real delta
-- [ ] demo recorded and linked
-- [ ] release tagged (`claude plugin tag .`)
+- [x] `benchmark/RESULTS.md` exists and is committed (252 rows behind it)
+- [x] README states the delivered numbers -- detector accuracy in the headline,
+      the agent-facing null with its intervals under "Numbers". No headline
+      delta: there is no effect to claim.
+- [x] demo recorded and linked
+- [x] release tagged (`claude plugin tag .` -> `greenwash--v0.4.0`)
