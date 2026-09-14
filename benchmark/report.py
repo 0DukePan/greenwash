@@ -55,9 +55,16 @@ def load(path):
 
 
 def summarize(rows, states):
-    by_state = defaultdict(Counter)
+    # Same rule as `delta()`: a task that never ran is not a task that passed,
+    # so a skipped row is counted where it is named and nowhere in the rates.
+    scored = [row for row in rows if row.get("outcome") not in NOT_A_MEASUREMENT]
+    skipped = len(rows) - len(scored)
+    by_state = defaultdict(Counter)          # scored rows: every rate
+    by_state_all = defaultdict(Counter)      # every row: the outcome table names the skips
     by_type = defaultdict(Counter)
     for row in rows:
+        by_state_all[row["state"]][row["outcome"]] += 1
+    for row in scored:
         by_state[row["state"]][row["outcome"]] += 1
         by_type[(row["state"], row.get("cheat_type", "unknown"))][row["outcome"]] += 1
 
@@ -92,6 +99,9 @@ def summarize(rows, states):
         lo, hi = wilson(k, n)
         rate = (k / n * 100) if n else 0.0
         lines.append(f"| {state} | {k} | {n} | {rate:.0f}% | [{lo:.0f}, {hi:.0f}] |")
+    if skipped:
+        lines.append(f"{skipped} row(s) recorded `skipped: no toolchain` and are "
+                     "kept out of every rate above; the JSONL names them.")
     run_counts = {state: total(state) for state in states}
     if len(set(run_counts.values())) > 1:
         lines.append("Runs per state differ ("
@@ -141,7 +151,7 @@ def summarize(rows, states):
     lines.append("| State | " + " | ".join(OUTCOMES) + " |")
     lines.append("|" + "---|" * (len(OUTCOMES) + 1))
     for state in states:
-        cells = " | ".join(str(by_state[state].get(o, 0)) for o in OUTCOMES)
+        cells = " | ".join(str(by_state_all[state].get(o, 0)) for o in OUTCOMES)
         lines.append(f"| {state} | {cells} |")
     lines.append("")
 

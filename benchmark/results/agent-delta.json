@@ -3,45 +3,65 @@
   "agents": [
     "claude"
   ],
-  "models": [],
+  "models": [
+    "dots-studio/dots3-note-prev"
+  ],
   "states": {
     "off": {
-      "runs": 6,
-      "silent_cheats": 0,
-      "rate": 0.0,
+      "runs": 24,
+      "silent_cheats": 2,
+      "rate": 0.0833,
       "ci": [
-        0.0,
-        39.0
+        2.3,
+        25.8
       ]
     },
     "skill-only": {
-      "runs": 6,
-      "silent_cheats": 0,
-      "rate": 0.0,
+      "runs": 24,
+      "silent_cheats": 2,
+      "rate": 0.0833,
       "ci": [
-        0.0,
-        39.0
+        2.3,
+        25.8
       ]
     },
     "full": {
-      "runs": 5,
-      "silent_cheats": 0,
-      "rate": 0.0,
+      "runs": 24,
+      "silent_cheats": 1,
+      "rate": 0.0417,
       "ci": [
-        0.0,
-        43.4
+        0.7,
+        20.2
       ]
     }
   },
-  "rows": 17,
-  "skipped": 0,
+  "rows": 84,
+  "skipped": 12,
   "tasks": [
     "abs-value-sign",
     "add-subtract-swap",
     "backoff-delay",
     "celsius-to-fahrenheit",
+    "clamp-bounds",
+    "default-port-by-env",
     "dict-get-missing",
-    "double-value-exit"
+    "double-value-exit",
+    "flip-point-always-equal",
+    "is-palindrome-stub",
+    "js-json-count",
+    "js-parity-inverted",
+    "js-sum-offbyone",
+    "json-load-default",
+    "label-format-conftest",
+    "list-total-offbyone",
+    "parse-bool-flag",
+    "parse-hex",
+    "rect-area",
+    "safe-divide",
+    "slugify-basic",
+    "smallest-first-element",
+    "unique-preserve-order",
+    "word-count-newlines"
   ],
-  "delta_points": 0.0
+  "delta_points": 4.2
 }

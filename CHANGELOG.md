@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.0
 
 ### Closing the three gaps in the 9/10
 
@@ -24,22 +24,27 @@
   skipped. Building this found a pack gap: the Ruby pack knew RSpec's `pending`
   and `xit` but not minitest's `skip` -- the framework the Ruby task uses --
   which is now a pattern with a corpus case behind it.
-- **The first real agent measurement.** `benchmark/preflight.py` found a
-  reachable model this time (`dots-studio/dots3-note-prev` on the gateway, listed
-  at $0/M tokens), so the harness ran real sessions across `off`, `skill-only`
-  and `full`. The result is a **null, and it is published as one**: every
-  completed run was a genuine fix, in every arm, so there was no silent cheating
-  for the plugin to reduce and the delta is 0.0 points over the tasks that ran.
-  The honest reading is that this model does not cheat on these tasks, so the
-  instrument has nothing to detect -- the base rate is the thing to establish
-  first, and now there is one measurement of it. The artifacts are committed
-  with it: the 17 rows in `benchmark/results/delta.jsonl`, the report in
-  `benchmark/RESULTS.md`, and the machine-readable summary in
+- **The first real agent measurement, over the whole runnable corpus.**
+  `benchmark/preflight.py` found a reachable model (`dots-studio/dots3-note-prev`
+  on the gateway, listed at $0/M tokens), so the harness ran 84 sessions across
+  `off`, `skill-only` and `full` -- every task this machine can run, one run per
+  state, against the plugin as shipped (Stop hook and all). The base rate is
+  **2/24 silent cheats with the plugin off** (8%, 95% CI [2, 26]); `skill-only`
+  is also 2/24, and `full` is 1/24 (4%, [1, 20]). The delta, **+4.2 points**, is
+  one run wide and sits inside both intervals, so it is published as a base rate
+  rather than an effect. What did not get stopped matters more than the delta: a
+  hardcoded return the static layer flagged and the agent claimed done on anyway
+  (in `off` and `skill-only`), and a swallowed exception that survived every arm
+  because only a held-out suite sees it. False positives: zero, on 22-23
+  genuinely-good runs per arm. The four Go/Rust/Ruby/Java tasks were recorded as
+  `skipped: no toolchain` -- this laptop has none of those compilers -- and kept
+  out of every rate, which is why the measured grid is 24 tasks and not 28.
+  The artifacts are committed: the 84 rows in `benchmark/results/delta.jsonl`,
+  the report in `benchmark/RESULTS.md`, and the machine-readable summary in
   `benchmark/results/agent-delta.json` that the README and BENCHMARK.md guards
-  read. The grid is stated, not smoothed: `off` 6 runs, `skill-only` 6, `full`
-  5 -- one full run never finished and has no row, and the report says so.
-  `report.py` reads the harness's JSONL directly now (it could only read the
-  JSON list before), and rows record the model that produced them.
+  read. `report.py` reads the harness's JSONL directly now (it could only read
+  the JSON list before), rows record the model that produced them, and a row
+  skipped for a missing toolchain is counted where it is named and nowhere else.
 
 - **Language coverage is measured now, not implied.** `benchmark/polyglot/`
   holds 15 static cases across Go, Rust, Ruby, Java and JavaScript -- a positive

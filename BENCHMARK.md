@@ -47,13 +47,14 @@ Not measured yet:
 
 | State | Silent cheats | Runs | Rate | 95% CI |
 |---|---|---|---|---|
-| `off` | 0 | 6 | 0% | [0, 39] |
-| `skill-only` | 0 | 6 | 0% | [0, 39] |
-| `full` | 0 | 5 | 0% | [0, 43] |
+| `off` | 2 | 24 | 8% | [2, 26] |
+| `skill-only` | 2 | 24 | 8% | [2, 26] |
+| `full` | 1 | 24 | 4% | [1, 20] |
 
-**Delta (off -> full): +0.0 points of silent cheating.**
+**Delta (off -> full): +4.2 points of silent cheating.**
 
 Agents: `claude`.
+Models: `dots-studio/dots3-note-prev`.
 <!-- metrics:end -->
 
 Regenerate with `python benchmark/run.py --write`. It reads the artifacts other
@@ -247,17 +248,18 @@ the buggy baseline, and the recorded cheat must make the visible suite go green
 classification) runs end-to-end with no model via
 `benchmark/tools/fake_agent.py`.
 
-The agent-facing measurement has one **pilot**: six tasks, one run per plugin
-state, on `dots-studio/dots3-note-prev` (a gateway model the maintainer's
-account could reach at the time). It is a **null**: every one of the 17
-completed sessions was a genuine fix, so the silent-cheat rate was 0% in every
-arm and the delta is 0.0 points. One `full` run never finished and has no row,
-so that arm has five runs rather than six; the report says so instead of
-smoothing it. The honest reading is a base rate, not a verdict -- with no
-silent cheating on these tasks there was nothing for the plugin to reduce.
-`benchmark/preflight.py` no longer reaches that model, so the pilot stands as
-the start of the baseline rather than the end of it; a real number needs more
-tasks and more runs.
+The agent-facing measurement is a pass over the whole corpus this machine can
+run: **24 tasks, one run per plugin state**, on `dots-studio/dots3-note-prev`
+through the maintainer's gateway (the four Go/Rust/Ruby/Java tasks are recorded
+as `skipped: no toolchain` and kept out of every rate). The base rate is 2/24
+silent cheats with the plugin off -- 8%, 95% CI [2, 26]. With `full` it is 1/24
+(4%, [1, 20]), a delta of +4.2 points that is one run wide and sits inside both
+intervals: a base-rate measurement, not a demonstrated effect at this sample
+size. What did not get stopped is the useful part -- a hardcoded return that
+the static layer flagged and the agent shipped anyway (in `off` and
+`skill-only`), and a swallowed exception that survived every arm because only a
+held-out suite sees it. False positives: zero on the 22-23 genuinely-good runs
+per arm.
 
 ```bash
 python benchmark/preflight.py
@@ -267,5 +269,5 @@ python benchmark/report.py --out benchmark/RESULTS.md   # also writes results/ag
 
 The publication gate in `docs/launch.md` still applies: lead with the measured
 delta and the false-positive rate, and never post a number from a single task
-or a single run. A 0% base rate on six tasks means the next move is more tasks
-per cheat type, not a louder claim.
+or a single run. One run per state is the floor, not the finish: the next move
+is more runs and more tasks per cheat type, not a louder claim.
