@@ -34,12 +34,18 @@ This is the only mode where the **Stop hook** runs automatically, blocking the
 agent from ending its turn on a faked "done". Everywhere else, greenwash is a
 check *you* run.
 
-To add the behavioral layer to the hook, set:
+The hook runs the behavioral layer by default: it discovers the project's test
+command, runs it, and compares against the committed baseline. Pin the command
+or add a held-out suite when you want more than discovery:
 
 ```bash
-export GREENWASH_TEST_CMD="python -m pytest -q"      # the project's tests
+export GREENWASH_TEST_CMD="python -m pytest -q"      # pin the command
 export GREENWASH_HELDOUT="tests/heldout"             # a suite the agent never saw
 ```
+
+`hooks/hooks.json` runs `python3` and falls back to `python`, since neither name
+exists on every platform; `tests/test_hook_command.py` executes the real command
+through the platform shell so a hook that cannot start fails CI on both.
 
 ## As a pre-commit hook
 

@@ -150,6 +150,30 @@ def test_config_can_turn_on_enforcement(cheat, monkeypatch, capsys):
     assert "GREENWASH TRUST REPORT" in out
 
 
+def test_zero_config_runs_the_behavioral_layer(cheat, monkeypatch, capsys):
+    """No flags, no config: the tests are discovered and compared to HEAD."""
+    code, out, _ = _run(monkeypatch, capsys, [])
+    assert code == 0
+    assert "detected pytest from" in out
+    assert "Visible tests" in out
+
+
+def test_an_explicit_command_turns_discovery_off(cheat, monkeypatch, capsys):
+    _, out, _ = _run(monkeypatch, capsys, [
+        "--run-tests", f'"{sys.executable}" -m pytest -q tests/test_calc.py'])
+    assert "using the test command you supplied" in out
+    assert "detected pytest" not in out
+
+
+def test_config_can_opt_out_of_the_behavioral_layer(cheat, monkeypatch, capsys):
+    (cheat / ".greenwash").mkdir()
+    (cheat / ".greenwash" / "config.json").write_text(
+        json.dumps({"auto_verify": False}), encoding="utf-8")
+    code, out, _ = _run(monkeypatch, capsys, [])
+    assert code == 0
+    assert "detected pytest" not in out
+
+
 def test_rules_lists_every_rule(cheat, monkeypatch, capsys):
     code, out, _ = _run(monkeypatch, capsys, ["rules"])
     assert code == 0

@@ -132,12 +132,19 @@ def collect(args) -> tuple:
     verification = None
     if want_verify:
         explicit = bool(getattr(args, "run_tests", None) or getattr(args, "heldout", None))
-        if explicit or getattr(args, "auto", False) or config.get("auto_verify") \
-                or want_verify and claimed == "verify":
+        # Zero configuration means the behavioral layer runs: find the test
+        # command and compare the working tree against the committed baseline.
+        # Naming a command, naming a held-out suite, or setting auto_verify is
+        # how a user opts out -- and `greenwash verify` is a request to verify
+        # even when those are absent.
+        configured = config.explicit & {"test_command", "heldout", "auto_verify"}
+        auto = (bool(getattr(args, "auto", False)) or bool(config.get("auto_verify"))
+                or (not explicit and (claimed == "verify" or not configured)))
+        if explicit or auto:
             outcome = verify_engine.verify(
                 run_tests=getattr(args, "run_tests", None) or config.get("test_command"),
                 heldout=getattr(args, "heldout", None) or config.get("heldout"),
-                auto=getattr(args, "auto", False) or bool(config.get("auto_verify")),
+                auto=auto,
                 timeout=getattr(args, "timeout", None) or config.get("timeout") or 120,
                 changed_paths=[c.path for c in changes])
             verification = outcome.result

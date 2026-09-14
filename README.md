@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <strong>24/24 planted cheats caught &middot; 0 false positives on 24 real fixes &middot; 220 tests</strong><br>
+  <strong>24/24 planted cheats caught &middot; 0 false positives on 24 real fixes &middot; 225 tests</strong><br>
   <sub>
     An agent under pressure to show green will skip the test, mock the unit under
     test, hardcode the expected value, or swallow the exception that would have
@@ -355,6 +355,12 @@ that records what it found, and tells you what it could not find:
 If there is no test command, the report says the behavioral layer did not run,
 rather than implying it passed.
 
+A plain `greenwash` is already behavioral, with no config and no flags: the
+test command is discovered, run, and run again against a detached worktree of
+`HEAD`, so a test that passed before and fails now is a `regression` rather
+than a mystery. Naming `--run-tests`, naming a `heldout` suite, or writing
+`"auto_verify": false` is how you opt out.
+
 ### Configuration
 
 `.greenwash/config.json` is optional and every key is an override:
@@ -362,7 +368,7 @@ rather than implying it passed.
 | Key | Default | Meaning |
 |---|---|---|
 | `mode` | `"report"` | `"enforce"` turns the exit codes below into a gate |
-| `auto_verify` | `false` | discover the test command and compare against the baseline |
+| `auto_verify` | unset | `false` opts out of the zero-config behavioral layer; `true` forces the baseline comparison alongside a pinned command |
 | `test_command` | `null` | pin the command instead of discovering it |
 | `heldout` | `null` | path to (or command running) a suite the agent never saw |
 | `timeout` | `120` | seconds per test run |
@@ -379,9 +385,13 @@ rather than implying it passed.
 
 The Stop hook follows the same rule: in report mode it prints the report and
 lets the agent stop; in enforce mode it exits 2 with the findings, which hands
-them back to the agent. A tool that blocks by default is a tool people
-uninstall -- and a checker that a developer cannot turn off is one they will
-route around.
+them back to the agent. It runs the same zero-config behavioral layer, so the
+turn is checked against the tests and not only against the patterns. And it
+finds its own interpreter -- `python3` first, `python` as the fallback, because
+no single name exists on both a stock Linux and a stock Windows.
+
+A tool that blocks by default is a tool people uninstall -- and a checker that a
+developer cannot turn off is one they will route around.
 
 ## FAQ
 
@@ -438,7 +448,7 @@ becomes a test -- that is the policy, not a promise.
 | `npm/` | the `npx greenwash` shim, which runs the Python implementation rather than reimplementing it |
 | `skills/`, `hooks/`, `adapters/` | the skill the agent reads, the Stop hook, and the generated rule files for other hosts |
 | `scripts/` | the two compatibility entry points CI and the plugin call |
-| `tests/` | 220 tests -- domain, confidence, rules, language packs, reporting, CLI, hook contract, the inconclusive corpus, benchmark tasks |
+| `tests/` | 225 tests -- domain, confidence, rules, language packs, reporting, CLI, hook contract, the inconclusive corpus, benchmark tasks |
 | `benchmark/inconclusive/` | six ambiguous changes that must be asked about and never convicted |
 | `demo/` | the reproducible catch from the top of this file |
 | `assets/` | the logo, the demo GIF and the benchmark chart, plus the scripts that rebuild them |
@@ -447,7 +457,7 @@ becomes a test -- that is the policy, not a promise.
 
 ```bash
 git clone https://github.com/0DukePan/greenwash && cd greenwash
-python -m pytest -q            # 220 tests, no model or network needed
+python -m pytest -q            # 225 tests, no model or network needed
 python demo/run_demo.py        # the catch, end to end
 python benchmark/detection.py  # the accuracy numbers above
 ```

@@ -65,6 +65,28 @@
   directions -- a live run must be stated, and no live run must not be. A
   plumbing run can never be published as the effect.
 
+### Closing the last of the 10/10
+
+- **The behavioral layer is on by default.** A plain `greenwash` -- and the
+  Stop hook -- now discovers the test command, runs it, and compares the
+  working tree against a detached worktree of `HEAD` whenever nothing is
+  configured. That was `verify --auto`'s job, and the zero-config promise
+  already read like it; the difference is that it now happens without the
+  caller knowing the flag exists. `--run-tests`, a `heldout` suite, or
+  `"auto_verify": false` opts out, and the config records which keys were
+  actually set, so "unset" and "off" are different states rather than the same
+  default. A repo with no discoverable test command still gets the honest
+  "the behavioral layer did not run", not a passing one.
+- **The Stop hook starts on either platform.** `hooks/hooks.json` named a bare
+  `python`, which does not exist on a stock Linux (python3, no python) -- so
+  the hook silently never ran for most of the plugin's audience. It now runs
+  `python3 ... || python ...`, with `${CLAUDE_PLUGIN_ROOT}` substituted by the
+  host before the platform shell sees it: python3 on Unix, the fallback on
+  Windows (where `python3` is usually a Microsoft Store stub that fails, which
+  is exactly what made this testable here). `tests/test_hook_command.py`
+  executes the real command through cmd.exe / /bin/sh in a repo with a faked
+  pass, so a hook that cannot start fails CI on both operating systems.
+
 ### Bugs found while building this
 
 - **The literal extractor read the wrong literal out of a nested assertion.**

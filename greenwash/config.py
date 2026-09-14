@@ -46,6 +46,7 @@ class Config:
     values: dict = field(default_factory=lambda: dict(DEFAULTS))
     path: str = ""
     source: str = "defaults"
+    explicit: set = field(default_factory=set)   # keys set by the file or the environment
     problems: list = field(default_factory=list)
 
     def __getitem__(self, key):
@@ -77,6 +78,7 @@ def load(root=".", env=None) -> Config:
             data = json.loads(path.read_text(encoding="utf-8"))
             if isinstance(data, dict):
                 config.values.update({k: v for k, v in data.items() if k in DEFAULTS})
+                config.explicit |= {k for k in data if k in DEFAULTS}
                 config.source = str(path)
             else:
                 config.problems.append(f"{path} is not a JSON object; ignoring it")
@@ -94,6 +96,7 @@ def load(root=".", env=None) -> Config:
             config.problems.append(f"ignoring invalid {name}={raw!r}")
         else:
             config.source = f"{config.source} + {name}"
+            config.explicit.add(key)
 
     return config
 
