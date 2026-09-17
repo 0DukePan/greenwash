@@ -22,9 +22,16 @@ class GitError(RuntimeError):
 
 
 def _git(args, cwd=None, check=False) -> subprocess.CompletedProcess:
+    """Every git call decodes as UTF-8 with replacement, never raising.
+
+    A diff of a file whose bytes are not valid UTF-8 used to surface as an
+    uncaught UnicodeDecodeError out of the scanner -- a traceback in a tool
+    that promises none. The bytes are shown degraded instead of fatal.
+    """
     try:
         return subprocess.run(["git", *args], cwd=cwd, capture_output=True,
-                              text=True, check=check)
+                              text=True, encoding="utf-8", errors="replace",
+                              check=check)
     except FileNotFoundError as exc:  # pragma: no cover - depends on the host
         raise GitError("git not found on PATH") from exc
 
@@ -100,6 +107,9 @@ def parse_diff(diff_text: str):
     files maps path -> {"added": [str], "removed": [str], "added_lines": set[int]}
     where added_lines are 1-indexed line numbers in the *new* file, so
     structural checks can tell whether a node was introduced by this diff.
+    `added_linenos` carries the same numbers in diff order, parallel to
+    `added`, so a position inside the added text can be mapped back to the
+    file line a report quotes.
     """
     files: dict[str, dict] = {}
     deleted: list[str] = []
@@ -122,7 +132,8 @@ def parse_diff(diff_text: str):
                 current = None
             else:
                 current = new[2:] if new.startswith("b/") else new
-                files.setdefault(current, {"added": [], "removed": [], "added_lines": set()})
+                files.setdefault(current, {"added": [], "removed": [], "added_lines": set(),
+                                           "added_linenos": []})
         elif line.startswith("@@"):
             match = re.search(r"\+(\d+)", line)
             new_line = int(match.group(1)) if match else 0
@@ -131,6 +142,7 @@ def parse_diff(diff_text: str):
         elif line.startswith("+"):
             files[current]["added"].append(line[1:])
             files[current]["added_lines"].add(new_line)
+            files[current]["added_linenos"].append(new_line)
             new_line += 1
         elif line.startswith("-"):
             files[current]["removed"].append(line[1:])

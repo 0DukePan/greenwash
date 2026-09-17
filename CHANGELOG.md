@@ -1,5 +1,67 @@
 # Changelog
 
+## 0.4.1
+
+### Fixed
+
+- **Enforce-mode exit codes now match the contract they publish.** With the
+  default `block_on`, `NOT_VERIFIED` returned 2 -- the code the docs define as
+  "suspicious" -- and `VERIFICATION_FAILED` returned 1 -- the code defined as
+  "not verified". Evidence (1), a pattern (2) and a check that could not run
+  (3) are the distinction this tool sells, and the exit codes were collapsing
+  the first into the second. All six verdicts are pinned by tests now, and the
+  contract in `cli.py`, `--help` and the README names `VERIFICATION_FAILED`
+  explicitly.
+- **The regex rules reported the wrong line, in two different ways.**
+  `test-skipped` measured a match offset taken from comment-stripped text
+  against the raw added text, so every comment above the flagged line shifted
+  the number; and every regex rule reported the line's ordinal inside the added
+  blob rather than the line in the file -- a different coordinate from the AST
+  checks, printed in the same `path:line` form. Comment blanking is
+  offset-preserving now, and ordinals map through the hunk's own line numbers;
+  both are pinned by fixtures (a comment-above case, and a hunk starting at
+  line 9).
+- **The output cap was applied after the whole stream was already in memory.**
+  `runner.run` captures to temp files now and reads back a capped window, so a
+  firehose is truncated on disk rather than in RAM. The timeout kills the
+  process tree (`killpg` on POSIX, `taskkill /T` on Windows) instead of the
+  direct child, so an orphaned test runner can no longer hold the run open --
+  which is what made a timeout look like a hang. And `git diff` output is
+  decoded with `errors="replace"`: a file whose bytes are not valid UTF-8 is a
+  degraded diff, not an uncaught traceback.
+- **`benchmark/RESULTS.md` said "-1 points" while the README, the generated
+  BENCHMARK block and `agent-delta.json` all said "-1.4".** The markdown
+  renderer rounded to whole points; it prints one decimal now, RESULTS.md is
+  regenerated from the committed rows, and `tests/test_readme.py` guards it --
+  that file was the one blind spot in the otherwise two-way guards.
+
+### Honesty
+
+- **`analysis: regex` is on every rule that matches patterns in text.**
+  `mock-in-test` and `assertion-weakened` were missing it, so the README's
+  sentence was broader than the code. The two rules that only look at filenames
+  carry no `analysis` key, and the README says exactly that now.
+- **"Report mode always exits 0" was not quite true** -- it exits 3 when it
+  cannot produce a report (no repository, no commits). The wording says what
+  the tests assert.
+- **"A CI job installs Go, Rust, Ruby and Java" was not quite true** -- the job
+  runs the corpus where the runner image's toolchains exist and asserts that
+  nothing skipped. Fixed in the README and in the generated BENCHMARK block.
+- **The runtime row has a receipt now.** `detection.py` records the elapsed
+  seconds in `results/detection.json`; the README states the re-measured value
+  (172s for 24 scored tasks x 3 variants) instead of the unbacked 154s, and a
+  README guard keeps the two together.
+- Added `greenwash/py.typed` (declared in package-data since 0.4.0, absent on
+  disk), removed dead code (`Signal.matches`, `_Model.from_dict`), and pointed
+  a stale docstring at the README's rule table.
+
+### Tests
+
+- 225 -> 243. New: every verdict's enforce exit code (as a table and
+  end-to-end), the two regex line-number fixtures, regex provenance on the
+  signals, filename rules that claim no analysis, the process-tree timeout, the
+  capped firehose, the invalid-UTF-8 diff, and the RESULTS.md delta guard.
+
 ## 0.4.0
 
 ### Closing the three gaps in the 9/10

@@ -34,9 +34,9 @@ program with the same output and the same exit codes.
 
 | Code | Meaning |
 |---|---|
-| 0 | report mode always; `--enforce` when verified |
+| 0 | report mode when a report is produced; `--enforce` when verified |
 | 1 | `scan` / `verify` found something; `--enforce` when not verified |
 | 2 | `--enforce` and the verdict was suspicious |
-| 3 | could not run (no Python, no package, not a git repository) |
+| 3 | could not run (no Python, no package, not a git repository); `--enforce` when the verification could not complete |
 
 Full documentation: <https://github.com/0DukePan/greenwash>

@@ -160,8 +160,8 @@ def render(data: dict) -> str:
             "",
             f"{summary} -- {coverage['passed']}/{coverage['total']} cases behave as declared. "
             "Each of those languages now has at least one task behind its pack, run "
-            "with the language's own test runner, and a CI job installs the "
-            "toolchains; a task whose toolchain is missing records "
+            "with the language's own test runner, and a CI job runs the corpus where "
+            "the toolchains exist; a task whose toolchain is missing records "
             "`skipped: no toolchain` and stays out of every rate. Signals from a "
             "pack that cannot parse the language carry `analysis: regex` in their "
             "evidence and their confidence is capped at `MEDIUM`.",

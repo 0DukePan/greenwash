@@ -40,5 +40,6 @@ def check(ctx) -> list:
             signals.append(RULE.signal(
                 path, None,
                 f"{removed} assertion(s) removed, {added} added back",
+                analysis="regex",
                 assertions_removed=removed, assertions_added=added))
     return signals

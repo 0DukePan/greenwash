@@ -51,7 +51,7 @@ def check(ctx) -> list:
         for match in re.finditer(RETURN_LITERAL_PATTERN, code):
             value = match.group(1)
             if value in ctx.asserted_literals:
-                line = code[:match.start()].count("\n") + 1
+                line = ctx.added_line_number(path, code[:match.start()].count("\n") + 1)
                 signals.append(RULE.signal(
                     path, line,
                     f"returns literal {value!r}, which a test asserts against",

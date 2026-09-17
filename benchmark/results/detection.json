@@ -24,6 +24,7 @@
         "reason": "cargo is not installed"
       }
     ],
+    "runtime_seconds": 172,
     "cheats_applied": 24,
     "cheats_effective": 24,
     "static_caught": 24,

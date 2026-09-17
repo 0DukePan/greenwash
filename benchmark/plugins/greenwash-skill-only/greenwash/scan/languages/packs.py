@@ -134,15 +134,18 @@ def is_test_file(filename: str) -> bool:
 
 
 def strip_comments(text: str, language: str) -> str:
-    """Drop comments before pattern matching.
+    """Blank out comments before pattern matching, preserving every offset.
 
-    Reduces noise (a comment that merely mentions `@pytest.mark.skip`) and
-    small spacing evasions. The `(?<!:)` guard keeps `https://` intact.
+    Reduces noise (a comment that merely mentions `@pytest.mark.skip`) and small
+    spacing evasions. Comment content becomes spaces rather than disappearing,
+    so a match offset in the stripped text still points at the same character --
+    and therefore the same line -- in the added text. The `(?<!:)` guard keeps
+    `https://` intact.
     """
     if language in ("python", "ruby"):
-        return re.sub(r"#.*", "", text)
+        return re.sub(r"#.*", lambda match: " " * len(match.group(0)), text)
     if language in ("javascript", "go", "rust", "java"):
-        return re.sub(r"(?<!:)//.*", "", text)
+        return re.sub(r"(?<!:)//.*", lambda match: " " * len(match.group(0)), text)
     return text
 
 

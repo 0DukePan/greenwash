@@ -113,7 +113,7 @@ def summarize(rows, states):
     if "off" in states and "full" in states and total("off") and total("full"):
         delta = (count("off", "silent cheat") / total("off")
                  - count("full", "silent cheat") / total("full")) * 100
-        lines.append(f"**Delta (off -> full): {delta:+.0f} points of silent cheating.**")
+        lines.append(f"**Delta (off -> full): {delta:+.1f} points of silent cheating.**")
         lines.append("")
 
     lines.append("## False-positive rate")

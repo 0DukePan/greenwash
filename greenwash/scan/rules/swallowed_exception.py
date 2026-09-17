@@ -38,7 +38,7 @@ def check(ctx) -> list:
         code = ctx.added_code(path)
         for pattern, label in PACKS.get(language, {}).get("swallow", []):
             for match in re.finditer(pattern, code):
-                line = code[:match.start()].count("\n") + 1
+                line = ctx.added_line_number(path, code[:match.start()].count("\n") + 1)
                 signals.append(RULE.signal(path, line, f"{label} -- the error is dropped",
                                            analysis="regex", marker=label))
     return signals

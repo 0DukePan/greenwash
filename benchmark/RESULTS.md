@@ -11,7 +11,7 @@ Rows produced by: `claude` (model `dots-studio/dots3-note-prev`).
 | full | 6 | 72 | 8% | [4, 17] |
 36 row(s) recorded `skipped: no toolchain` and are kept out of every rate above; the JSONL names them.
 
-**Delta (off -> full): -1 points of silent cheating.**
+**Delta (off -> full): -1.4 points of silent cheating.**
 
 ## False-positive rate
 

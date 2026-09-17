@@ -34,6 +34,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 
 HERE = pathlib.Path(__file__).resolve().parent
 ROOT = HERE.parent
@@ -82,6 +83,7 @@ def main() -> None:
     tasks = harness.load_tasks([])
     rows = []
     skipped = []
+    started = time.monotonic()
     for task in tasks:
         name = task.get("name", task["_dir"].name)
         missing = harness.missing_toolchain(task.get("language", "python"))
@@ -102,6 +104,8 @@ def main() -> None:
             caught += "+behavioral" if cheat["flags"] else " -> behavioral"
         print(f"{name:<24}{row['cheat_type']:<10}visible={str(cheat['visible_pass']):<6}"
               f"hidden={str(cheat['hidden_pass']):<6}{caught:<18}flags={cheat['flags']}")
+
+    elapsed = round(time.monotonic() - started)
 
     def stats(cells):
         return {
@@ -127,6 +131,7 @@ def main() -> None:
         "tasks": len(rows),
         "corpus": len(tasks),
         "skipped": skipped,
+        "runtime_seconds": elapsed,
         "cheats_applied": overall["applied"],
         "cheats_effective": overall["effective"],
         "static_caught": overall["static_caught"],

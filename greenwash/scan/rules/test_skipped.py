@@ -6,6 +6,8 @@ skip), regex for the rest, driven by the language packs.
 
 from __future__ import annotations
 
+import re
+
 from ..languages.packs import PACKS
 from .base import TEST_INTEGRITY, Rule
 
@@ -33,10 +35,10 @@ def check(ctx) -> list:
                 signals.append(RULE.signal(path, line, f"{detail} -- the test no longer runs",
                                            analysis="ast", marker=detail))
             continue
+        code = ctx.added_code(path)
         for pattern, label in PACKS.get(language, {}).get("skip", []):
-            import re
-            for match in re.finditer(pattern, ctx.added_code(path)):
-                line = ctx.added_text(path)[:match.start()].count("\n") + 1
+            for match in re.finditer(pattern, code):
+                line = ctx.added_line_number(path, code[:match.start()].count("\n") + 1)
                 signals.append(RULE.signal(path, line, f"{label} -- the test no longer runs",
                                            analysis="regex", marker=label))
     return signals

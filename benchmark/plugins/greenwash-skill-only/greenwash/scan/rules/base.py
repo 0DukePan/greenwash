@@ -1,9 +1,10 @@
 """Rule metadata and the Signal it produces.
 
 A rule is data plus one function. The data is what shows up in a report and in
-`docs/rules.md`; the function is what looks at the diff. Keeping them together
-means a rule cannot exist without an explanation, a severity and a remedy --
-which is the difference between a linter and a linter you can argue with.
+the README's rule table; the function is what looks at the diff. Keeping them
+together means a rule cannot exist without an explanation, a severity and a
+remedy -- which is the difference between a linter and a linter you can argue
+with.
 """
 
 from __future__ import annotations
@@ -92,6 +93,19 @@ class ScanContext:
         from ..languages.packs import strip_comments
         language = self.language(path) or ""
         return strip_comments(self.added_text(path), language)
+
+    def added_line_number(self, path: str, ordinal: int) -> int:
+        """The new-file line number of the ordinal-th added line (1-indexed).
+
+        Regex rules match against `added_code` and land on an ordinal in the
+        added text; mapping it through the hunk's line numbers makes a
+        `path:line` in a report mean the same thing whatever language
+        produced it -- the coordinate the AST checks already report.
+        """
+        linenos = self.files.get(path, {}).get("added_linenos") or []
+        if 1 <= ordinal <= len(linenos):
+            return linenos[ordinal - 1]
+        return ordinal
 
     def removed_text(self, path: str) -> str:
         return "\n".join(self.files.get(path, {}).get("removed", []))

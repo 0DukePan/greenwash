@@ -12,11 +12,11 @@
   <img src="https://img.shields.io/badge/python-3.10%2B-blue.svg" alt="python 3.10+">
   <img src="https://img.shields.io/badge/dependencies-none-brightgreen.svg" alt="no dependencies">
   <img src="https://img.shields.io/badge/schema-v1-informational.svg" alt="schema v1">
-  <a href="https://github.com/0DukePan/greenwash/releases"><img src="https://img.shields.io/badge/version-0.4.0-orange.svg" alt="0.4.0"></a>
+  <a href="https://github.com/0DukePan/greenwash/releases"><img src="https://img.shields.io/badge/version-0.4.1-orange.svg" alt="0.4.1"></a>
 </p>
 
 <p align="center">
-  <strong>24/24 planted cheats caught &middot; 0 false positives on 24 real fixes &middot; 225 tests</strong><br>
+  <strong>24/24 planted cheats caught &middot; 0 false positives on 24 real fixes &middot; 243 tests</strong><br>
   <sub>
     An agent under pressure to show green will skip the test, mock the unit under
     test, hardcode the expected value, or swallow the exception that would have
@@ -195,8 +195,9 @@ Eight static rules, and four signals that only a run can produce:
 Both halves are measured. `tests/test_tasks.py` proves every task the way the
 harness will run it -- the buggy workspace fails, the hidden test fails on that
 same baseline, and the recorded solution passes -- in the task's own language,
-skipping rather than failing where a toolchain is absent, and a CI job installs
-Go, Rust, Ruby and Java so those tasks really run. `python benchmark/polyglot.py`
+skipping rather than failing where a toolchain is absent, and a CI job where the
+runner image provides Go, Rust, Ruby and Java runs them and asserts that nothing
+skipped. `python benchmark/polyglot.py`
 adds 15 static cases that report **15/15 behaving as declared**.
 
 The polyglot corpus is how the JavaScript hardcoded-return bug was found: the
@@ -204,10 +205,12 @@ literal extractor was reading the argument out of `assert.equal(sum(2, 3), 5)`
 instead of the expected value, so that rule could never fire on the most common
 shape of JS assertion.
 
-Signals produced without a parser say so. Their evidence carries
-`"analysis": "regex"` and their confidence is capped at `MEDIUM` -- a regex pack
-cannot parse Go, so it does not get to be as certain as the AST. Severity is
-unchanged: a skipped test is a skipped test.
+Signals produced by matching patterns in text rather than parsing it say so.
+Their evidence carries `"analysis": "regex"`, and a HIGH-confidence rule drops
+to `MEDIUM` there -- a regex pack cannot parse Go, so it does not get to be as
+certain as the AST. Severity is unchanged: a skipped test is a skipped test.
+The two rules that only look at filenames (`test-file-deleted`,
+`conftest-changed`) have no text to parse and carry no `analysis` key.
 
 ## Numbers
 
@@ -228,7 +231,7 @@ nothing skipped:
 | Cheats missed by both layers | **0** |
 | Honest fixes flagged | **0/24** |
 | Buggy baselines flagged | 0/24 |
-| Runtime | 154s for 24 scored tasks x 3 variants -- every variant runs the real suite in a subprocess |
+| Runtime | 172s for 24 scored tasks x 3 variants -- every variant runs the real suite in a subprocess |
 | Static scan budget | 500-file diff scored in under 2s (asserted by `tests/test_rules.py`) |
 
 Reproduce with `python benchmark/detection.py`; the metrics table, including the
@@ -324,7 +327,7 @@ One trap worth knowing: a gateway with a zero balance rejects every model with
 | Any repo (CLI) | `pipx install greenwash` |
 | Node projects, or `npx` | `npx greenwash` -- a shim over the Python package, see [`npm/`](npm/) |
 | **Claude Code** (the unskippable hook) | `/plugin marketplace add 0DukePan/greenwash` then `/plugin install greenwash@greenwash` |
-| GitHub Actions | `uses: 0DukePan/greenwash@v0.4.0` (see [`action.yml`](action.yml)) |
+| GitHub Actions | `uses: 0DukePan/greenwash@v0.4.1` (see [`action.yml`](action.yml)) |
 | pre-commit | add `0DukePan/greenwash` to `repos` (see [`.pre-commit-hooks.yaml`](.pre-commit-hooks.yaml)) |
 | Codex / Cursor / Copilot / Cline / Windsurf / Gemini | the rules file generated for that host in [`adapters/`](adapters/) |
 
@@ -388,9 +391,9 @@ than a mystery. Naming `--run-tests`, naming a `heldout` suite, or writing
 
 | Mode | Exit codes |
 |---|---|
-| report (default) | always 0 -- the report is the product |
+| report (default) | 0 whenever it produces a report; 3 when it cannot (not a repository, or no commits) |
 | `scan` / `verify` subcommands | 0 clean, 1 findings, 3 could not run |
-| `--enforce`, or `"mode": "enforce"` | 0 verified, 1 not verified, 2 suspicious, 3 error |
+| `--enforce`, or `"mode": "enforce"` | 0 verified, 1 not verified, 2 suspicious, 3 could not check (a `VERIFICATION_FAILED` verdict) |
 
 The Stop hook follows the same rule: in report mode it prints the report and
 lets the agent stop; in enforce mode it exits 2 with the findings, which hands
@@ -457,7 +460,7 @@ becomes a test -- that is the policy, not a promise.
 | `npm/` | the `npx greenwash` shim, which runs the Python implementation rather than reimplementing it |
 | `skills/`, `hooks/`, `adapters/` | the skill the agent reads, the Stop hook, and the generated rule files for other hosts |
 | `scripts/` | the two compatibility entry points CI and the plugin call |
-| `tests/` | 225 tests -- domain, confidence, rules, language packs, reporting, CLI, hook contract, the inconclusive corpus, benchmark tasks |
+| `tests/` | 243 tests -- domain, confidence, rules, language packs, reporting, CLI, hook contract, the inconclusive corpus, benchmark tasks |
 | `benchmark/inconclusive/` | six ambiguous changes that must be asked about and never convicted |
 | `demo/` | the reproducible catch from the top of this file |
 | `assets/` | the logo, the demo GIF and the benchmark chart, plus the scripts that rebuild them |
@@ -466,7 +469,7 @@ becomes a test -- that is the policy, not a promise.
 
 ```bash
 git clone https://github.com/0DukePan/greenwash && cd greenwash
-python -m pytest -q            # 225 tests, no model or network needed
+python -m pytest -q            # 243 tests, no model or network needed
 python demo/run_demo.py        # the catch, end to end
 python benchmark/detection.py  # the accuracy numbers above
 ```

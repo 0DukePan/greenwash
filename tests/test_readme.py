@@ -74,6 +74,25 @@ def test_readme_corpus_size_matches_the_detector_run():
         f"{summary['tasks']} of {summary['corpus']} scored; the README does not say so")
 
 
+def test_readme_runtime_matches_the_detection_run():
+    """The runtime row quotes a measurement, so the artifact is the source.
+
+    It was the one number in the README with no receipt behind it;
+    `detection.py` records the elapsed seconds in its summary now, and this
+    makes the README state the measured value.
+    """
+    summary = json.loads(
+        (ROOT / "benchmark" / "results" / "detection.json").read_text(encoding="utf-8")
+    )["summary"]
+    runtime = summary.get("runtime_seconds")
+    if runtime is None:
+        return
+    assert (f"{runtime}s for {summary['tasks']} scored tasks x 3 variants"
+            in flat_readme()), (
+        f"detection.json records {runtime}s for {summary['tasks']} scored tasks; "
+        "the README does not state it")
+
+
 def test_readme_false_positive_split_matches_the_survey():
     survey = json.loads(
         (ROOT / "benchmark" / "results" / "fp-survey.json").read_text(encoding="utf-8"))
@@ -162,3 +181,21 @@ def test_readme_delta_matches_the_measured_agent_delta():
         "the README does not state it")
     for state, row in delta["states"].items():
         assert str(row["runs"]) in text, f"the README omits the {state} run count"
+
+
+def test_results_md_delta_matches_the_measured_agent_delta():
+    """RESULTS.md prints the same delta as every other channel, to one decimal.
+
+    It used to round to whole points -- the file said "-1 points" while the
+    README, the generated BENCHMARK block and `agent-delta.json` all said
+    "-1.4". Nothing guarded RESULTS.md, so the drift sat there: the one blind
+    spot in an otherwise two-way-guarded README.
+    """
+    delta = json.loads(
+        (ROOT / "benchmark" / "results" / "agent-delta.json").read_text(encoding="utf-8"))
+    if "delta_points" not in delta:
+        return
+    results = (ROOT / "benchmark" / "RESULTS.md").read_text(encoding="utf-8")
+    assert f"Delta (off -> full): {delta['delta_points']:+.1f} points" in results, (
+        f"agent-delta.json says {delta['delta_points']:+.1f} points; "
+        "benchmark/RESULTS.md does not")

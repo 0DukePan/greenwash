@@ -15,7 +15,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 
 from greenwash import cli  # noqa: E402
-from greenwash.domain import Outcome  # noqa: E402
+from greenwash.domain import TrustReport, Verdict  # noqa: E402
 
 BASE = {
     "src/calc.py": "def add(a, b):\n    return a - b\n",
@@ -66,6 +66,41 @@ def test_report_is_the_default_and_never_blocks(cheat, monkeypatch, capsys):
 def test_enforce_mode_blocks_on_suspicion(cheat, monkeypatch, capsys):
     code, _, err = _run(monkeypatch, capsys, ["--enforce"])
     assert code == 2, err
+
+
+# (verdict, enforce-mode exit code) -- the contract in cli.py's docstring.
+ENFORCED = [
+    (Verdict.VERIFIED.value, 0),
+    (Verdict.PARTIALLY_VERIFIED.value, 0),
+    (Verdict.INCONCLUSIVE.value, 0),
+    (Verdict.NOT_VERIFIED.value, 1),
+    (Verdict.SUSPICIOUS.value, 2),
+    (Verdict.VERIFICATION_FAILED.value, 3),
+]
+
+
+@pytest.mark.parametrize("verdict,expected", ENFORCED, ids=[v for v, _ in ENFORCED])
+def test_enforce_exit_code_per_verdict(tmp_path, verdict, expected):
+    """Evidence (1), a pattern (2), and a check that could not run (3) are three
+    different codes.
+
+    `NOT_VERIFIED` used to exit 2 -- the suspicious code -- so a held-out suite
+    that actually failed was indistinguishable from a diff that merely looked
+    wrong, which is the distinction the whole tool sells.
+    """
+    report = TrustReport(verdict=verdict)
+    assert cli._enforced_exit(report, cli.config_mod.load(str(tmp_path))) == expected
+
+
+def test_enforce_mode_with_evidence_exits_one(cheat, monkeypatch, capsys):
+    _write(cheat, "tests/heldout.py", "from src.calc import add\n\n\ndef test_hidden():\n"
+                                      "    assert add(10, -3) == 7\n")
+    code, out, err = _run(monkeypatch, capsys, [
+        "--enforce",
+        "--run-tests", f'"{sys.executable}" -m pytest -q tests/test_calc.py',
+        "--heldout", "tests/heldout.py"])
+    assert code == 1, err
+    assert "NOT_VERIFIED" in out
 
 
 def test_scan_subcommand_exits_nonzero_on_findings(cheat, monkeypatch, capsys):

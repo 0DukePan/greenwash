@@ -5,6 +5,7 @@ Run:  python -m pytest -q
 
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -13,6 +14,7 @@ sys.path.insert(0, str(HERE.parent))
 from greenwash import scan as scan_mod  # noqa: E402
 from greenwash import verify as verify_mod  # noqa: E402
 from greenwash.verify import discovery as discover_mod  # noqa: E402
+from greenwash.verify import runner as runner_mod  # noqa: E402
 
 BASE = {
     "src/calc.py": "def add(a, b):\n    return a - b\n",
@@ -133,6 +135,34 @@ def test_a_missing_heldout_runner_is_not_a_heldout_failure(tmp_path, monkeypatch
     assert outcome.result.outcome == "pass"
     assert outcome.result.heldout == "unavailable"
     assert not any(signal.rule_id == "heldout-failed" for signal in outcome.signals)
+
+
+def test_a_timeout_kills_the_whole_process_tree(tmp_path):
+    """A stopped shell must not leave the test runner holding the run open.
+
+    `subprocess.run(timeout=...)` killed the direct child and then waited on
+    pipes its grandchild still held, so a timeout used to look like a hang.
+    """
+    sleeper = "import time; time.sleep(30)"
+    command = [sys.executable, "-c",
+               f"import subprocess, sys; subprocess.run([sys.executable, '-c', {sleeper!r}])"]
+    started = time.monotonic()
+    result = runner_mod.run(command, cwd=str(tmp_path), timeout=1)
+    elapsed = time.monotonic() - started
+
+    assert result.timed_out is True
+    assert result.error == "timed out after 1s"
+    assert elapsed < 8, f"the timeout took {elapsed:.1f}s -- a grandchild held the run open"
+
+
+def test_a_firehose_of_output_is_capped_not_buffered(tmp_path):
+    """The cap is enforced while reading the capture, not after it is all in RAM."""
+    result = runner_mod.run(
+        [sys.executable, "-c", "print('x' * 1_500_000)"], cwd=str(tmp_path), timeout=60)
+    assert result.returncode == 0
+    assert result.truncated == [f"stdout capped at {runner_mod.MAX_STREAM_BYTES // 1000}kB"]
+    assert "[stdout truncated]" in result.stdout
+    assert len(result.stdout) < runner_mod.MAX_STREAM_BYTES + 1_000
 
 
 def test_discover_python_project(tmp_path):

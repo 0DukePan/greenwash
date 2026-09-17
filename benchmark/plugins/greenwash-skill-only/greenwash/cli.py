@@ -2,10 +2,13 @@
 
 Exit codes are the whole safety story, so they are stated once, here:
 
-    report mode (default)   0 always -- greenwash never fails your build unless
-                            you ask it to; the report is the product
+    report mode (default)   0 whenever it produces a report, 3 when it cannot
+                            (not a repository, or one with no commits) --
+                            greenwash never fails your build unless you ask
+                            it to; the report is the product
     scan / verify           0 clean, 1 findings, 3 could not run
-    --enforce               0 verified, 1 not verified, 2 suspicious, 3 error
+    --enforce               0 verified, 1 not verified, 2 suspicious,
+                            3 could not check (VERIFICATION_FAILED)
 
 `--enforce` is never implied. A tool that starts blocking work by default is a
 tool people uninstall.
@@ -26,7 +29,8 @@ from .verify import engine as verify_engine
 EXIT_OK, EXIT_FINDINGS, EXIT_BLOCKED, EXIT_ERROR = 0, 1, 2, 3
 
 EPILOG = """exit codes:
-  report mode (default) 0 always; --enforce returns 1 (not verified), 2 (suspicious), 3 (error)
+  report mode (default) 0 whenever a report is produced, 3 when it cannot be
+  --enforce returns 1 (not verified), 2 (suspicious), 3 (could not check)
 
 greenwash reads your diff, runs your tests, and reports what the claim is worth.
 It never modifies your code, never calls a model, and never leaves your machine.
@@ -168,12 +172,20 @@ def collect(args) -> tuple:
 
 
 def _enforced_exit(report: TrustReport, config) -> int:
+    """The enforce-mode exit code, per the contract in the module docstring.
+
+    Each kind of doubt keeps its own code: evidence that the claim does not
+    hold (1), a pattern with nothing verified (2), a check that could not run
+    at all (3). Collapsing any two of them would be the exact conflation this
+    tool exists to catch.
+    """
     blocking = config.get("block_on") or ["NOT_VERIFIED", "VERIFICATION_FAILED"]
+    if report.verdict == Verdict.SUSPICIOUS.value:
+        return EXIT_BLOCKED
     if report.verdict in blocking:
-        return EXIT_FINDINGS if report.verdict == Verdict.VERIFICATION_FAILED.value \
-            else EXIT_BLOCKED
-    if report.verdict in (Verdict.SUSPICIOUS.value, Verdict.PARTIALLY_VERIFIED.value):
-        return EXIT_BLOCKED if report.verdict == Verdict.SUSPICIOUS.value else EXIT_OK
+        if report.verdict == Verdict.VERIFICATION_FAILED.value:
+            return EXIT_ERROR
+        return EXIT_FINDINGS
     return EXIT_OK
 
 

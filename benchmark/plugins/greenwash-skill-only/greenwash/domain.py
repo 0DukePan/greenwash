@@ -142,16 +142,6 @@ class _Model:
             out[spec.name] = value
         return out
 
-    @classmethod
-    def from_dict(cls, data: Any):
-        data = _as_dict(data)
-        known = {spec.name for spec in fields(cls)}  # type: ignore[arg-type]
-        kwargs = {k: v for k, v in data.items() if k in known}
-        try:
-            return cls(**kwargs)  # type: ignore[call-arg]
-        except TypeError:
-            return cls()  # type: ignore[call-arg]
-
 
 @dataclass
 class Claim(_Model):
@@ -258,10 +248,6 @@ class Signal(_Model):
     @property
     def path(self) -> str:
         return self.files[0] if self.files else ""
-
-    def matches(self, other: "Signal") -> bool:
-        return (self.rule_id, self.path, self.explanation) == (
-            other.rule_id, other.path, other.explanation)
 
 
 @dataclass

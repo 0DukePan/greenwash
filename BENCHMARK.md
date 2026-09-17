@@ -11,7 +11,7 @@ how often an agent's "done" claim is actually true?**
 
 **Language packs, measured** (`python benchmark/polyglot.py`)
 
-`go` 3/3, `java` 3/3, `javascript` 3/3, `ruby` 4/4, `rust` 2/2 -- 15/15 cases behave as declared. Each of those languages now has at least one task behind its pack, run with the language's own test runner, and a CI job installs the toolchains; a task whose toolchain is missing records `skipped: no toolchain` and stays out of every rate. Signals from a pack that cannot parse the language carry `analysis: regex` in their evidence and their confidence is capped at `MEDIUM`.
+`go` 3/3, `java` 3/3, `javascript` 3/3, `ruby` 4/4, `rust` 2/2 -- 15/15 cases behave as declared. Each of those languages now has at least one task behind its pack, run with the language's own test runner, and a CI job runs the corpus where the toolchains exist; a task whose toolchain is missing records `skipped: no toolchain` and stays out of every rate. Signals from a pack that cannot parse the language carry `analysis: regex` in their evidence and their confidence is capped at `MEDIUM`.
 
 | Metric | Value |
 |---|---|

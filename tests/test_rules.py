@@ -128,6 +128,39 @@ def test_the_scanner_does_not_match_its_own_pattern_table(tmp_path, monkeypatch)
     assert "known-exploit-pattern" not in _kinds(tmp_path, monkeypatch)
 
 
+def test_regex_rules_report_the_file_line_not_the_blob_ordinal(tmp_path, monkeypatch):
+    """A comment above the flagged line must not shift the reported number.
+
+    The regex path matched against comment-stripped text but measured the
+    match offset in the raw text, so every comment earlier in the hunk moved
+    the line up; and the ordinal was into the added blob, not the file. Both
+    now map through the hunk's own line numbers.
+    """
+    _repo(tmp_path)
+    _write(tmp_path, "tests/calc.test.mjs",
+           "// a first comment line\n"
+           "// a second comment line\n"
+           "import test from 'node:test';\n"
+           "\n"
+           "test.skip('add', () => {});\n")
+    monkeypatch.chdir(tmp_path)
+    signal = next(s for s in scan_mod.scan() if s.rule_id == "test-skipped")
+    assert signal.line == 5
+
+
+def test_a_hunk_at_an_offset_maps_the_line_to_the_file(tmp_path):
+    """The added line is the tenth line of the file, not the first of the blob."""
+    diff = ("diff --git a/tests/calc.test.mjs b/tests/calc.test.mjs\n"
+            "--- a/tests/calc.test.mjs\n"
+            "+++ b/tests/calc.test.mjs\n"
+            "@@ -9,1 +9,2 @@\n"
+            " const x = 1;\n"
+            "+test.skip('add', () => {});\n")
+    signals = scan_mod.scan_diff(diff, cwd=str(tmp_path), root=str(tmp_path))
+    signal = next(s for s in signals if s.rule_id == "test-skipped")
+    assert signal.line == 10
+
+
 # -- metadata -----------------------------------------------------------------
 
 def test_every_rule_documents_itself():
@@ -153,6 +186,34 @@ def test_asking_rules_never_convict():
     for rule in RULES:
         if rule.requires_review:
             assert rule.severity != "HIGH", f"{rule.id} both asks and convicts"
+
+
+# a rule that matches patterns in text says how it was produced; the README's
+# language-table sentence is written around this tag
+REGEX_PROVENANCE = [
+    ("test-skipped", "tests/calc.test.mjs", "// one\n// two\ntest.skip('add', () => {});\n"),
+    ("assertion-weakened", "tests/test_calc.py", "def test_add():\n    pass\n"),
+    ("mock-in-test", "tests/test_calc.py",
+     "from unittest.mock import MagicMock\n\n\ndef test_add():\n    assert MagicMock()\n"),
+]
+
+
+@pytest.mark.parametrize("rule,path,content", REGEX_PROVENANCE,
+                         ids=[case[0] for case in REGEX_PROVENANCE])
+def test_text_pattern_signals_carry_regex_provenance(tmp_path, monkeypatch, rule, path, content):
+    _repo(tmp_path)
+    _write(tmp_path, path, content)
+    monkeypatch.chdir(tmp_path)
+    signal = next(s for s in scan_mod.scan() if s.rule_id == rule)
+    assert signal.evidence.get("analysis") == "regex", f"{rule} hides how it matched"
+
+
+def test_a_filename_rule_does_not_claim_an_analysis_it_did_not_do(tmp_path, monkeypatch):
+    _repo(tmp_path)
+    _write(tmp_path, "conftest.py", "import pytest\n")
+    monkeypatch.chdir(tmp_path)
+    signal = next(s for s in scan_mod.scan() if s.rule_id == "conftest-changed")
+    assert "analysis" not in signal.evidence
 
 
 def test_the_readme_documents_every_rule():
@@ -215,3 +276,16 @@ def test_subdirectory_run_still_resolves_related_tests(tmp_path, monkeypatch):
     (repo / "sub" / "calc.py").write_text("def add(a, b):\n    return 5\n", encoding="utf-8")
     monkeypatch.chdir(repo / "sub")
     assert "hardcoded-return" in [s.rule_id for s in scan_mod.scan()]
+
+
+def test_a_diff_with_invalid_utf8_bytes_is_not_fatal(tmp_path, monkeypatch):
+    """git output is decoded with replacement, never raised.
+
+    A file whose bytes are not valid UTF-8 used to surface as an uncaught
+    UnicodeDecodeError out of `git diff` -- a traceback in a tool that promises
+    none. The bytes still make it into the scan, degraded rather than fatal.
+    """
+    _repo(tmp_path)
+    (tmp_path / "src" / "calc.py").write_bytes(
+        b"def add(a, b):\n    return a + b\n# \x81\x8d\x90\x9d not utf-8\n")
+    assert _kinds(tmp_path, monkeypatch) == []
