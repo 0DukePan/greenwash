@@ -137,6 +137,64 @@ class PythonModule:
                 and handler.body and all(self._is_noop(s) for s in handler.body)
                 and self._touches(handler, added_lines)]
 
+    # The spellings a handler can return that make a failure look like an
+    # ordinary empty result. Deliberately short: a returned variable or a call
+    # is not a default, and guessing at those is how a linter starts crying wolf.
+    DEFAULT_RETURN_SPELLINGS = frozenset(
+        {"None", "False", "0", "0.0", "''", "{}", "[]", "()", "set()"})
+
+    @staticmethod
+    def _spelling(node) -> str:
+        try:
+            return ast.unparse(node).strip()
+        except (AttributeError, ValueError):     # pragma: no cover - 3.10+ has unparse
+            return ""
+
+    def _default_return(self, handler) -> str:
+        """The default a handler returns, or '' when it does something else."""
+        body = [statement for statement in handler.body
+                if not isinstance(statement, ast.Pass)]
+        if len(body) != 1:
+            return ""
+        statement = body[0]
+        if isinstance(statement, (ast.Continue, ast.Break)):
+            return type(statement).__name__.lower()
+        if not isinstance(statement, ast.Return):
+            return ""
+        if statement.value is None:
+            return "None"
+        spelling = self._spelling(statement.value)
+        return spelling if spelling in self.DEFAULT_RETURN_SPELLINGS else ""
+
+    def default_returning_handlers(self, added_lines) -> list:
+        """Handlers that turn an error into a default value.
+
+        `except JSONDecodeError: return {}` is the shape an empty-handler check
+        misses -- the handler does something, and what it does is make a failure
+        look like a legitimate empty result. The enclosing function and the
+        exception are carried along so a rule can ask whether anything tests
+        that path; `ast.walk` cannot answer that, because it has no parents.
+        """
+        found = []
+        if not self.ok:
+            return found
+
+        def walk(node, function: str) -> None:
+            for child in ast.iter_child_nodes(node):
+                if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    walk(child, child.name)
+                    continue
+                if isinstance(child, ast.ExceptHandler):
+                    returned = self._default_return(child)
+                    if returned and self._touches(child, added_lines):
+                        found.append((child.lineno, function,
+                                      self._spelling(child.type) or "Exception",
+                                      returned))
+                walk(child, function)
+
+        walk(self.tree, "")
+        return found
+
     def always_equal_classes(self, added_lines) -> list:
         """`__eq__` overridden to unconditionally return True."""
         found = []

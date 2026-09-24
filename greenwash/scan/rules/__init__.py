@@ -6,8 +6,9 @@ come first, and the ones that only ask for a look come last.
 
 from __future__ import annotations
 
-from . import (assertion_weakened, conftest_changed, hardcoded_return, known_exploit,
-               mock_in_test, swallowed_exception, test_file_deleted, test_skipped)
+from . import (assertion_weakened, conftest_changed, error_path_default, hardcoded_return,
+               known_exploit, mock_in_test, swallowed_exception, test_file_deleted,
+               test_skipped)
 
 MODULES = [
     test_skipped,
@@ -15,6 +16,7 @@ MODULES = [
     assertion_weakened,
     hardcoded_return,
     swallowed_exception,
+    error_path_default,
     known_exploit,
     mock_in_test,
     conftest_changed,

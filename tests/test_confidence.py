@@ -6,10 +6,11 @@ changes a weight, a test states what changed and by how much.
 
 import pytest
 
-from greenwash.confidence import (BASE, BASELINE_PASS, HELDOUT_PASS, HIGH_SIGNAL,
-                                  LOW_COVERAGE, MEDIUM_SIGNAL, VISIBLE_PASS, level_for,
-                                  score, verdict_for)
-from greenwash.domain import Level, Outcome, Signal, TrustReport, VerificationResult, Verdict
+from greenwash.confidence import (BASE, BASELINE_PASS, FAILED_REQUIREMENT, HELDOUT_PASS,
+                                  HIGH_SIGNAL, LOW_COVERAGE, MEDIUM_SIGNAL, VISIBLE_PASS,
+                                  level_for, score, verdict_for)
+from greenwash.domain import (Level, Outcome, Requirement, Signal, TrustReport,
+                              VerificationResult, Verdict)
 
 PASS = Outcome.PASS.value
 FAIL = Outcome.FAIL.value
@@ -128,3 +129,48 @@ def test_report_build_uses_the_same_table():
     report = TrustReport.build(verification=v(outcome=PASS, heldout=FAIL))
     assert report.verdict == Verdict.NOT_VERIFIED.value
     assert report.confidence.reasons
+
+
+# -- requirements and test integrity ------------------------------------------
+
+def requirement(status, text="something", target="tests/test_x.py::test_y"):
+    return Requirement(text=text, target=target, kind="test", status=status)
+
+
+def test_a_failed_requirement_is_not_verified():
+    """The claim named it and bound evidence to it, so it is a failed check."""
+    verdict = verdict_for(v(outcome=PASS), [], [requirement(FAIL)])
+    assert verdict is Verdict.NOT_VERIFIED
+
+
+def test_an_unverifiable_requirement_is_not_a_pass():
+    for status in (Outcome.UNAVAILABLE.value, Outcome.NOT_REQUESTED.value):
+        assert verdict_for(v(outcome=PASS), [], [requirement(status)]) \
+            is Verdict.PARTIALLY_VERIFIED
+
+
+def test_requirements_that_all_pass_leave_the_verdict_alone():
+    assert verdict_for(v(outcome=PASS), [], [requirement(PASS)]) is Verdict.VERIFIED
+
+
+def test_a_failed_requirement_costs_what_a_high_signal_costs():
+    clean = score(v(outcome=PASS))
+    charged = score(v(outcome=PASS), [], [requirement(FAIL)])
+    assert clean.score - charged.score == -FAILED_REQUIREMENT
+    assert any("do not hold" in reason for reason in charged.reasons)
+
+
+def test_an_unverifiable_requirement_is_reported_but_not_charged():
+    confidence = score(v(outcome=PASS), [], [requirement(Outcome.UNAVAILABLE.value)])
+    assert confidence.score == BASE + VISIBLE_PASS
+    assert any("no evidence bound" in reason for reason in confidence.reasons)
+
+
+def test_a_weakened_test_is_suspicious_through_the_result_alone():
+    """The signal is always raised with it, but the table reads the result.
+
+    A report that prints "2 case(s) fail in the committed version" and then
+    `VERIFIED` would contradict itself on its own page.
+    """
+    result = v(outcome=PASS, integrity=FAIL)
+    assert verdict_for(result, []) is Verdict.SUSPICIOUS

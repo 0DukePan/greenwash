@@ -27,8 +27,11 @@ DEFAULTS = {
     "test_command": None,
     "heldout": None,
     "timeout": 120,
+    "test_integrity": True,
+    "test_integrity_max": 3,
     "block_on": ["NOT_VERIFIED", "VERIFICATION_FAILED"],
     "ignore_rules": [],
+    "requirements": [],
     "agent": "",
 }
 
@@ -38,6 +41,8 @@ ENV_OVERRIDES = {
     "GREENWASH_HELDOUT": ("heldout", str),
     "GREENWASH_MODE": ("mode", str),
     "GREENWASH_TIMEOUT": ("timeout", int),
+    "GREENWASH_INTEGRITY": ("test_integrity", lambda value: value == "1"),
+    "GREENWASH_INTEGRITY_MAX": ("test_integrity_max", int),
 }
 
 

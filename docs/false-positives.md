@@ -27,6 +27,7 @@ The classes above are the ones a user is most likely to meet.
 | `assertion-weakened` | Counts assertions, so it cannot tell `assert True` from `assert total == 42`. A test edited from one real assertion to one useless assertion has an unchanged count and is not flagged. `verify` is what catches that, by running the suite. |
 | `known-exploit-pattern` | `sys.exit(0)` at the end of a CLI is idiomatic. Python is parsed, so docstrings and pattern tables that merely *mention* an exploit are not flagged — that was a real bug once, and `tests/test_rules.py` pins it. |
 | `mock-in-test`, `conftest-changed` | Fire on correct code. Both are `requires_review`, so they never move the score and never decide a verdict. |
+| `error-path-default` | Newer than the survey below, so it has **not** been measured against real history yet. It is `requires_review` and only fires when no related test file mentions the function or the exception, but the count above does not include it — treat it as unmeasured rather than as a measured zero. |
 | Language packs | Python has structural (AST) checks. JavaScript/TypeScript, Go, Rust, Ruby and Java are regex-only, so they are noisier and are not backed by tasks in the benchmark. |
 
 ## Reducing noise

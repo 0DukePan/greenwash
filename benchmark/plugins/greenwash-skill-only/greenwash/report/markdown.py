@@ -17,6 +17,18 @@ def _cell(outcome: str, detail: str) -> tuple:
     return label, detail or "\u2014"
 
 
+def _integrity_note(verification) -> str:
+    if verification.integrity == Outcome.FAIL.value:
+        weakened = verification.integrity_detail.get("weakened") or []
+        return (f"{len(weakened)} case(s) fail in the committed version"
+                if weakened else "the committed suite fails where the edited one passes")
+    if verification.integrity == Outcome.PASS.value:
+        return "no weakened tests"
+    if verification.integrity == Outcome.NOT_REQUESTED.value:
+        return "not run"
+    return "unavailable"
+
+
 def render(report: TrustReport, verbose: bool = False) -> str:
     run = report.run
     verification = report.verification or VerificationResult()
@@ -31,6 +43,17 @@ def render(report: TrustReport, verbose: bool = False) -> str:
     out.append(f"**Changes:** {run.diff_summary() if run else 'none detected'}")
     out.append("")
 
+    if report.requirements:
+        out.append("### Requirements")
+        out.append("")
+        for requirement in report.requirements:
+            label = {Outcome.PASS.value: "pass",
+                     Outcome.FAIL.value: "**FAIL**"}.get(requirement.status, "unverifiable")
+            detail = requirement.target or requirement.detail.get("reason", "")
+            suffix = f" \u2014 `{detail}`" if detail else ""
+            out.append(f"- {label}: {requirement.text}{suffix}")
+        out.append("")
+
     out.append("| Check | Result | Detail |")
     out.append("|---|---|---|")
     label, detail = _cell(verification.outcome, verification.summary_line())
@@ -38,6 +61,8 @@ def render(report: TrustReport, verbose: bool = False) -> str:
     label, detail = _cell(verification.heldout,
                           verification.test_command or "held-out suite")
     out.append(f"| Held-out checks | {label} | {detail} |")
+    label, detail = _cell(verification.integrity, _integrity_note(verification))
+    out.append(f"| Test integrity | {label} | {detail} |")
     label, detail = _cell(verification.baseline, "")
     detail = (f"{len(verification.newly_failing)} newly failing"
               if verification.baseline == Outcome.FAIL.value else detail)

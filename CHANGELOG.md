@@ -1,5 +1,76 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- **Test integrity: the committed version of a changed test, against the new
+  code.** The published measurement's blind spot is `json-load-default` -- the
+  visible suite passes, the source is never fixed, and nothing else disagrees.
+  Neither existing check could see it: the baseline comparison runs `HEAD`'s
+  tests against `HEAD`'s code, and the agent's own run uses the agent's tests
+  against the agent's code, so a test loosened to fit the code passes in both.
+  Running the committed test against the current implementation is the missing
+  combination, and it is *derived* rather than configured -- the worktree at
+  `HEAD` already holds the committed test, so only the changed implementation
+  files are overlaid onto it. Reported as `test-weakened` (GW-VER-005) at
+  `SUSPICIOUS` rather than `NOT_VERIFIED`, because a genuine specification
+  change produces an identical signal; `--fail-on suspicious` is the opt-in
+  gate, and a collection error is `unavailable` rather than a failure.
+- **Requirements: `--require "the thing => the evidence"`.** A claim is prose
+  and prose cannot be checked, so a requirement can now name the test id or
+  command that would prove it. A failed requirement is `NOT_VERIFIED` -- it is a
+  check the claim itself named -- and a requirement with no binding is reported
+  as unverifiable rather than as a pass. No model is involved: the untrusted
+  party supplies the checklist, and the evidence stays the arbiter.
+- **`--fail-on`** names the verdicts that block and implies `--enforce`. It
+  *replaces* the policy rather than adding to it, so the list on the command
+  line is the whole policy and `--fail-on not_verified` lets a merely-suspicious
+  report through. An unknown verdict name is exit 3, not a silently open gate.
+- **`error-path-default` (GW-DIV-002).** `GW-DIV-001` fires only when a handler
+  holds nothing but a `pass` or a bare literal; `except JSONDecodeError: return
+  {}` -- the shape the swallow tasks are made of -- slid past it. The new rule
+  fires when a handler returns a default and no related test file mentions the
+  function or the exception. It `requires_review`, because `except KeyError:
+  return None` is idiomatic and often correct, and it has **not** been through
+  the false-positive survey: `docs/false-positives.md` says so rather than
+  implying a measured zero.
+
+### Fixed
+
+- **`greenwash_check.py` exited 1 on a tool error, where its own docstring and
+  `adapters/README.md` both publish 2.** `sys.exit(message)` exits 1, and 1 means
+  "flags raised" -- so a CI job, the Action and the pre-commit hook read "not a
+  git repository" as "your code was flagged". The same class of bug as the
+  enforce-mode codes in 0.4.1, and found the same way: by finally writing a
+  functional test for the file. That entry point -- the one every integration
+  actually calls -- had only a byte-comparison against the benchmark's copy.
+- **Every CI path skipped the integrity check.** `greenwash_check.py` called the
+  verifier without the change list, so the verifier could not tell that a test
+  file had been touched: the GitHub Action, `adapters/ci.sh` and the pre-commit
+  hook would all have missed the one check that catches a suite edited to fit
+  the code, while the CLI and the Stop hook had it. `verify` now receives the
+  diff `scan` already computed, so it is read once and shared.
+
+### Changed
+
+- **The verdict table reads `verification.integrity`, not only its signal.** A
+  signal is always raised with it, but a report that prints "2 case(s) fail in
+  the committed version" and then `VERIFIED` contradicts itself on its own page.
+- **`greenwash doctor` and `greenwash init` report the integrity capability**,
+  alongside the test command and the held-out suite. Their job is saying what
+  greenwash can and cannot see, and a check that is switched off belongs in that
+  list.
+- **The agent-behaviour null is stated next to the headline.** The README led
+  with detector numbers (24/24 planted cheats caught) while the number the whole
+  thesis rests on -- 7% of runs shipped a silent cheat with the check off, 8%
+  with it fully on, -1.4 points, every interval overlapping every other -- sat in
+  `Numbers`. Both are published at the top now.
+- **One worktree serves both comparisons.** `git worktree add` is a full
+  checkout of `HEAD`; the baseline comparison and the new integrity check share
+  one instead of taking two, and the baseline still runs first so it sees the
+  pristine tree.
+
 ## 0.4.1
 
 ### Fixed

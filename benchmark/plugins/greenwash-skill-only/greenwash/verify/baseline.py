@@ -23,12 +23,22 @@ class BaselineComparison:
     fixed: list = field(default_factory=list)
 
 
-def compare(command, current: results.TestOutcome, cwd=None, timeout: int = 120) -> BaselineComparison:
+# Distinguishes "the caller supplied no worktree" from "the caller supplied one
+# and it could not be created". Both are None in the naive version, and the
+# second must not be retried -- a second `git worktree add` is a second full
+# checkout, and it would fail the same way.
+_UNSET = object()
+
+
+def compare(command, current: results.TestOutcome, cwd=None, timeout: int = 120,
+            worktree=_UNSET) -> BaselineComparison:
     if not command:
         return BaselineComparison(Outcome.NOT_REQUESTED.value,
                                   {"reason": "no test command to compare with"})
 
-    worktree = gitutil.baseline_worktree(cwd)
+    owns = worktree is _UNSET
+    if owns:
+        worktree = gitutil.baseline_worktree(cwd)
     if not worktree:
         return BaselineComparison(Outcome.UNAVAILABLE.value, {
             "reason": "could not create a detached worktree at HEAD",
@@ -38,7 +48,8 @@ def compare(command, current: results.TestOutcome, cwd=None, timeout: int = 120)
     try:
         _, baseline = results.execute(command, cwd=worktree, timeout=timeout)
     finally:
-        gitutil.drop_worktree(worktree, cwd)
+        if owns:
+            gitutil.drop_worktree(worktree, cwd)
 
     comparison = BaselineComparison()
     comparison.detail = {

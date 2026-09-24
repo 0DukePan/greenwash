@@ -5,8 +5,8 @@ import json
 
 import pytest
 
-from greenwash.domain import (Claim, Evidence, FileChange, Outcome, Run, Signal,
-                              TrustReport, VerificationResult)
+from greenwash.domain import (Claim, Evidence, FileChange, Outcome, Requirement, Run,
+                              Signal, TrustReport, VerificationResult)
 from greenwash.report import render, terminal
 
 CAUGHT = Signal(rule_id="hardcoded-return", code="GW-TEST-004", title="Hardcoded return",
@@ -126,3 +126,68 @@ def test_signals_are_listed_with_their_code_and_location():
     assert "[hardcoded-return]" in text
     assert "GW-TEST-004" in text
     assert "src/api.py:42" in text
+
+
+REQUIREMENTS = [
+    Requirement(text="Login succeeds", kind="test",
+                target="tests/test_auth.py::test_login", status=Outcome.PASS.value),
+    Requirement(text="Token rotation", kind="prose", status=Outcome.UNAVAILABLE.value,
+                detail={"reason": "no evidence was bound to this requirement"}),
+    Requirement(text="Rate limit resets", kind="test",
+                target="tests/test_rate.py::test_reset", status=Outcome.FAIL.value,
+                detail={"command": "pytest -q tests/test_rate.py"}),
+]
+
+
+def test_requirements_are_rendered_in_every_format():
+    report = TrustReport.build(
+        verification=VerificationResult(outcome=Outcome.PASS.value, tests_run=4,
+                                        tests_passed=4),
+        requirements=REQUIREMENTS)
+
+    text = render(report)
+    assert "Requirements:" in text
+    assert "Login succeeds" in text
+    assert "tests/test_auth.py::test_login" in text
+    assert "no evidence was bound to this requirement" in text
+    # a requirement the claim itself bound and failed is a failed check
+    assert report.verdict == "NOT_VERIFIED"
+    assert "do not hold" in text
+
+    markdown_text = render(report, fmt="markdown")
+    assert "### Requirements" in markdown_text
+    assert "**FAIL**" in markdown_text
+    assert "unverifiable" in markdown_text
+
+    payload = json.loads(render(report, fmt="json"))
+    assert [item["text"] for item in payload["requirements"]] == [
+        "Login succeeds", "Token rotation", "Rate limit resets"]
+    assert payload["requirements"][0]["status"] == "pass"
+
+
+def test_the_integrity_line_reports_what_actually_ran():
+    def report_for(integrity, detail=None):
+        return TrustReport.build(verification=VerificationResult(
+            outcome=Outcome.PASS.value, tests_run=1, tests_passed=1,
+            integrity=integrity, integrity_detail=detail or {}))
+
+    failed = render(report_for(Outcome.FAIL.value,
+                               {"weakened": ["a::b", "c::d"],
+                                "test_files": ["tests/test_x.py"]}))
+    assert "Test integrity" in failed
+    assert "2 case(s) fail in the committed version" in failed
+    # and it cannot print that next to VERIFIED
+    assert "Verdict: SUSPICIOUS" in failed
+
+    passed = render(report_for(Outcome.PASS.value, {"test_files": ["tests/test_x.py"]}))
+    assert "1 changed test file(s) still pass" in passed
+
+    for outcome, shown in ((Outcome.UNAVAILABLE.value, "unavailable"),
+                           (Outcome.NOT_REQUESTED.value, "not run")):
+        line = next(line for line in render(report_for(outcome)).splitlines()
+                    if "Test integrity" in line)
+        assert shown in line
+
+    markdown_failed = render(report_for(Outcome.FAIL.value, {"weakened": ["a::b"]}),
+                             fmt="markdown")
+    assert "| Test integrity | **FAIL** |" in markdown_failed

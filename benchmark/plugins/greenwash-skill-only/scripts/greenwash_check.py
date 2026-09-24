@@ -34,8 +34,10 @@ if ROOT not in sys.path:
 
 from greenwash import gitutil  # noqa: E402
 from greenwash.domain import Outcome  # noqa: E402
-from greenwash.scan import scan_diff  # noqa: E402
+from greenwash.scan import scan_diff, summarize  # noqa: E402
 from greenwash.verify import verify as run_verification  # noqa: E402
+
+EXIT_CLEAN, EXIT_FLAGS, EXIT_TOOL_ERROR = 0, 1, 2
 
 
 @dataclass
@@ -86,16 +88,39 @@ def render_text(flags, verification=None) -> str:
     return "\n".join(lines)
 
 
-def do_scan(args) -> tuple:
+def _diff(args):
     try:
-        diff = gitutil.diff(staged=args.staged, base=args.base)
+        return gitutil.diff(staged=args.staged, base=args.base)
     except gitutil.GitError as exc:
-        sys.exit(f"greenwash: {exc}")
-    return _flags(scan_diff(diff))
+        # Exit 2, not the 1 that `sys.exit(message)` produces: 1 means "flags
+        # raised", and a CI job that reads a missing git as "your code was
+        # flagged" has been told the wrong thing. The documented contract above
+        # says 2, and this is the line that has to mean it.
+        print(f"greenwash: {exc}", file=sys.stderr)
+        sys.exit(EXIT_TOOL_ERROR)
 
 
-def do_verify(args) -> tuple:
-    outcome = run_verification(run_tests=args.run_tests, heldout=args.heldout, auto=args.auto)
+def do_scan(args, diff=None) -> tuple:
+    return _flags(scan_diff(_diff(args) if diff is None else diff))
+
+
+def do_verify(args, diff=None) -> tuple:
+    """The behavioral layer, told what the diff changed.
+
+    Without the change list the verifier cannot tell that a test file was
+    touched, and the test-integrity check -- the one that catches a suite
+    edited to fit the code -- would be skipped by every CI, Action and
+    pre-commit run while the CLI and the Stop hook still had it.
+    """
+    if diff is None:
+        try:
+            diff = gitutil.diff(staged=getattr(args, "staged", False),
+                                base=getattr(args, "base", None))
+        except gitutil.GitError:
+            diff = ""              # nothing readable to diff; still report statically
+    changes, _ = summarize(diff)
+    outcome = run_verification(run_tests=args.run_tests, heldout=args.heldout,
+                               auto=args.auto, changes=changes)
     return _verification_dict(outcome.result), _flags(outcome.signals)
 
 
@@ -141,14 +166,16 @@ def main() -> None:
 
     flags: list = []
     verification = None
+    diff = None
     if args.cmd in ("scan", "all"):
-        flags += do_scan(args)
+        diff = _diff(args)         # one diff, read once and shared with verify
+        flags += do_scan(args, diff)
     if args.cmd in ("verify", "all"):
-        verification, verify_flags = do_verify(args)
+        verification, verify_flags = do_verify(args, diff)
         flags += verify_flags
 
     print(render_json(flags, verification) if args.json else render_text(flags, verification))
-    sys.exit(1 if flags else 0)
+    sys.exit(EXIT_FLAGS if flags else EXIT_CLEAN)
 
 
 if __name__ == "__main__":

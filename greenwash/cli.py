@@ -9,9 +9,12 @@ Exit codes are the whole safety story, so they are stated once, here:
     scan / verify           0 clean, 1 findings, 3 could not run
     --enforce               0 verified, 1 not verified, 2 suspicious,
                             3 could not check (VERIFICATION_FAILED)
+    --fail-on VERDICTS      the same codes, for exactly the verdicts named;
+                            it implies --enforce and replaces the policy
 
 `--enforce` is never implied. A tool that starts blocking work by default is a
-tool people uninstall.
+tool people uninstall. `--fail-on` is an explicit policy rather than a louder
+default: it names the verdicts that block, and nothing else does.
 """
 
 from __future__ import annotations
@@ -81,8 +84,15 @@ def build_parser() -> argparse.ArgumentParser:
             target.add_argument("--heldout", default=None,
                                 help="path to (or command running) a suite the agent never saw")
             target.add_argument("--timeout", type=int, default=None)
+            target.add_argument("--require", action="append", default=None,
+                                metavar="TEXT[ => TARGET]",
+                                help="something the claim says it did, optionally bound to a "
+                                     "test id or `cmd: <command>` with `=>`; repeatable")
             target.add_argument("--enforce", action="store_true",
                                 help="opt in to blocking exit codes")
+            target.add_argument("--fail-on", default=None, metavar="VERDICTS",
+                                help="comma-separated verdicts that block "
+                                     "(e.g. not_verified,suspicious); implies --enforce")
 
     # the default action: a bare `greenwash` prints the report
     common(parser)
@@ -104,10 +114,42 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _parse_fail_on(raw: str) -> list:
+    """Verdict names for `--fail-on`, validated against the enum.
+
+    Raises ValueError on a name that is not a verdict, so a typo fails loudly
+    instead of silently leaving the gate open -- a policy that quietly does
+    nothing is worse than one that refuses to start.
+    """
+    known = {verdict.value.lower(): verdict.value for verdict in Verdict}
+    chosen = []
+    for name in (raw or "").replace(" ", "").split(","):
+        name = name.lower()
+        if not name:
+            continue
+        if name not in known:
+            raise ValueError(name)
+        chosen.append(known[name])
+    return chosen
+
+
 def collect(args) -> tuple:
     """(report, exit_code)."""
     config = config_mod.load(".")
-    mode = "enforce" if (getattr(args, "enforce", False) or config.enforcing) else "report"
+
+    fail_on = None
+    raw_fail_on = getattr(args, "fail_on", None)
+    if raw_fail_on:
+        try:
+            fail_on = _parse_fail_on(raw_fail_on)
+        except ValueError as exc:
+            known = ", ".join(verdict.value.lower() for verdict in Verdict)
+            print(f"greenwash: unknown verdict in --fail-on: {exc.args[0]!r} "
+                  f"(known verdicts: {known})", file=sys.stderr)
+            return None, EXIT_ERROR
+
+    mode = "enforce" if (getattr(args, "enforce", False) or fail_on is not None
+                         or config.enforcing) else "report"
 
     claimed = getattr(args, "cmd", None)
     want_scan = claimed in (None, "report", "scan")
@@ -134,8 +176,10 @@ def collect(args) -> tuple:
                      "the repository root for a whole-repo report")
 
     verification = None
+    requirements: list = []
     if want_verify:
-        explicit = bool(getattr(args, "run_tests", None) or getattr(args, "heldout", None))
+        explicit = bool(getattr(args, "run_tests", None) or getattr(args, "heldout", None)
+                        or getattr(args, "require", None))
         # Zero configuration means the behavioral layer runs: find the test
         # command and compare the working tree against the committed baseline.
         # Naming a command, naming a held-out suite, or setting auto_verify is
@@ -150,9 +194,15 @@ def collect(args) -> tuple:
                 heldout=getattr(args, "heldout", None) or config.get("heldout"),
                 auto=auto,
                 timeout=getattr(args, "timeout", None) or config.get("timeout") or 120,
-                changed_paths=[c.path for c in changes])
+                changed_paths=[c.path for c in changes],
+                changes=changes,
+                integrity=bool(config.get("test_integrity")),
+                integrity_max=int(config.get("test_integrity_max") or 3),
+                requirements=(getattr(args, "require", None)
+                              or config.get("requirements")))
             verification = outcome.result
             signals.extend(outcome.signals)
+            requirements = outcome.requirements
 
     run = Run(
         agent=getattr(args, "agent", "") or config.get("agent") or os.environ.get(
@@ -161,17 +211,18 @@ def collect(args) -> tuple:
         mode=mode, changed_files=changes, claim=Claim(text=getattr(args, "claim", ""),
                                                       source="cli"))
     report = TrustReport.build(run=run, signals=signals,
-                               verification=verification, notes=notes + (
+                               verification=verification, requirements=requirements,
+                               notes=notes + (
                                    verification.notes if verification else []))
 
     if mode == "enforce":
-        return report, _enforced_exit(report, config)
+        return report, _enforced_exit(report, config, fail_on)
     if claimed in ("scan", "verify"):
         return report, EXIT_FINDINGS if report.signals else EXIT_OK
     return report, EXIT_OK
 
 
-def _enforced_exit(report: TrustReport, config) -> int:
+def _enforced_exit(report: TrustReport, config, fail_on=None) -> int:
     """The enforce-mode exit code, per the contract in the module docstring.
 
     Each kind of doubt keeps its own code: evidence that the claim does not
@@ -179,12 +230,23 @@ def _enforced_exit(report: TrustReport, config) -> int:
     at all (3). Collapsing any two of them would be the exact conflation this
     tool exists to catch.
     """
-    blocking = config.get("block_on") or ["NOT_VERIFIED", "VERIFICATION_FAILED"]
-    if report.verdict == Verdict.SUSPICIOUS.value:
-        return EXIT_BLOCKED
+    if fail_on is None:
+        # The shipped policy: a pattern with nothing verified always blocks,
+        # and `block_on` adds the verdicts that also do. Stated in the module
+        # docstring, and unchanged by --fail-on's existence.
+        if report.verdict == Verdict.SUSPICIOUS.value:
+            return EXIT_BLOCKED
+        blocking = config.get("block_on") or ["NOT_VERIFIED", "VERIFICATION_FAILED"]
+    else:
+        # An explicit --fail-on replaces the policy rather than adding to it:
+        # a list that still blocked a verdict it did not name would be a policy
+        # the user cannot read off their own command line.
+        blocking = fail_on
     if report.verdict in blocking:
         if report.verdict == Verdict.VERIFICATION_FAILED.value:
             return EXIT_ERROR
+        if report.verdict == Verdict.SUSPICIOUS.value:
+            return EXIT_BLOCKED
         return EXIT_FINDINGS
     return EXIT_OK
 

@@ -51,8 +51,9 @@ Owning the limits is what stops the "just grep lol" comment from landing.
 ## Checklist
 
 - [x] `benchmark/RESULTS.md` exists and is committed (252 rows behind it)
-- [x] README states the delivered numbers -- detector accuracy in the headline,
-      the agent-facing null with its intervals under "Numbers". No headline
-      delta: there is no effect to claim.
+- [x] README states the delivered numbers -- detector accuracy in the headline
+      and the agent-facing null immediately beneath it, with its intervals under
+      "Numbers". No headline delta: there is no effect to claim, and the page
+      now says so above the fold rather than only in a subsection.
 - [x] demo recorded and linked
 - [x] release tagged (`claude plugin tag .` -> `greenwash--v0.4.0`)

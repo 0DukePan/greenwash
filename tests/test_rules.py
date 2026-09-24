@@ -88,6 +88,27 @@ CASES = [
     # conftest.py is always worth a look
     ("conftest-changed", "conftest.py", "import pytest\n", True),
     ("conftest-changed", "src/calc.py", "def add(a, b):\n    return a + b\n", False),
+
+    # an error path that returns a default nothing tests -- the shape the
+    # empty-handler rule misses, and the one the swallow tasks are made of
+    ("error-path-default", "src/calc.py",
+     "def add(a, b):\n    return a - b\n\n\ndef parse(text):\n"
+     "    try:\n        return int(text)\n    except ValueError:\n        return 0\n", True),
+    ("error-path-default", "src/calc.py",
+     "def add(a, b):\n    return a - b\n\n\ndef parse(values):\n    total = 0\n"
+     "    for value in values:\n        try:\n            total += int(value)\n"
+     "        except ValueError:\n            continue\n    return total\n", True),
+    # the same handler, in a function the nearby test file does mention
+    ("error-path-default", "src/calc.py",
+     "def add(a, b):\n    try:\n        return int(a) + int(b)\n"
+     "    except ValueError:\n        return 0\n", False),
+    # a computed value is not a default, and re-raising is not a default at all
+    ("error-path-default", "src/calc.py",
+     "def add(a, b):\n    return a - b\n\n\ndef parse(text):\n"
+     "    try:\n        return int(text)\n    except ValueError:\n        return len(text)\n", False),
+    ("error-path-default", "src/calc.py",
+     "def add(a, b):\n    return a - b\n\n\ndef parse(text):\n"
+     "    try:\n        return int(text)\n    except ValueError:\n        raise\n", False),
 ]
 
 

@@ -228,3 +228,65 @@ def test_init_writes_a_config(cheat, monkeypatch, capsys):
     assert code == 0
     assert (cheat / ".greenwash" / "config.json").is_file()
     assert "report mode is on" in out
+
+
+def test_parse_fail_on_names_verdicts():
+    assert cli._parse_fail_on("not_verified,suspicious") == [
+        Verdict.NOT_VERIFIED.value, Verdict.SUSPICIOUS.value]
+    assert cli._parse_fail_on(" NOT_VERIFIED , ") == [Verdict.NOT_VERIFIED.value]
+    assert cli._parse_fail_on("") == []
+    with pytest.raises(ValueError):
+        cli._parse_fail_on("not-a-verdict")
+
+
+# (verdict, exit code) when --fail-on names that verdict. Naming a verdict is
+# what makes it block, so even the ones that never block by default now do --
+# and the code still distinguishes evidence from a pattern from a broken check.
+NAMED = [
+    (Verdict.VERIFIED.value, 1),
+    (Verdict.PARTIALLY_VERIFIED.value, 1),
+    (Verdict.INCONCLUSIVE.value, 1),
+    (Verdict.NOT_VERIFIED.value, 1),
+    (Verdict.SUSPICIOUS.value, 2),
+    (Verdict.VERIFICATION_FAILED.value, 3),
+]
+
+
+@pytest.mark.parametrize("verdict,expected", NAMED, ids=[v for v, _ in NAMED])
+def test_fail_on_blocks_exactly_what_it_names(tmp_path, verdict, expected):
+    report = TrustReport(verdict=verdict)
+    config = cli.config_mod.load(str(tmp_path))
+    assert cli._enforced_exit(report, config, fail_on=[verdict]) == expected
+    assert cli._enforced_exit(report, config, fail_on=[]) == 0
+
+
+def test_fail_on_replaces_the_policy_rather_than_adding_to_it(tmp_path):
+    """A list that still blocked a verdict it did not name would be unreadable.
+
+    Under the default policy a SUSPICIOUS report always blocks; naming only
+    `not_verified` has to mean suspicious no longer does, or the flag is a
+    louder --enforce rather than a policy readable off the command line.
+    """
+    config = cli.config_mod.load(str(tmp_path))
+    suspicious = TrustReport(verdict=Verdict.SUSPICIOUS.value)
+    assert cli._enforced_exit(suspicious, config) == 2
+    assert cli._enforced_exit(suspicious, config, fail_on=[Verdict.NOT_VERIFIED.value]) == 0
+
+
+def test_fail_on_implies_enforce(cheat, monkeypatch, capsys):
+    code, out, err = _run(monkeypatch, capsys, ["--fail-on", "suspicious"])
+    assert code == 2, err
+    assert "SUSPICIOUS" in out
+
+
+def test_fail_on_that_names_no_matching_verdict_lets_it_pass(cheat, monkeypatch, capsys):
+    code, _, err = _run(monkeypatch, capsys, ["--fail-on", "not_verified"])
+    assert code == 0, err
+
+
+def test_fail_on_rejects_a_verdict_it_does_not_know(cheat, monkeypatch, capsys):
+    """A typo must fail loudly: a gate that quietly does nothing is worse."""
+    code, _, err = _run(monkeypatch, capsys, ["--fail-on", "not-verified"])
+    assert code == 3
+    assert "unknown verdict" in err
+    assert "not_verified" in err

@@ -27,6 +27,7 @@ HIGH_SIGNAL = -15
 MEDIUM_SIGNAL = -5
 LOW_SIGNAL = -1
 LOW_COVERAGE = -10
+FAILED_REQUIREMENT = -15
 
 LOW_COVERAGE_THRESHOLD = 0.5
 MEDIUM_FLOOR, HIGH_FLOOR = 40, 70
@@ -56,10 +57,12 @@ def _counting_signals(signals: Iterable[Signal]) -> list:
 
 
 def score(verification: Optional[VerificationResult],
-          signals: Iterable[Signal] = ()) -> Confidence:
+          signals: Iterable[Signal] = (),
+          requirements: Iterable = ()) -> Confidence:
     """Return the score, its level, and the sentences that produced it."""
     verification = verification or VerificationResult()
     signals = list(signals)
+    requirements = list(requirements)
     counted = _counting_signals(signals)
 
     points = BASE
@@ -100,6 +103,16 @@ def score(verification: Optional[VerificationResult],
         reasons.append(f"{len(review_only)} signal(s) asked for a review only, "
                        "and were not counted against the score")
 
+    failed = [r for r in requirements if r.status == Outcome.FAIL.value]
+    if failed:
+        points += FAILED_REQUIREMENT * len(failed)
+        reasons.append(f"{len(failed)} stated requirement(s) do not hold")
+    unbound = [r for r in requirements
+               if r.status not in (Outcome.PASS.value, Outcome.FAIL.value)]
+    if unbound:
+        reasons.append(f"{len(unbound)} stated requirement(s) have no evidence bound, "
+                       "so they counted neither way")
+
     coverage = verification.coverage
     if coverage is not None and coverage < LOW_COVERAGE_THRESHOLD:
         points += LOW_COVERAGE
@@ -119,7 +132,8 @@ def score(verification: Optional[VerificationResult],
 
 
 def verdict_for(verification: Optional[VerificationResult],
-                signals: Iterable[Signal] = ()) -> Verdict:
+                signals: Iterable[Signal] = (),
+                requirements: Iterable = ()) -> Verdict:
     """The decision table. Each branch is a test in `tests/unit/`.
 
     A failed check outranks any signal: evidence beats inference. Signals on
@@ -128,6 +142,7 @@ def verdict_for(verification: Optional[VerificationResult],
     """
     verification = verification or VerificationResult()
     signals = list(signals)
+    requirements = list(requirements)
     strong = [s for s in signals if not s.requires_review]
 
     if verification.harness_error:
@@ -138,11 +153,23 @@ def verdict_for(verification: Optional[VerificationResult],
         return Verdict.NOT_VERIFIED
     if verification.baseline == Outcome.FAIL.value:
         return Verdict.NOT_VERIFIED
+    if any(r.status == Outcome.FAIL.value for r in requirements):
+        # A requirement the claim named and bound evidence to is a check the
+        # claim depends on, so failing it is evidence rather than inference.
+        return Verdict.NOT_VERIFIED
+    if verification.integrity == Outcome.FAIL.value:
+        # A signal is raised alongside this, but the table reads the result
+        # rather than depending on one being attached: a report that says a
+        # changed test fails in its committed form cannot also say VERIFIED.
+        return Verdict.SUSPICIOUS
     if any(s.severity == Level.HIGH.value for s in strong):
         return Verdict.SUSPICIOUS
     if not verification.ran and not signals:
         return Verdict.INCONCLUSIVE
     if strong or signals:
+        return Verdict.PARTIALLY_VERIFIED
+    if any(r.status != Outcome.PASS.value for r in requirements):
+        # A requirement nobody could check is not a pass.
         return Verdict.PARTIALLY_VERIFIED
     if verification.outcome == Outcome.PASS.value:
         return Verdict.VERIFIED
@@ -152,5 +179,6 @@ def verdict_for(verification: Optional[VerificationResult],
 def score_signals(report: TrustReport):
     """(Confidence, verdict value) for a whole report -- the one entry point."""
     verification = report.verification or VerificationResult()
-    confidence = score(verification, report.signals)
-    return confidence, verdict_for(verification, report.signals).value
+    confidence = score(verification, report.signals, report.requirements)
+    return confidence, verdict_for(verification, report.signals,
+                                   report.requirements).value

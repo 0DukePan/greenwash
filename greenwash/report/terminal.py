@@ -160,6 +160,9 @@ def render(report: TrustReport, color=None, verbose: bool = False,
         if len(report.run.changed_files) > 20:
             lines.append(f"    ... and {len(report.run.changed_files) - 20} more")
 
+    if report.requirements:
+        lines.extend(_requirement_lines(report, mk, color))
+
     verification = report.verification
     lines.append("")
     lines.append("Verification:")
@@ -182,6 +185,8 @@ def render(report: TrustReport, color=None, verbose: bool = False,
         lines.append(_check_line("Held-out checks", held, held_detail or
                                  ("not supplied" if held == Outcome.NOT_REQUESTED.value
                                   else held), mk, color))
+        lines.append(_check_line("Test integrity", verification.integrity,
+                                 _integrity_detail(verification), mk, color))
         lines.append(_check_line("Baseline comparison",
                                  verification.baseline if verification.ran
                                  else Outcome.NOT_REQUESTED.value,
@@ -261,6 +266,23 @@ def render(report: TrustReport, color=None, verbose: bool = False,
     return encode_safe("\n".join(lines).rstrip() + "\n")
 
 
+def _requirement_lines(report, mk: dict, color: bool) -> list:
+    """The claim, decomposed into what it says it did and what backed each part."""
+    lines = ["", "Requirements:"]
+    for requirement in report.requirements:
+        if requirement.status == Outcome.PASS.value:
+            mark, paint = mk["pass"], GREEN
+        elif requirement.status == Outcome.FAIL.value:
+            mark, paint = mk["fail"], RED
+        else:
+            mark, paint = mk["warn"], YELLOW
+        lines.append(f"  {_paint(mark, paint, color)} {requirement.text}")
+        detail = requirement.target or requirement.detail.get("reason", "")
+        if detail:
+            lines.append(wrap("      " + _paint(detail, DIM, color), 6))
+    return lines
+
+
 def _baseline_detail(verification) -> str:
     if verification.baseline == Outcome.PASS.value:
         return "no regressions"
@@ -268,6 +290,22 @@ def _baseline_detail(verification) -> str:
         return f"{len(verification.newly_failing)} test(s) newly failing"
     if verification.baseline == Outcome.NOT_REQUESTED.value:
         return "not requested"
+    return "unavailable"
+
+
+def _integrity_detail(verification) -> str:
+    """What the committed tests did against the current implementation."""
+    if verification.integrity == Outcome.PASS.value:
+        checked = verification.integrity_detail.get("test_files") or []
+        count = len(checked)
+        return f"{count} changed test file(s) still pass" if count else "no weakened tests"
+    if verification.integrity == Outcome.FAIL.value:
+        weakened = verification.integrity_detail.get("weakened") or []
+        if weakened:
+            return f"{len(weakened)} case(s) fail in the committed version"
+        return "the committed suite fails where the edited one passes"
+    if verification.integrity == Outcome.NOT_REQUESTED.value:
+        return "not run"
     return "unavailable"
 
 

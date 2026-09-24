@@ -18,9 +18,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Optional
 
+from .. import gitutil
 from ..domain import Evidence, Outcome, VerificationResult
 from . import baseline as baseline_mod
-from . import discovery, heldout as heldout_mod, results, signals
+from . import discovery, heldout as heldout_mod, integrity as integrity_mod
+from . import requirements as requirements_mod
+from . import results, signals
 from .results import runner_never_started
 
 DEFAULT_TIMEOUT = 120
@@ -32,11 +35,14 @@ class Verification:
 
     result: VerificationResult = field(default_factory=VerificationResult)
     signals: list = field(default_factory=list)
+    requirements: list = field(default_factory=list)
 
 
 def verify(run_tests=None, heldout=None, auto: bool = False, timeout: int = DEFAULT_TIMEOUT,
            cwd=None, compare_baseline: Optional[bool] = None,
-           changed_paths=None) -> Verification:
+           changed_paths=None, changes=None, integrity: bool = True,
+           integrity_max: int = integrity_mod.DEFAULT_LIMIT,
+           requirements=None) -> Verification:
     result = VerificationResult()
     raised: list = []
 
@@ -122,30 +128,65 @@ def verify(run_tests=None, heldout=None, auto: bool = False, timeout: int = DEFA
     else:
         result.outcome = Outcome.NOT_REQUESTED.value
 
-    if compare_baseline and command and not result.harness_error:
-        comparison = baseline_mod.compare(command, current, cwd=cwd, timeout=timeout)
-        result.baseline = comparison.outcome
-        result.baseline_detail = comparison.detail
-        result.newly_failing = comparison.newly_failing
-        if comparison.outcome == Outcome.UNAVAILABLE.value:
-            result.notes.append("baseline verification: NOT AVAILABLE -- "
-                                + comparison.detail.get("reason", "no comparison was made"))
-        elif comparison.outcome == Outcome.FAIL.value:
-            result.regressions = comparison.newly_failing or ["(unnamed tests)"]
-            example = comparison.newly_failing[0] if comparison.newly_failing else ""
-            raised.append(signals.REGRESSION.signal(
-                "", None,
-                f"{len(result.regressions)} test(s) passed at the baseline and fail now"
-                + (f", e.g. {example}" if example else ""),
-                baseline=comparison.detail))
-            result.evidence.append(Evidence(
-                summary="tests that passed at HEAD now fail",
-                expected="a test that passes at HEAD keeps passing",
-                observed=f"{len(result.regressions)} newly failing",
-                source="baseline comparison against a detached worktree of HEAD",
-                command=command,
-                case_id=example,
-            ))
+    # One worktree serves both the baseline comparison and the integrity check:
+    # `git worktree add` is a full checkout of HEAD, so doing it twice is doing
+    # the same work twice. The baseline runs first, against the pristine tree;
+    # the integrity check then overlays the changed implementation files onto it.
+    test_changes = [c for c in (changes or []) if integrity_mod.test_side(c.path)]
+    wants_baseline = bool(compare_baseline and command and not result.harness_error)
+    wants_integrity = bool(integrity and command and test_changes and not result.harness_error)
+    worktree = gitutil.baseline_worktree(cwd) if (wants_baseline or wants_integrity) else None
+
+    try:
+        if wants_baseline:
+            comparison = baseline_mod.compare(command, current, cwd=cwd, timeout=timeout,
+                                              worktree=worktree)
+            result.baseline = comparison.outcome
+            result.baseline_detail = comparison.detail
+            result.newly_failing = comparison.newly_failing
+            if comparison.outcome == Outcome.UNAVAILABLE.value:
+                result.notes.append("baseline verification: NOT AVAILABLE -- "
+                                    + comparison.detail.get("reason", "no comparison was made"))
+            elif comparison.outcome == Outcome.FAIL.value:
+                result.regressions = comparison.newly_failing or ["(unnamed tests)"]
+                example = comparison.newly_failing[0] if comparison.newly_failing else ""
+                raised.append(signals.REGRESSION.signal(
+                    "", None,
+                    f"{len(result.regressions)} test(s) passed at the baseline and fail now"
+                    + (f", e.g. {example}" if example else ""),
+                    baseline=comparison.detail))
+                result.evidence.append(Evidence(
+                    summary="tests that passed at HEAD now fail",
+                    expected="a test that passes at HEAD keeps passing",
+                    observed=f"{len(result.newly_failing)} newly failing",
+                    source="baseline comparison against a detached worktree of HEAD",
+                    command=command,
+                    case_id=example,
+                ))
+
+        if wants_integrity:
+            check = integrity_mod.check(command, current, changes, worktree, cwd=cwd,
+                                        timeout=timeout, limit=integrity_max)
+            result.integrity = check.outcome
+            result.integrity_detail = check.detail
+            result.evidence.extend(check.evidence)
+            raised.extend(check.signals)
+            if check.detail.get("overlay_failed"):
+                result.notes.append(
+                    "test integrity: the working-tree version of "
+                    + ", ".join(check.detail["overlay_failed"])
+                    + " could not be placed in the baseline worktree, so the comparison "
+                      "used the committed version of those files as well")
+            if check.outcome == Outcome.UNAVAILABLE.value:
+                result.notes.append("test integrity: NOT AVAILABLE -- "
+                                    + check.detail.get("reason", "no comparison was made"))
+        elif not result.harness_error:
+            result.integrity_detail = {
+                "reason": "no test file changed in this diff" if not test_changes
+                          else "test integrity is turned off"}
+    finally:
+        if worktree:
+            gitutil.drop_worktree(worktree, cwd)
 
     held = heldout_mod.run_heldout(heldout, cwd=cwd, timeout=timeout)
     result.heldout = held.outcome
@@ -161,6 +202,20 @@ def verify(run_tests=None, heldout=None, auto: bool = False, timeout: int = DEFA
         result.notes.append("held-out checks: NOT AVAILABLE -- "
                             + held.detail.get("reason", "no held-out suite ran"))
 
+    listed, requirement_signals = requirements_mod.run_requirements(
+        requirements, test_command=command, cwd=cwd, timeout=timeout)
+    raised.extend(requirement_signals)
+    for requirement in listed:
+        if requirement.status == Outcome.FAIL.value:
+            result.evidence.append(Evidence(
+                summary=f"requirement not met: {requirement.text}",
+                expected=f"{requirement.text} ({requirement.target})",
+                observed=f"exit code {requirement.detail.get('exit_code')}",
+                source="requirement verification",
+                command=requirement.detail.get("command", ""),
+                case_id=(requirement.detail.get("failing") or [""])[0],
+            ))
+
     if changed_paths:
         result.coverage = discovery.changed_file_coverage(changed_paths, cwd or ".")
         if result.coverage is not None:
@@ -168,7 +223,7 @@ def verify(run_tests=None, heldout=None, auto: bool = False, timeout: int = DEFA
                 f"coverage is a proxy: {int(result.coverage * 100)}% of the changed "
                 "source files have an associated test file (not line coverage)")
 
-    return Verification(result=result, signals=raised)
+    return Verification(result=result, signals=raised, requirements=listed)
 
 
 __all__ = ["verify", "Verification", "discovery", "results", "baseline_mod", "heldout_mod"]

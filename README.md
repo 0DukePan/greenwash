@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <strong>24/24 planted cheats caught &middot; 0 false positives on 24 real fixes &middot; 243 tests</strong><br>
+  <strong>24/24 planted cheats caught &middot; 0 false positives on 24 real fixes &middot; 293 tests</strong><br>
   <sub>
     An agent under pressure to show green will skip the test, mock the unit under
     test, hardcode the expected value, or swallow the exception that would have
@@ -24,6 +24,19 @@
     greenwash reads the diff <em>and</em> runs the tests, then reports what the
     claim is worth -- with the evidence, and an honest "I could not tell" when
     there is none.
+  </sub>
+</p>
+
+<p align="center">
+  <strong>The part that did not work.</strong><br>
+  <sub>
+    Those are detector numbers. The claim underneath them is that catching a fake
+    pass <em>changes what the agent does</em> -- and over 252 measured agent runs
+    it did not: 7% of runs shipped a silent cheat with the check off, 8% with it
+    fully on. That is -1.4 points, with every arm's interval overlapping every
+    other arm's, and it is published here as the null it is rather than as a win.
+    The cheat class where greenwash has no leverage is named in
+    <a href="#numbers">Numbers</a>.
   </sub>
 </p>
 
@@ -97,6 +110,7 @@ Changes:
 Verification:
   + Visible tests         1/1  (python -m pytest -q tests/test_calc.py)
   x Held-out checks       0/1 cases
+  - Test integrity        not run
   - Baseline comparison   not requested
   - Regression checks     not run
 
@@ -141,7 +155,8 @@ Three things to notice, because they are the whole design:
   diff ──► static rules ──► Signal[]  ─┐
                                        ├──► confidence ──► verdict ──► report
   tests ──► verification ──► Result ───┘        │
-            (current, baseline, held-out)       └─ every point, explained
+            (current, baseline,                └─ every point, explained
+             integrity, held-out)
 ```
 
 **Static layer (`greenwash scan`)** reads the diff. Python is parsed with `ast`,
@@ -154,6 +169,45 @@ same command against a detached worktree of `HEAD` for a before/after
 comparison, and optionally a held-out suite the agent never saw. Exit status,
 per-test results, and output are captured, secrets redacted, output capped.
 
+### Test integrity
+
+The strongest evidence available is a suite the agent never saw, and almost
+nobody has one configured. The repository's own history supplies the next best
+thing. When a diff changes a test file, greenwash takes the **committed** version
+of that test — the worktree at `HEAD` already holds it — overlays only the
+changed *implementation* files onto it, and runs it against the new code.
+
+That is the one combination nothing else checks. The baseline comparison runs
+`HEAD`'s tests against `HEAD`'s code; the agent's own run uses the agent's tests
+against the agent's code. A test loosened to fit the code passes in both. The
+committed test failing while the edited one passes is what changing the test
+instead of the code looks like, and it is reported as `test-weakened`.
+
+It is a signal rather than a conviction, because a genuine specification change
+produces an identical result — so it makes a report `SUSPICIOUS` and asks for an
+explanation, and `--fail-on suspicious` is the opt-in gate. A collection error,
+like a refactor that renamed an import target, is recorded as `unavailable`
+rather than as a failure.
+
+### Requirements
+
+A claim is prose, and prose cannot be checked. A requirement can, when it names
+the thing that would prove it:
+
+```bash
+greenwash --claim "Implement OAuth login" \
+  --require "Login succeeds => tests/test_auth.py::test_login_succeeds" \
+  --require "Invalid credentials rejected => tests/test_auth.py::test_rejects" \
+  --require "Refresh-token rotation"
+```
+
+Each requirement bound with `=>` is run and reported as a pass or a failure. One
+with no binding is reported as **unverifiable** — never as a pass — and a
+requirement that fails produces `NOT_VERIFIED`, because it is a check the claim
+itself named. No model is involved: the agent says what it did and points at the
+evidence, and greenwash runs it. The same list can live in
+`.greenwash/config.json` as `"requirements": [...]`.
+
 **Verdict and confidence** are deterministic and explainable. A failed check
 outranks any pattern match, a signal alone can never produce `NOT_VERIFIED`,
 and a report with no behavioral evidence prints `LOW` no matter how clean the
@@ -162,7 +216,7 @@ diff looks. The full decision table and the arithmetic:
 
 ## What it catches
 
-Eight static rules, and four signals that only a run can produce:
+Nine static rules, and six signals that only a run can produce:
 
 | Code | Rule | Severity | What it means |
 |---|---|---|---|
@@ -171,12 +225,15 @@ Eight static rules, and four signals that only a run can produce:
 | `GW-TEST-003` | `assertion-weakened` | high | Assertions were removed and nothing equivalent replaced them |
 | `GW-TEST-004` | `hardcoded-return` | high | A returned literal matches a value a test asserts against -- caught through a local variable, and checked against related test files on disk |
 | `GW-DIV-001` | `swallowed-exception` | medium | An exception is caught and dropped |
+| `GW-DIV-002` | `error-path-default` | medium | An `except` block turns an error into a default value and no related test file mentions that path -- **asks**, never accuses |
 | `GW-EXP-001` | `known-exploit-pattern` | high | An unconditional `__eq__`, or `sys.exit(0)` / `os._exit(0)` / `process.exit(0)` |
 | `GW-TEST-005` | `mock-in-test` | medium | A mock appears in a test file -- **asks**, never accuses |
 | `GW-TEST-006` | `conftest-changed` | medium | `conftest.py` was touched -- **asks**, never accuses |
 | `GW-VER-001` | `tests-failed` | high | The test command exits non-zero after "done" |
 | `GW-VER-002` | `heldout-failed` | high | The visible suite passes but the held-out suite fails |
 | `GW-VER-003` | `regression` | high | A test that passed at the committed baseline fails now |
+| `GW-VER-005` | `test-weakened` | high | A test file the diff changed does not pass in its committed form against the code as it now stands |
+| `GW-VER-006` | `requirement-failed` | high | A requirement the claim bound to a test or a command does not hold |
 | `GW-VER-004` | `verification-failed` | low | The verifier could not complete -- an honest gap, not a pass |
 
 `greenwash rules` prints the same table from the source of truth.
@@ -297,6 +354,11 @@ agent never sees. `hardcode`, `skip`, `exploit` and `weaken` tasks were fixed
 in every arm. False positives: **0** on 200 genuinely-good runs across the
 three arms.
 
+That run predates the test-integrity check described above, so it measures the
+plugin as it was then. `json-load-default` is precisely the shape that check now
+catches, and the numbers have **not** been re-measured since -- this table is not
+a claim about the current code, and it is not presented as one.
+
 The raw rows are in `benchmark/results/delta.jsonl` (252 of them), the report in
 [benchmark/RESULTS.md](benchmark/RESULTS.md), and `benchmark/run.py` renders the
 table into [BENCHMARK.md](BENCHMARK.md). The next move is more tasks per cheat
@@ -347,6 +409,7 @@ greenwash --verbose                         # every change and every reason
 greenwash scan                              # static only
 greenwash verify --run-tests "pytest -q" \
                  --heldout tests/hidden     # behavioral only
+greenwash --fail-on not_verified,suspicious # a policy: only what you name blocks
 greenwash init                              # write .greenwash/config.json
 greenwash doctor                            # what greenwash can and cannot see
 ```
@@ -361,6 +424,7 @@ that records what it found, and tells you what it could not find:
   + test command -- "python" -m pytest -q  (pyproject.toml)
   ! held-out suite -- not configured
       optional, but it is the only check the agent cannot see
+  + test integrity -- a changed test file is re-run in its committed form
   + mode -- report -- reports only, never blocks
 ```
 
@@ -394,6 +458,7 @@ than a mystery. Naming `--run-tests`, naming a `heldout` suite, or writing
 | report (default) | 0 whenever it produces a report; 3 when it cannot (not a repository, or no commits) |
 | `scan` / `verify` subcommands | 0 clean, 1 findings, 3 could not run |
 | `--enforce`, or `"mode": "enforce"` | 0 verified, 1 not verified, 2 suspicious, 3 could not check (a `VERIFICATION_FAILED` verdict) |
+| `--fail-on VERDICTS` | the same codes, for exactly the verdicts named. It implies `--enforce` and **replaces** the policy rather than adding to it, so `--fail-on not_verified` lets a merely-suspicious report through. An unknown verdict name is exit 3, not a silently open gate. |
 
 The Stop hook follows the same rule: in report mode it prints the report and
 lets the agent stop; in enforce mode it exits 2 with the findings, which hands
@@ -460,7 +525,7 @@ becomes a test -- that is the policy, not a promise.
 | `npm/` | the `npx greenwash` shim, which runs the Python implementation rather than reimplementing it |
 | `skills/`, `hooks/`, `adapters/` | the skill the agent reads, the Stop hook, and the generated rule files for other hosts |
 | `scripts/` | the two compatibility entry points CI and the plugin call |
-| `tests/` | 243 tests -- domain, confidence, rules, language packs, reporting, CLI, hook contract, the inconclusive corpus, benchmark tasks |
+| `tests/` | 293 tests -- domain, confidence, rules, language packs, reporting, CLI, hook contract, test integrity, requirements, the compatibility entry point, the inconclusive corpus, benchmark tasks |
 | `benchmark/inconclusive/` | six ambiguous changes that must be asked about and never convicted |
 | `demo/` | the reproducible catch from the top of this file |
 | `assets/` | the logo, the demo GIF and the benchmark chart, plus the scripts that rebuild them |
@@ -469,7 +534,7 @@ becomes a test -- that is the policy, not a promise.
 
 ```bash
 git clone https://github.com/0DukePan/greenwash && cd greenwash
-python -m pytest -q            # 243 tests, no model or network needed
+python -m pytest -q            # 293 tests, no model or network needed
 python demo/run_demo.py        # the catch, end to end
 python benchmark/detection.py  # the accuracy numbers above
 ```

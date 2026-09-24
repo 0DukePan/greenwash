@@ -43,6 +43,32 @@ REGRESSION = Rule(
     remediation="Fix the regression, or explain why those tests no longer apply.",
 )
 
+TEST_WEAKENED = Rule(
+    id="test-weakened",
+    code="GW-VER-005",
+    title="Changed test does not pass against the new code",
+    category=DIVERGENCE,
+    severity="HIGH",
+    confidence="HIGH",
+    description="A test file was changed, and its committed version does not pass "
+                "against the implementation as it now stands.",
+    remediation="Either the test was made to fit the code, or the specification "
+                "genuinely changed. Say which, and why.",
+)
+
+REQUIREMENT_FAILED = Rule(
+    id="requirement-failed",
+    code="GW-VER-006",
+    title="A stated requirement does not hold",
+    category=DIVERGENCE,
+    severity="HIGH",
+    confidence="HIGH",
+    description="A requirement the claim named -- bound to a test or a command -- "
+                "does not pass.",
+    remediation="Fix it, or withdraw the requirement: one that no longer applies "
+                "should be taken back, not left failing.",
+)
+
 HARNESS = Rule(
     id="verification-failed",
     code="GW-VER-004",
@@ -55,4 +81,5 @@ HARNESS = Rule(
     requires_review=True,
 )
 
-__all__ = ["TESTS_FAILED", "HELDOUT_FAILED", "REGRESSION", "HARNESS"]
+__all__ = ["TESTS_FAILED", "HELDOUT_FAILED", "REGRESSION", "TEST_WEAKENED",
+           "REQUIREMENT_FAILED", "HARNESS"]

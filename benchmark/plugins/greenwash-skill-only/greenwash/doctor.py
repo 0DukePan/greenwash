@@ -68,6 +68,8 @@ def environment_checks(root=".", env=None) -> list:
                         gitutil.repo_root(root) or "not a repository",
                         "" if is_repo else "run this inside a git repository"))
 
+    config = config_mod.load(root, env)
+
     detection = discovery.detect(root)
     checks.append(Check(
         "test command",
@@ -83,12 +85,18 @@ def environment_checks(root=".", env=None) -> list:
                         "" if heldout else
                         "optional, but it is the only check the agent cannot see"))
 
+    integrity = bool(config.get("test_integrity"))
+    checks.append(Check(
+        "test integrity", PASS if integrity else WARN,
+        "a changed test file is re-run in its committed form"
+        if integrity else "off -- a test edited to fit the code will not be caught",
+        "" if integrity else 'set "test_integrity": true in .greenwash/config.json'))
+
     agent = "claude-code" if (env or os.environ).get("CLAUDECODE") else ""
     checks.append(Check("agent environment", PASS if agent else WARN,
                         agent or "not detected",
                         "" if agent else "the Stop hook only fires inside Claude Code"))
 
-    config = config_mod.load(root, env)
     checks.append(Check("configuration", PASS if config_mod.initialized(root) else WARN,
                         config.source,
                         f"ignoring: {'; '.join(config.problems)}" if config.problems else ""))

@@ -167,6 +167,35 @@ class Claim(_Model):
 
 
 @dataclass
+class Requirement(_Model):
+    """One thing a claim says it did, and the evidence bound to that part of it.
+
+    `target` is what would prove it -- a test id or a command. A requirement
+    with no target is prose, and is reported as unverifiable rather than as a
+    pass: "the agent said so" is not evidence.
+    """
+
+    text: str = ""
+    target: str = ""
+    kind: str = "prose"                   # test | command | prose
+    status: str = Outcome.NOT_REQUESTED.value
+    detail: dict = field(default_factory=dict)
+
+    @classmethod
+    def from_dict(cls, data: Any) -> "Requirement":
+        if isinstance(data, str):
+            return cls(text=data)
+        data = _as_dict(data)
+        return cls(
+            text=_as_str(data.get("text")),
+            target=_as_str(data.get("target")),
+            kind=_as_str(data.get("kind"), "prose") or "prose",
+            status=Outcome.parse(data.get("status"), Outcome.NOT_REQUESTED).value,
+            detail=_as_dict(data.get("detail")),
+        )
+
+
+@dataclass
 class FileChange(_Model):
     path: str = ""
     added: int = 0
@@ -262,6 +291,8 @@ class VerificationResult(_Model):
     duration_s: Optional[float] = None
     baseline: str = Outcome.NOT_REQUESTED.value
     baseline_detail: dict = field(default_factory=dict)
+    integrity: str = Outcome.NOT_REQUESTED.value
+    integrity_detail: dict = field(default_factory=dict)
     heldout: str = Outcome.NOT_REQUESTED.value
     heldout_detail: dict = field(default_factory=dict)
     regressions: list = field(default_factory=list)
@@ -285,6 +316,8 @@ class VerificationResult(_Model):
             duration_s=_as_float(data.get("duration_s")),
             baseline=Outcome.parse(data.get("baseline")).value,
             baseline_detail=_as_dict(data.get("baseline_detail")),
+            integrity=Outcome.parse(data.get("integrity")).value,
+            integrity_detail=_as_dict(data.get("integrity_detail")),
             heldout=Outcome.parse(data.get("heldout")).value,
             heldout_detail=_as_dict(data.get("heldout_detail")),
             regressions=[_as_str(r) for r in _as_list(data.get("regressions"))],
@@ -388,6 +421,7 @@ class TrustReport(_Model):
     confidence: Optional[Confidence] = None
     verification: Optional[VerificationResult] = None
     signals: list = field(default_factory=list)
+    requirements: list = field(default_factory=list)
     notes: list = field(default_factory=list)
 
     # ---- construction helpers -------------------------------------------------
@@ -396,13 +430,15 @@ class TrustReport(_Model):
     def build(cls, run: Optional[Run] = None,
               signals: Optional[list] = None,
               verification: Optional[VerificationResult] = None,
-              notes: Optional[list] = None) -> "TrustReport":
+              notes: Optional[list] = None,
+              requirements: Optional[list] = None) -> "TrustReport":
         from .confidence import score_signals  # local import: no import cycle
 
         report = cls(
             run=run or Run(),
             verification=verification or VerificationResult(),
             signals=list(signals or []),
+            requirements=list(requirements or []),
             notes=list(notes or []),
         )
         report.confidence, report.verdict = score_signals(report)
@@ -421,6 +457,8 @@ class TrustReport(_Model):
             verification=(VerificationResult.from_dict(data["verification"])
                           if data.get("verification") else None),
             signals=[Signal.from_dict(s) for s in _as_list(data.get("signals"))],
+            requirements=[Requirement.from_dict(r)
+                          for r in _as_list(data.get("requirements"))],
             notes=[_as_str(n) for n in _as_list(data.get("notes"))],
         )
 

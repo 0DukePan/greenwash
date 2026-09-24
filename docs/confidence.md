@@ -15,21 +15,32 @@ wins.
 | 2 | The visible test command exits non-zero | `NOT_VERIFIED` |
 | 3 | The visible suite passes and the held-out suite fails | `NOT_VERIFIED` |
 | 4 | A test that passed at the baseline fails now | `NOT_VERIFIED` |
-| 5 | A high-severity signal that is not `requires_review` | `SUSPICIOUS` |
-| 6 | Nothing ran, and no signals | `INCONCLUSIVE` |
-| 7 | Signals, but nothing contradicts the claim | `PARTIALLY_VERIFIED` |
-| 8 | The visible suite passes | `VERIFIED` |
-| 9 | Anything else | `INCONCLUSIVE` |
+| 5 | A requirement the claim bound evidence to does not hold | `NOT_VERIFIED` |
+| 6 | A high-severity signal that is not `requires_review`, or a changed test that fails in its committed form | `SUSPICIOUS` |
+| 7 | Nothing ran, and no signals | `INCONCLUSIVE` |
+| 8 | Signals, but nothing contradicts the claim | `PARTIALLY_VERIFIED` |
+| 9 | A requirement nobody could check | `PARTIALLY_VERIFIED` |
+| 10 | The visible suite passes | `VERIFIED` |
+| 11 | Anything else | `INCONCLUSIVE` |
 
 Two properties are deliberate:
 
 - **Evidence outranks inference.** A failed check beats any pattern match. A
   signal on its own can never produce `NOT_VERIFIED` — the tool does not get to
-  convict anyone on a regex.
+  convict anyone on a regex. A *requirement* is different: the claim named it
+  and bound evidence to it, so failing it is a check the claim depends on, and
+  rule 5 puts it with the other failed checks.
 - **An honest gap is not a pass.** If nothing ran, the verdict is
   `INCONCLUSIVE`, never `VERIFIED`. `VERIFICATION_FAILED` is distinct from
   `INCONCLUSIVE`: the first means we tried and broke, the second means there was
-  nothing to try.
+  nothing to try. A requirement with no evidence bound is the same kind of gap,
+  and rule 9 keeps it out of `VERIFIED`.
+
+`test-weakened` (GW-VER-005) sits at rule 6 rather than rule 4 on purpose. The
+committed version of a changed test failing against the new code is real
+evidence, but a legitimate specification change produces an identical signal —
+so it asks for an explanation instead of convicting. `--fail-on suspicious` is
+the opt-in gate for teams that want it to block.
 
 ## The score
 
@@ -40,6 +51,7 @@ held-out checks pass         +15
 baseline comparison passes   +10
 each high-severity signal    -15
 each medium-severity signal   -5
+each failed requirement      -15
 coverage below 0.5           -10
 ```
 
@@ -66,6 +78,7 @@ printed. `63.27%` implies a calibration nobody has measured.
 |---|---|
 | `mock-in-test` | Mocking is normal, correct practice. The question is whether the mock replaced the unit under test, which a regex cannot answer. |
 | `conftest-changed` | Fixture and hook edits are routine; conftest can *also* mask failures repo-wide, which is why it is worth a look either way. |
+| `error-path-default` | `except KeyError: return None` is idiomatic and frequently correct. The rule only fires when nothing nearby tests that path, which makes it worth a look rather than a mark against the work. |
 
 ## Coverage
 
