@@ -51,6 +51,18 @@ The wording comes from `demo/run_demo.py` -- the generator runs it and captures
 its stdout -- so change the demo to change the text, and the generator to change
 the pacing. It needs Pillow and a monospace font.
 
+## The shareable meme
+
+`assets/receipt-not-vibes.gif` is deliberately not evidence: it is a compact,
+original meme card that points at the distinction the terminal replay proves.
+It opens with an agent saying `"Done. Tests pass."`, then lets a receipt turn
+that confidence into `"Passed the vibe check. Not the test."` alongside this
+demo's `1 / 1` and `0 / 1` results. It never pretends to be a terminal capture.
+
+```bash
+python assets/make_receipt_meme.py
+```
+
 ## Or record the real terminal
 
 A screen recording of `run_demo.py` is even harder to argue with:

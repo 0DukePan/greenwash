@@ -43,7 +43,13 @@
 <p align="center">
   <img src="assets/demo.gif" width="720" alt="An agent 'fixes' a failing test by hardcoding the answer; greenwash reports visible tests 1/1 passing, held-out checks 0/1 failing, and a verdict of NOT_VERIFIED">
   <br>
-  <sub><code>python demo/run_demo.py --terse</code> -- everything inside the terminal is verbatim output, scrolled by the generator because the report is taller than the window. The kicker above it is the one added line.</sub>
+  <sub><code>python demo/run_demo.py --terse</code> -- everything inside the terminal is verbatim output, scrolled by the generator because the report is taller than the window. The framing, chrome, and signal treatment are presentation only.</sub>
+</p>
+
+<p align="center">
+  <img src="assets/receipt-not-vibes.gif" width="720" alt="A green test checkmark is covered by a receipt showing visible tests 1/1 and held-out tests 0/1; greenwash says a green check is not evidence.">
+  <br>
+  <sub>The shareable version: passed the vibe check, not the test. The terminal replay above is the proof.</sub>
 </p>
 
 ---
