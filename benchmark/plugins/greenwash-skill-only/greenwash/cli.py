@@ -11,10 +11,15 @@ Exit codes are the whole safety story, so they are stated once, here:
                             3 could not check (VERIFICATION_FAILED)
     --fail-on VERDICTS      the same codes, for exactly the verdicts named;
                             it implies --enforce and replaces the policy
+    --strict                the same codes again, under a longer table: a
+                            requires_review finding blocks until it is waived,
+                            and ignore_rules is refused rather than honoured
 
 `--enforce` is never implied. A tool that starts blocking work by default is a
 tool people uninstall. `--fail-on` is an explicit policy rather than a louder
-default: it names the verdicts that block, and nothing else does.
+default: it names the verdicts that block, and nothing else does. `--strict`
+is that same idea taken one step further -- see `greenwash/strict.py` for the
+table -- and it is what the Claude and Codex plugins run.
 """
 
 from __future__ import annotations
@@ -24,6 +29,7 @@ import os
 import sys
 
 from . import __version__, config as config_mod, gitutil, scan as scan_mod
+from . import strict as strict_mod, waivers as waivers_mod
 from .doctor import doctor, initialize
 from .domain import Claim, Run, TrustReport, Verdict
 from .report import render, terminal
@@ -34,6 +40,7 @@ EXIT_OK, EXIT_FINDINGS, EXIT_BLOCKED, EXIT_ERROR = 0, 1, 2, 3
 EPILOG = """exit codes:
   report mode (default) 0 whenever a report is produced, 3 when it cannot be
   --enforce returns 1 (not verified), 2 (suspicious), 3 (could not check)
+  --strict  does the same, and also blocks on a finding nobody has waived
 
 greenwash reads your diff, runs your tests, and reports what the claim is worth.
 It never modifies your code, never calls a model, and never leaves your machine.
@@ -90,6 +97,9 @@ def build_parser() -> argparse.ArgumentParser:
                                      "test id or `cmd: <command>` with `=>`; repeatable")
             target.add_argument("--enforce", action="store_true",
                                 help="opt in to blocking exit codes")
+            target.add_argument("--strict", action="store_true",
+                                help="block on an unexplained finding, honouring only "
+                                     "a current waiver; refuses ignore_rules")
             target.add_argument("--fail-on", default=None, metavar="VERDICTS",
                                 help="comma-separated verdicts that block "
                                      "(e.g. not_verified,suspicious); implies --enforce")
@@ -111,6 +121,22 @@ def build_parser() -> argparse.ArgumentParser:
 
     rules = sub.add_parser("rules", help="list the rules and what they mean")
     rules.add_argument("--json", action="store_true")
+
+    waive = sub.add_parser(
+        "waive", help="record an auditable waiver for one finding, in .greenwash/waivers.json")
+    waive.add_argument("--rule", required=True,
+                       help="rule id or code, e.g. GW-DIV-002 or error-path-default")
+    waive.add_argument("--path", required=True, help="the file the finding is in")
+    waive.add_argument("--reason", required=True,
+                       help="why this finding is acceptable -- a sentence, not a word")
+    waive.add_argument("--reviewer", required=True, help="who decided, e.g. @maintainer")
+    waive.add_argument("--expires", required=True, metavar="YYYY-MM-DD",
+                       help=f"when the decision lapses (max {waivers_mod.MAX_LIFETIME_DAYS} days)")
+    waive.add_argument("--fingerprint", default="",
+                       help="the finding's sha256 -- taken from the current diff when omitted")
+    waive.add_argument("--id", dest="waiver_id", default="", help="override the generated id")
+    waive.add_argument("--base", default=None, help="diff against this ref")
+    waive.add_argument("--staged", action="store_true", help="consider staged changes only")
     return parser
 
 
@@ -148,8 +174,13 @@ def collect(args) -> tuple:
                   f"(known verdicts: {known})", file=sys.stderr)
             return None, EXIT_ERROR
 
-    mode = "enforce" if (getattr(args, "enforce", False) or fail_on is not None
-                         or config.enforcing) else "report"
+    strict = bool(getattr(args, "strict", False)) or config.strict
+    if strict:
+        mode = config_mod.STRICT_MODE
+    elif (getattr(args, "enforce", False) or fail_on is not None or config.enforcing):
+        mode = "enforce"
+    else:
+        mode = "report"
 
     claimed = getattr(args, "cmd", None)
     want_scan = claimed in (None, "report", "scan")
@@ -166,7 +197,13 @@ def collect(args) -> tuple:
     changes, _ = scan_mod.summarize(diff)
     notes = list(config.problems)
     ignored = set(config.get("ignore_rules") or [])
-    if ignored:
+    if ignored and strict:
+        # Strict mode refuses to honour a suppression: the findings stay in the
+        # report, so the team can see exactly what the ignore_rules were
+        # hiding, and the gate blocks on the refusal. Waiving the individual
+        # finding is the supported path.
+        pass
+    elif ignored:
         suppressed = sorted({s.rule_id for s in signals if s.rule_id in ignored})
         signals = [s for s in signals if s.rule_id not in ignored]
         if suppressed:
@@ -204,17 +241,29 @@ def collect(args) -> tuple:
             signals.extend(outcome.signals)
             requirements = outcome.requirements
 
+    ledger = waivers_mod.load(".")
+    notes.extend(ledger.problems)
+    application = waivers_mod.apply(signals, ledger)
+
     run = Run(
         agent=getattr(args, "agent", "") or config.get("agent") or os.environ.get(
             "GREENWASH_AGENT", ""),
         branch=gitutil.branch(), head_commit=gitutil.head_commit(),
         mode=mode, changed_files=changes, claim=Claim(text=getattr(args, "claim", ""),
                                                       source="cli"))
-    report = TrustReport.build(run=run, signals=signals,
+    report = TrustReport.build(run=run, signals=application.signals,
                                verification=verification, requirements=requirements,
                                notes=notes + (
-                                   verification.notes if verification else []))
+                                   verification.notes if verification else []),
+                               waivers=[row.to_dict() for row in application.rows])
 
+    if mode == config_mod.STRICT_MODE:
+        if fail_on is not None:
+            report.notes.append("--fail-on was given alongside a strict profile and is "
+                                "ignored: strict blocks on its own policy")
+        gate = strict_mod.decide(report, application.rows, ignored, ledger.problems)
+        report.gate = gate.to_dict()
+        return report, gate.exit_code
     if mode == "enforce":
         return report, _enforced_exit(report, config, fail_on)
     if claimed in ("scan", "verify"):
@@ -248,6 +297,76 @@ def _enforced_exit(report: TrustReport, config, fail_on=None) -> int:
         if report.verdict == Verdict.SUSPICIOUS.value:
             return EXIT_BLOCKED
         return EXIT_FINDINGS
+    return EXIT_OK
+
+
+def _run_waive(args) -> int:
+    """`greenwash waive`: write one decision into .greenwash/waivers.json.
+
+    The fingerprint is the part worth getting right, so it is not typed by
+    hand when it does not have to be: the finding is located in the current
+    diff by rule and path, and the digest comes from the signal itself. When
+    more than one finding matches, the command refuses and lists the
+    candidates rather than guessing which one the reviewer meant -- a waiver
+    against the wrong line is exactly the thing this is supposed to prevent.
+    """
+    import json
+
+    rules = waivers_mod.known_rules()
+    rule = str(args.rule or "").strip()
+    if rule not in rules:
+        known = ", ".join(sorted({r for r in rules if r.startswith("GW-")}))
+        print(f"greenwash: unknown rule {rule!r} (known codes: {known})", file=sys.stderr)
+        return EXIT_ERROR
+    code = rules[rule]
+    path = str(args.path or "").strip().replace("\\", "/")
+
+    digest = str(args.fingerprint or "").strip()
+    if not digest:
+        try:
+            diff = gitutil.diff(staged=getattr(args, "staged", False),
+                                base=getattr(args, "base", None))
+        except gitutil.GitError as exc:
+            print(f"greenwash: {exc}", file=sys.stderr)
+            return EXIT_ERROR
+        candidates = [s for s in scan_mod.scan_diff(diff)
+                      if s.code == code and s.path == path]
+        if not candidates:
+            print(f"greenwash: no {rule} finding for {path} in the current diff -- "
+                  "run `greenwash scan --verbose` to see what is there.", file=sys.stderr)
+            return EXIT_ERROR
+        if len(candidates) > 1:
+            print(f"greenwash: {len(candidates)} {rule} findings in {path}; "
+                  "pass --fingerprint with the one you mean:", file=sys.stderr)
+            for signal in candidates:
+                where = f":{signal.line}" if signal.line else ""
+                print(f"  {waivers_mod.fingerprint(signal)}  {path}{where}",
+                      file=sys.stderr)
+            return EXIT_ERROR
+        digest = waivers_mod.fingerprint(candidates[0])
+
+    ledger = waivers_mod.load(".")
+    waiver = waivers_mod.Waiver(
+        id=str(args.waiver_id or "").strip() or waivers_mod.next_id(ledger.waivers),
+        rule_id=code,
+        signal_fingerprint=digest,
+        path=path,
+        reason=str(args.reason or "").strip(),
+        reviewer=str(args.reviewer or "").strip(),
+        created_at=waivers_mod.iso(waivers_mod.utc_now()),
+        expires_at=str(args.expires or "").strip(),
+    )
+    problems = waiver.problems(rules)
+    if problems:
+        for problem in problems:
+            print(f"greenwash: {problem}", file=sys.stderr)
+        return EXIT_ERROR
+
+    written = waivers_mod.save(
+        waivers_mod.Ledger(path=ledger.path, waivers=[*ledger.waivers, waiver]), ".")
+    _emit(json.dumps(waiver.to_dict(), indent=2) + "\n")
+    _emit(f"wrote {written}\n")
+    _emit("this finding is now reported as waived with review, never as clean.\n")
     return EXIT_OK
 
 
@@ -297,6 +416,9 @@ def main(argv=None) -> int:
                 _emit(f"{rule['code']:<12}{rule['id']:<24}{rule['severity']:<10}"
                       f"{review:<9}{rule['description']}\n")
         return EXIT_OK
+
+    if command == "waive":
+        return _run_waive(args)
 
     report, code = collect(args)
     if report is None:

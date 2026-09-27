@@ -107,6 +107,40 @@ def _path_for(case_id: str, test_paths=()) -> str:
     return matches[0] if len(matches) == 1 else ""
 
 
+def _suite_test_paths(root: str) -> list:
+    """Every test file in the committed suite, relative to its worktree.
+
+    Integrity runs the whole suite because a changed fixture can affect tests
+    far beyond the file it lives in. The finding itself, though, must still be
+    attributable to a *changed* test file. This inventory lets us distinguish
+    an unchanged metadata guard from an unparseable case id; the latter stays
+    conservative and is still treated as a possible weakened test.
+    """
+    paths = []
+    for base, _, names in os.walk(root):
+        for name in names:
+            full = os.path.join(base, name)
+            rel = os.path.relpath(full, root).replace("\\", "/")
+            if is_test_file(rel):
+                paths.append(rel)
+    return paths
+
+
+def _affected_by_changed_conftest(test_path: str, conftests: list) -> bool:
+    """Whether a changed shared pytest fixture can affect ``test_path``.
+
+    A conftest applies to its directory and children. If it changed, a failure
+    from an otherwise unchanged test in that scope is still attributable to the
+    test-side diff -- treating it as unrelated would make a fixture-based test
+    weakening invisible to integrity verification.
+    """
+    for conftest in conftests:
+        directory = os.path.dirname(conftest).replace("\\", "/").rstrip("/")
+        if not directory or test_path.startswith(directory + "/"):
+            return True
+    return False
+
+
 def _failed(detail: dict, weakened: list, command: str, limit: int) -> IntegrityOutcome:
     outcome = IntegrityOutcome(Outcome.FAIL.value, dict(detail))
     outcome.detail["weakened"] = weakened[:limit]
@@ -194,6 +228,24 @@ def check(command, current: results.TestOutcome, changes, worktree, cwd=None,
             Outcome.PASS.value if committed.ok else Outcome.UNAVAILABLE.value, detail)
 
     weakened = sorted(set(committed.failing_ids) - set(current.failing_ids))
+    suite_paths = _suite_test_paths(worktree)
+    changed_paths = detail["test_files"]
+    changed_conftests = [path for path in changed_paths
+                          if os.path.basename(path) == "conftest.py"]
+    unrelated = []
+    attributable = []
+    for case in weakened:
+        resolved = _path_for(case, suite_paths)
+        if (resolved and resolved not in changed_paths
+                and not _affected_by_changed_conftest(resolved, changed_conftests)):
+            unrelated.append(case)
+        else:
+            # An unknown case id remains suspicious: without a reliable path,
+            # we cannot prove that it came from an unchanged test.
+            attributable.append(case)
+    if unrelated:
+        detail["unrelated_committed_failures"] = unrelated
+    weakened = attributable
     if weakened:
         return _failed(detail, weakened, command, limit)
     return IntegrityOutcome(Outcome.PASS.value, detail)

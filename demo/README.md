@@ -4,6 +4,28 @@
 the hardcode, and the behavioral layer shows the held-out suite failing. It
 needs no model and no API key.
 
+## The two strict-gate demos
+
+`demo/strict_claude.py` and `demo/strict_codex.py` are the same idea for the
+gates. Each one builds a throwaway repository, drives the **real** hook the way
+the host does -- payload on stdin, exit code read -- and prints captured output:
+
+| Demo | What it records |
+|---|---|
+| `demo/strict_claude.py` | the turn blocked (`exit 2`), a waiver written, the same turn allowed with the waiver named, and the same diff in report mode for comparison |
+| `demo/strict_codex.py` | the same gate with strict as the plugin default (no env var, no config): block, waive, the real fix, and the could-not-check path |
+
+```bash
+python demo/strict_claude.py --terse
+python demo/strict_codex.py --terse
+```
+
+`--terse` drops the narration and prints only commands and their output, which
+is what the launch post and the docs quote. Two things worth knowing if you
+change them: the demo prints the *hook's* output verbatim (a summary written
+here would be the exact thing this project complains about), and the expiry date
+is computed from today, so a run is always inside the 30-day waiver ceiling.
+
 ## The README's GIF
 
 `assets/demo.gif` is the loop at the top of the README. It is neither

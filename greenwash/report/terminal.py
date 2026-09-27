@@ -218,7 +218,20 @@ def render(report: TrustReport, color=None, verbose: bool = False,
             lines.append(f"  {_paint(mk['warn'], YELLOW, color)} {tag}{code}"
                          f"{'  ' + location if location else ''}")
             lines.append(wrap("      " + signal.explanation, 6))
-            if signal.requires_review:
+            if signal.waiver:
+                # hoisted for the same reason as the review note below: an
+                # expression that spills across lines with nested quotes is a
+                # syntax error before Python 3.12 (PEP 701)
+                entry = signal.waiver
+                expires = str(entry.get("expires_at") or "")[:10]
+                if entry.get("status") == "active":
+                    note = _paint(f"waived with review -- {entry.get('id', '')} by "
+                                  f"{entry.get('reviewer', '')}, expires {expires}", DIM, color)
+                else:
+                    note = _paint(f"waiver expired {expires} -- unwaived again",
+                                  YELLOW, color)
+                lines.append("      " + note)
+            elif signal.requires_review:
                 # hoisted: an f-string whose expression spills across lines with
                 # nested quotes is a syntax error before Python 3.12 (PEP 701)
                 note = _paint("requires review -- not a failure by itself", DIM, color)
@@ -226,6 +239,24 @@ def render(report: TrustReport, color=None, verbose: bool = False,
             elif verbose and signal.remediation:
                 lines.append(wrap("      " + _paint("to resolve: ", DIM, color)
                                   + signal.remediation, 6))
+
+    if report.waivers:
+        lines.append("")
+        lines.append("Waivers:")
+        for row in report.waivers:
+            status = str(row.get("status") or "")
+            mark = mk["pass"] if status == "active" else mk["warn"]
+            lines.append(f"  {_paint(mark, GREEN if status == 'active' else YELLOW, color)} "
+                         f"{row.get('id', '')} [{row.get('rule_id', '')}] "
+                         f"{row.get('path', '')} -- {status}")
+            reason = str(row.get("reason") or "")
+            note = str(row.get("note") or "")
+            # the active rows' note is the status line already; only a lapsed or
+            # unmatched waiver has something extra to say
+            tail = "" if status == "active" else f" ({note})"
+            lines.append(wrap(f"      {row.get('reviewer', '')}, "
+                              f"expires {str(row.get('expires_at') or '')[:10]}: "
+                              f"{reason}{tail}", 6))
 
     evidence = (verification.evidence if verification else [])
     if evidence:
@@ -244,6 +275,21 @@ def render(report: TrustReport, color=None, verbose: bool = False,
                 lines.append(wrap("  Summary:  " + item.summary, 2))
 
     lines.append("")
+    if report.gate:
+        gate_blocked = report.gate.get("state") == "blocked"
+        mark = mk["fail"] if gate_blocked else mk["pass"]
+        paint = RED if gate_blocked else GREEN
+        reasons = report.gate.get("reasons") or []
+        headline = reasons[0] if (gate_blocked and reasons) else \
+            str(report.gate.get("summary") or report.gate.get("state") or "")
+        lines.append(f"Strict gate: "
+                     f"{_paint(mark + ' ' + str(report.gate.get('state', '')), paint, color)}"
+                     f" -- {headline}")
+        for extra in reasons[1:]:
+            lines.append(wrap("  " + extra, 2))
+        for notice in report.gate.get("notices") or []:
+            lines.append(wrap("  " + _paint(notice, DIM, color), 2))
+
     # built in pieces rather than one multi-line f-string: a nested quote inside
     # an expression that spans lines is a syntax error before Python 3.12
     verdict = _paint(report.verdict, BOLD + VERDICT_COLOR.get(report.verdict, ""), color)

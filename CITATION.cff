@@ -1,0 +1,34 @@
+cff-version: 1.2.0
+message: "If you use this software, cite it as below. If you cite a measured number, cite the artifact that produced it -- the numbers have intervals, and the intervals are the point."
+title: "greenwash"
+abstract: "A trust report on what a coding agent's \"done\" claim is actually worth. It reads a diff with static rules and runs the project's own tests -- including a baseline differential, a changed test's committed form, and an optional held-out suite -- then prints a verdict, a confidence, and the evidence behind both. Local, deterministic, dependency-free, no model and no network."
+authors:
+  - name: "greenwash contributors"
+repository-code: "https://github.com/0DukePan/greenwash"
+url: "https://github.com/0DukePan/greenwash"
+license: MIT
+version: "0.4.2"
+date-released: "2026-09-25"
+keywords:
+  - coding-agents
+  - reward-hacking
+  - verification
+  - software-testing
+  - static-analysis
+  - agent-evaluation
+preferred-citation:
+  type: software
+  title: "greenwash"
+  authors:
+    - name: "greenwash contributors"
+  version: "0.4.2"
+  year: 2026
+  url: "https://github.com/0DukePan/greenwash"
+references:
+  - type: conference-paper
+    title: "Anthropic reward-hacking research (motivation for the detector; not evidence that this tool works)"
+    url: "https://arxiv.org/abs/2511.18397"
+  - type: software
+    title: "greenwash benchmark artifacts: detector accuracy, the agent-behaviour null, and the false-positive survey"
+    url: "https://github.com/0DukePan/greenwash/blob/main/docs/benchmark-summary.md"
+    notes: "This is the artifact to cite for any measured number. It carries the confidence intervals and the limits."

@@ -15,9 +15,10 @@ sys.path.insert(0, str(HERE.parent))
 
 from greenwash import gitutil  # noqa: E402
 from greenwash import verify as verify_mod  # noqa: E402
-from greenwash.domain import Outcome, TrustReport, Verdict  # noqa: E402
+from greenwash.domain import FileChange, Outcome, TrustReport, Verdict  # noqa: E402
 from greenwash.scan import summarize  # noqa: E402
 from greenwash.verify import integrity  # noqa: E402
+from greenwash.verify.runner import RunResult  # noqa: E402
 
 
 def _git(tmp, *args):
@@ -120,6 +121,52 @@ def test_added_test_file_is_not_weakening(tmp_path, monkeypatch):
     outcome = verify_mod.verify(auto=True, run_tests=PYTEST, changes=_changes())
     assert outcome.result.integrity == Outcome.PASS.value
     assert not any(signal.rule_id == "test-weakened" for signal in outcome.signals)
+
+
+def test_an_unchanged_metadata_guard_is_not_mistaken_for_a_weakened_test(tmp_path, monkeypatch):
+    """Only a changed test failing in its committed form is integrity evidence.
+
+    A committed README-count guard sees the current README but the committed
+    test tree, so adding a legitimate test makes its old count fail. That is
+    metadata drift, not an agent loosening a test to fit broken code.
+    """
+    _init(tmp_path, {
+        "README.md": "tests: 1\n",
+        "src/calc.py": "def add(a, b):\n    return a + b\n",
+        "tests/test_metadata.py": (
+            "from pathlib import Path\n\n\n"
+            "def test_documented_count_matches_suite():\n"
+            "    count = len(list(Path('tests').glob('test_*.py')))\n"
+            "    assert Path('README.md').read_text() == f'tests: {count}\\n'\n"
+        ),
+    })
+    (tmp_path / "README.md").write_text("tests: 2\n", encoding="utf-8")
+    (tmp_path / "tests" / "test_extra.py").write_text(
+        "def test_new_coverage():\n    assert True\n", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+
+    outcome = verify_mod.verify(auto=True, run_tests=PYTEST, changes=_changes())
+    assert outcome.result.integrity == Outcome.PASS.value
+    assert outcome.result.integrity_detail["unrelated_committed_failures"] == [
+        "tests.test_metadata::test_documented_count_matches_suite"]
+    assert not any(signal.rule_id == "test-weakened" for signal in outcome.signals)
+
+
+def test_changed_conftest_keeps_affected_failures_attributable(tmp_path, monkeypatch):
+    """A changed shared fixture can weaken an otherwise unchanged test."""
+    (tmp_path / "test_calc.py").write_text("def test_valid(): pass\n", encoding="utf-8")
+    current = integrity.results.TestOutcome(returncode=0, total=1, passed=1, failed=0,
+                                            counts_available=True)
+    committed = integrity.results.TestOutcome(
+        returncode=1, total=1, passed=0, failed=1, counts_available=True,
+        failing_ids=["test_calc::test_valid"])
+    monkeypatch.setattr(integrity.results, "execute",
+                        lambda *args, **kwargs: (RunResult(returncode=1), committed))
+
+    outcome = integrity.check(
+        "pytest", current, [FileChange(path="conftest.py")], str(tmp_path), cwd=str(tmp_path))
+    assert outcome.outcome == Outcome.FAIL.value
+    assert outcome.detail["weakened"] == ["test_calc::test_valid"]
 
 
 def test_source_only_change_does_not_run_the_check(tmp_path, monkeypatch):

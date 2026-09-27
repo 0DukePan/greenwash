@@ -103,6 +103,23 @@ jobs:
           test "$status" = "1" || { echo "::error::npx greenwash scan exited $status, expected 1"; exit 1; }
           echo "npm shim: exit codes forwarded unchanged"
 
+  strict-hooks:
+    name: "strict gates (claude + codex: clean, block, waive, error)"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install pytest
+        run: python -m pip install --upgrade pip pytest
+      - name: Both stop gates, all four flows
+        run: python -m pytest -q tests/test_strict.py tests/test_codex_plugin.py -v
+      - name: The two recorded demos still run
+        run: |
+          python demo/strict_claude.py --terse
+          python demo/strict_codex.py --terse
+
   integrations:
     name: integrations (action + pre-commit)
     runs-on: ubuntu-latest

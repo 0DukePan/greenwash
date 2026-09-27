@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from . import config as config_mod
-from . import gitutil
+from . import gitutil, waivers
 from .verify import discovery
 
 PASS, WARN, FAIL = "pass", "warn", "fail"
@@ -101,9 +101,21 @@ def environment_checks(root=".", env=None) -> list:
                         config.source,
                         f"ignoring: {'; '.join(config.problems)}" if config.problems else ""))
 
-    checks.append(Check("mode", PASS, f"{config.mode} -- "
-                        + ("the agent's stop is blocked on the verdicts in block_on"
-                           if config.enforcing else "reports only, never blocks")))
+    mode_detail = {
+        config_mod.REPORT_MODE: "reports only, never blocks",
+        config_mod.ENFORCE_MODE: "the agent's stop is blocked on the verdicts in block_on",
+        config_mod.STRICT_MODE: ("blocks on an unexplained finding too: a requires_review "
+                                 "finding and a lapsed or stale waiver block until they are "
+                                 "decided, and ignore_rules is refused rather than honoured"),
+    }.get(config.mode, "reports only, never blocks")
+    checks.append(Check("mode", PASS, f"{config.mode} -- {mode_detail}"))
+
+    ledger = waivers.load(root)
+    if ledger.problems:
+        checks.append(Check("waiver ledger", FAIL, ledger.path, "; ".join(ledger.problems)))
+    elif ledger.waivers:
+        checks.append(Check("waiver ledger", PASS, ledger.path,
+                            f"{len(ledger.waivers)} entry(ies)"))
 
     writable = os.access(root_path, os.W_OK)
     checks.append(Check("writable working tree", PASS if writable else FAIL,

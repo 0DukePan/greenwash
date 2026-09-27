@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question, or "why did it say that?"
+    url: https://github.com/0DukePan/greenwash/discussions
+    about: Integration help, show and tell, and how to read a report live in Discussions.
+  - name: Security report
+    url: https://github.com/0DukePan/greenwash/security/advisories/new
+    about: Privately report a vulnerability. Please do not open a public issue for these.
+  - name: What did not work
+    url: https://github.com/0DukePan/greenwash/blob/main/docs/what-did-not-work.md
+    about: The known limits, the miss classes, and what is still open -- worth reading before filing a bypass report.

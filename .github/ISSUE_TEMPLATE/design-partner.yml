@@ -1,0 +1,64 @@
+name: Design partner application
+description: Run greenwash on a repository you maintain, and tell us where it is wrong.
+title: "[design partner] "
+labels: ["design-partner"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A pilot is a real repository, a real agent, and an honest report --
+        including "it did not find anything in two weeks", which is a result.
+        Setup help and interpretation help are offered. **An endorsement is
+        never requested**, and you choose whether the report is public,
+        anonymised, or private.
+  - type: input
+    id: repo
+    attributes:
+      label: Repository
+      description: "A link, or 'private' -- a private pilot is a first-class outcome"
+    validations:
+      required: true
+  - type: input
+    id: stack
+    attributes:
+      label: Language and test framework
+      description: "e.g. Python + pytest, TypeScript + vitest"
+    validations:
+      required: true
+  - type: input
+    id: agents
+    attributes:
+      label: Which agents, on roughly how much work
+      description: "e.g. Claude Code on most PRs, Codex for tests"
+    validations:
+      required: true
+  - type: dropdown
+    id: integration
+    attributes:
+      label: Which integration do you want to start with?
+      options:
+        - "CLI report before merging (no gate)"
+        - "Pre-commit"
+        - "GitHub Action in CI"
+        - "Claude Code plugin"
+        - "Codex plugin (strict)"
+        - "Not sure yet -- recommend one"
+    validations:
+      required: true
+  - type: dropdown
+    id: attribution
+    attributes:
+      label: If this produces a write-up, how may it be attributed?
+      options:
+        - "Publicly, with the repository named"
+        - "Publicly, anonymised ('a Python service of ~40k lines')"
+        - "Privately -- for your information only"
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What would make this worth your time?
+      description: "The question you actually want answered about your agent's 'done' claims."
+    validations:
+      required: true

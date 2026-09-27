@@ -1,0 +1,40 @@
+# Reviewers, by path. This is a firewall around the two things that must not be
+# edited quietly, and a reviewer request on the surfaces that claim something.
+#
+# Nothing here is an enforcement boundary on its own -- CODEOWNERS needs branch
+# protection to mean anything, and an agent that edits a hook locally is stopped
+# by neither. See SECURITY.md for the trust boundary, stated plainly.
+
+# Default: the maintainer reviews everything.
+*                       @0DukePan
+
+# The waiver ledger. A waiver is a decision with a name on it; a change to the
+# policy or to a recorded decision should not be self-approved.
+/.greenwash/             @0DukePan
+/docs/WAIVER_POLICY.md   @0DukePan
+
+# The claims. Every published number lives in these, and each one is quoted
+# somewhere public, so they get reviewed on purpose rather than incidentally.
+/README.md               @0DukePan
+/BENCHMARK.md            @0DukePan
+/docs/benchmark-summary.md  @0DukePan
+/docs/what-did-not-work.md  @0DukePan
+/docs/RESULT_INTERPRETATION.md  @0DukePan
+/docs/EVALUATION_PROTOCOL.md    @0DukePan
+/benchmark/results/      @0DukePan
+
+# The product surface, so a rule cannot be weakened without a second look.
+/greenwash/scan/rules/   @0DukePan
+/greenwash/confidence.py @0DukePan
+/greenwash/strict.py     @0DukePan
+/greenwash/waivers.py    @0DukePan
+
+# Both stop gates: a change here changes what an agent is allowed to do.
+/scripts/greenwash_hook.py       @0DukePan
+/codex/hooks/                    @0DukePan
+/codex/scripts/greenwash_hook.py @0DukePan
+
+# The release mechanics.
+/.github/workflows/      @0DukePan
+/pyproject.toml          @0DukePan
+/action.yml              @0DukePan

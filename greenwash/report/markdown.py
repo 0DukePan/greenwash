@@ -79,7 +79,15 @@ def render(report: TrustReport, verbose: bool = False) -> str:
             location = f" \u2014 `{where}`" if where else ""
             out.append(f"- **{title}**{code}{location}")
             out.append(f"  - {signal.explanation}")
-            if signal.requires_review:
+            if signal.waiver:
+                entry = signal.waiver
+                expires = str(entry.get("expires_at") or "")[:10]
+                if entry.get("status") == "active":
+                    out.append(f"  - waived with review: {entry.get('id', '')} by "
+                               f"{entry.get('reviewer', '')}, expires {expires}")
+                else:
+                    out.append(f"  - **waiver expired {expires}** \u2014 unwaived again")
+            elif signal.requires_review:
                 out.append("  - requires review \u2014 not a failure by itself")
             elif verbose and signal.remediation:
                 out.append(f"  - to resolve: {signal.remediation}")
@@ -88,6 +96,23 @@ def render(report: TrustReport, verbose: bool = False) -> str:
         out.append("")
         out.append("None detected.")
     out.append("")
+
+    if report.waivers:
+        out.append("### Waivers")
+        out.append("")
+        out.append("| Waiver | Rule | Path | Status |")
+        out.append("|---|---|---|---|")
+        for row in report.waivers:
+            out.append(f"| `{row.get('id', '')}` | `{row.get('rule_id', '')}` | "
+                       f"`{row.get('path', '')}` | {row.get('status', '')} |")
+        for row in report.waivers:
+            reason = row.get("reason") or ""
+            note = row.get("note") or ""
+            out.append("")
+            out.append(f"> **{row.get('id', '')}** \u2014 {reason}  ")
+            out.append(f"> {row.get('reviewer', '')}, "
+                       f"expires {str(row.get('expires_at') or '')[:10]}. {note}")
+        out.append("")
 
     if verification.evidence:
         out.append("### Evidence")
@@ -106,6 +131,19 @@ def render(report: TrustReport, verbose: bool = False) -> str:
         out.append("")
         for note in verification.notes:
             out.append(f"- {note}")
+        out.append("")
+
+    if report.gate:
+        state = report.gate.get("state", "")
+        reasons = report.gate.get("reasons") or []
+        headline = reasons[0] if reasons else state
+        out.append(f"### Strict gate: {state}")
+        out.append("")
+        out.append(f"- {headline}")
+        for extra in reasons[1:]:
+            out.append(f"- {extra}")
+        for notice in report.gate.get("notices") or []:
+            out.append(f"- {notice}")
         out.append("")
 
     out.append(f"**Verdict: {report.verdict}**")

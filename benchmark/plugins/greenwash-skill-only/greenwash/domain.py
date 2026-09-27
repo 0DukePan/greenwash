@@ -255,6 +255,7 @@ class Signal(_Model):
     evidence: dict = field(default_factory=dict)
     remediation: str = ""
     requires_review: bool = False
+    waiver: dict = field(default_factory=dict)   # the decision covering this finding
 
     @classmethod
     def from_dict(cls, data: Any) -> "Signal":
@@ -272,11 +273,21 @@ class Signal(_Model):
             evidence=_as_dict(data.get("evidence")),
             remediation=_as_str(data.get("remediation")),
             requires_review=bool(data.get("requires_review", False)),
+            waiver=_as_dict(data.get("waiver")),
         )
 
     @property
     def path(self) -> str:
         return self.files[0] if self.files else ""
+
+    @property
+    def waived(self) -> bool:
+        """Whether an active waiver covers this finding.
+
+        A lapsed waiver is still annotated on the signal so a report can show
+        it, and is deliberately not a yes here.
+        """
+        return bool(self.waiver) and self.waiver.get("status") == "active"
 
 
 @dataclass
@@ -423,6 +434,8 @@ class TrustReport(_Model):
     signals: list = field(default_factory=list)
     requirements: list = field(default_factory=list)
     notes: list = field(default_factory=list)
+    waivers: list = field(default_factory=list)   # the ledger, as this diff fates it
+    gate: dict = field(default_factory=dict)      # the strict decision, when strict ran
 
     # ---- construction helpers -------------------------------------------------
 
@@ -431,7 +444,9 @@ class TrustReport(_Model):
               signals: Optional[list] = None,
               verification: Optional[VerificationResult] = None,
               notes: Optional[list] = None,
-              requirements: Optional[list] = None) -> "TrustReport":
+              requirements: Optional[list] = None,
+              waivers: Optional[list] = None,
+              gate: Optional[dict] = None) -> "TrustReport":
         from .confidence import score_signals  # local import: no import cycle
 
         report = cls(
@@ -440,6 +455,8 @@ class TrustReport(_Model):
             signals=list(signals or []),
             requirements=list(requirements or []),
             notes=list(notes or []),
+            waivers=list(waivers or []),
+            gate=dict(gate or {}),
         )
         report.confidence, report.verdict = score_signals(report)
         return report
@@ -460,6 +477,8 @@ class TrustReport(_Model):
             requirements=[Requirement.from_dict(r)
                           for r in _as_list(data.get("requirements"))],
             notes=[_as_str(n) for n in _as_list(data.get("notes"))],
+            waivers=list(_as_list(data.get("waivers"))),
+            gate=_as_dict(data.get("gate")),
         )
 
     # ---- queries -------------------------------------------------------------

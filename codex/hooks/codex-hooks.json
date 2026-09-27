@@ -1,0 +1,17 @@
+{
+  "description": "The strict profile: greenwash runs the project's tests and reads the diff when the agent tries to stop, and blocks unless every finding is either fixed or waived with a reason, a reviewer and an expiry. Strict is the default here -- a plugin is opted into once, by someone who wants a gate.",
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${PLUGIN_ROOT}/scripts/greenwash_hook.py\" || python \"${PLUGIN_ROOT}/scripts/greenwash_hook.py\"",
+            "command_windows": "py -3 \"%PLUGIN_ROOT%\\scripts\\greenwash_hook.py\" || python \"%PLUGIN_ROOT%\\scripts\\greenwash_hook.py\"",
+            "timeout": 300
+          }
+        ]
+      }
+    ]
+  }
+}

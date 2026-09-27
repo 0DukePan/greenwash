@@ -1,0 +1,67 @@
+name: Bypass or false negative
+description: greenwash missed a fake pass it should have caught.
+title: "[bypass] "
+labels: ["false-negative"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This is the report that makes the detector better. A miss that
+        generalises becomes a rule; a miss that does not becomes a documented
+        limit. Both are useful -- the second one is what stops someone trusting a
+        clean report too far.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: "Output of `greenwash --version`"
+    validations:
+      required: true
+  - type: textarea
+    id: shape
+    attributes:
+      label: What the shortcut did
+      description: "The shape of the cheat, in a sentence or two -- e.g. 'swallowed the parse error and returned an empty object, and the visible suite still passed'"
+    validations:
+      required: true
+  - type: textarea
+    id: diff
+    attributes:
+      label: The diff
+      description: "The change greenwash did not flag. A minimal reproduction is worth more than a large one."
+      render: diff
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected it to say
+    validations:
+      required: false
+  - type: textarea
+    id: output
+    attributes:
+      label: What it said instead
+      description: "The report, verbatim"
+      render: text
+    validations:
+      required: true
+  - type: dropdown
+    id: layer
+    attributes:
+      label: Which layer should have caught it?
+      options:
+        - "Static (the diff rules)"
+        - "Behavioral (the tests it ran)"
+        - "Both"
+        - "Neither -- it may not be catchable"
+    validations:
+      required: true
+  - type: checkboxes
+    id: suites
+    attributes:
+      label: What was configured?
+      options:
+        - label: "A held-out suite (`heldout` in `.greenwash/config.json`)"
+        - label: "A pinned test command"
+        - label: "Neither -- zero-config discovery"

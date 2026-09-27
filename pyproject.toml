@@ -3,8 +3,8 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "greenwash"
-version = "0.4.1"
+name = "greenwash-cli"
+version = "0.4.2"
 description = "A trust report on what a coding agent's \"done\" claim is actually worth: static diff analysis plus behavioral verification, offline and local."
 readme = "README.md"
 requires-python = ">=3.10"

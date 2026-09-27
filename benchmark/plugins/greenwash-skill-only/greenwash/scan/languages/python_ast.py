@@ -38,7 +38,12 @@ class PythonModule:
     def __init__(self, path: str):
         self.path = path
         try:
-            with open(path, "r", encoding="utf-8", errors="ignore") as handle:
+            # utf-8-sig, not utf-8: a byte-order mark is legal Python source and
+            # common on Windows (PowerShell, Visual Studio and Notepad all write
+            # one), and `ast.parse` rejects a U+FEFF left at the start of the
+            # string. Read as plain utf-8, every AST rule went silent on such a
+            # file -- no signal, no note, and a report that read as clean.
+            with open(path, "r", encoding="utf-8-sig", errors="ignore") as handle:
                 self.tree: Optional[ast.AST] = ast.parse(handle.read())
         except (OSError, SyntaxError, ValueError):
             self.tree = None

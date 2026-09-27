@@ -1,0 +1,58 @@
+name: False positive
+description: greenwash flagged code that is correct.
+title: "[false positive] "
+labels: ["false-positive"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Every confirmed false positive becomes a regression test -- that is the
+        policy, not a promise. Two things make this fast to act on: the exact
+        flag, and one sentence on why the flagged line is correct.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: "Output of `greenwash --version`"
+    validations:
+      required: true
+  - type: input
+    id: rule
+    attributes:
+      label: The rule that fired
+      description: "The rule id or code from the report, e.g. `hardcoded-return` or `GW-TEST-004`"
+    validations:
+      required: true
+  - type: input
+    id: commit
+    attributes:
+      label: The commit
+      description: "A commit hash, a public repository, or a minimal reproduction"
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: The report
+      description: "Paste the relevant output verbatim -- the flag and its evidence block, not a summary"
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why the code is correct
+      description: "One or two sentences. If a nearby test covers this path, name it."
+    validations:
+      required: true
+  - type: dropdown
+    id: class
+    attributes:
+      label: Is this one of the documented classes?
+      description: "docs/false-positives.md lists the known ones -- a constant a test asserts, a successful exit(0), a general exception handler."
+      options:
+        - "Yes -- one of the documented classes"
+        - "No -- a new class"
+        - "Not sure"
+    validations:
+      required: true

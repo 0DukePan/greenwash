@@ -4,6 +4,25 @@ Draft material for posting greenwash publicly. The one rule: **lead with the
 measured number, not the idea.** If the number isn't in yet, don't post the
 "it works" framing — post the "here's how to measure it" framing instead.
 
+The kit these notes grew into lives in `docs/`:
+
+| Piece | Where |
+|---|---|
+| The sequence, the scorecard and the standing assessment | [launch-sequence.md](./launch-sequence.md) |
+| One page of measured numbers, with the raw artifacts linked | [benchmark-summary.md](./benchmark-summary.md) |
+| What did not work, with the numbers attached | [what-did-not-work.md](./what-did-not-work.md) |
+| Report mode versus strict mode | [report-vs-strict.md](./report-vs-strict.md) |
+| Adoption guide | [ADOPTION_GUIDE.md](./ADOPTION_GUIDE.md) |
+| Waiver policy | [WAIVER_POLICY.md](./WAIVER_POLICY.md) |
+| Preregistration for the independent study | [EVALUATION_PROTOCOL.md](./EVALUATION_PROTOCOL.md) |
+| How to read the numbers (and what they do not license) | [RESULT_INTERPRETATION.md](./RESULT_INTERPRETATION.md) |
+| GitHub release post | [releases/0.4.2.md](./releases/0.4.2.md) |
+| Long-form technical post | [launch-post.md](./launch-post.md) |
+| Social preview, verified | [social-preview.md](./social-preview.md) |
+
+Two demos back the posts with captured output rather than transcription:
+`python demo/strict_claude.py --terse` and `python demo/strict_codex.py --terse`.
+
 ## The 3-sentence pitch
 
 1. Coding agents under pressure to show green sometimes make the suite green

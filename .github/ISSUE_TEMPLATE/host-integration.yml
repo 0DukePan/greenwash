@@ -1,0 +1,68 @@
+name: Host integration problem
+description: The Claude or Codex hook does not start, or does not gate.
+title: "[host] "
+labels: ["integration"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A hook that cannot start is a hook that does not exist. Both hooks are
+        tested through the platform shell on Windows and Linux, so a failure
+        here is a bug -- paste the command you ran and what came back.
+  - type: dropdown
+    id: host
+    attributes:
+      label: Host
+      options:
+        - "Claude Code"
+        - "Codex"
+        - "Claude Code plugin + Codex plugin"
+        - "Other (describe below)"
+    validations:
+      required: true
+  - type: input
+    id: host_version
+    attributes:
+      label: Host version
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      description: "e.g. Ubuntu 24.04, Windows 11, macOS 15"
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: The command that failed, run by hand
+      description: "For Codex: `python codex/scripts/greenwash_hook.py < payload.json`. For Claude: the command from hooks/hooks.json with the plugin root substituted."
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Its output and exit code
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: "`greenwash doctor` output"
+      render: text
+    validations:
+      required: false
+  - type: dropdown
+    id: strict
+    attributes:
+      label: Which profile?
+      options:
+        - "Report mode (nothing blocks)"
+        - "Enforce"
+        - "Strict"
+        - "Not sure"
+    validations:
+      required: true

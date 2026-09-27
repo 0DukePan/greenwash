@@ -55,8 +55,8 @@ if (!found) {
       `  Python is here (${bare.command}) but the greenwash package is not installed for it.`,
       "  Install it with one of:",
       "",
-      "    pipx install greenwash",
-      "    pip install greenwash",
+      "    pipx install greenwash-cli",
+      "    pip install greenwash-cli",
       ""
     );
   } else {
@@ -64,7 +64,7 @@ if (!found) {
       "  No Python interpreter was found on PATH.",
       "  Install Python 3.10 or newer, then:",
       "",
-      "    pipx install greenwash",
+      "    pipx install greenwash-cli",
       ""
     );
   }

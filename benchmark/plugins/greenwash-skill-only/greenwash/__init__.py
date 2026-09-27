@@ -14,6 +14,6 @@ Nothing here requires a network call, an account, or a model. The tool reads
 your diff and runs your tests; that is the whole mechanism.
 """
 
-__version__ = "0.4.1"
+__version__ = "0.4.2"
 
 __all__ = ["__version__"]

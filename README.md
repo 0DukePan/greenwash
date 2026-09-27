@@ -12,11 +12,11 @@
   <img src="https://img.shields.io/badge/python-3.10%2B-blue.svg" alt="python 3.10+">
   <img src="https://img.shields.io/badge/dependencies-none-brightgreen.svg" alt="no dependencies">
   <img src="https://img.shields.io/badge/schema-v1-informational.svg" alt="schema v1">
-  <a href="https://github.com/0DukePan/greenwash/releases"><img src="https://img.shields.io/badge/version-0.4.1-orange.svg" alt="0.4.1"></a>
+  <a href="https://github.com/0DukePan/greenwash/releases"><img src="https://img.shields.io/badge/version-0.4.2-orange.svg" alt="0.4.2"></a>
 </p>
 
 <p align="center">
-  <strong>24/24 planted cheats caught &middot; 0 false positives on 24 real fixes &middot; 293 tests</strong><br>
+  <strong>24/24 planted cheats caught &middot; 0 false positives on 24 real fixes &middot; 407 tests</strong><br>
   <sub>
     An agent under pressure to show green will skip the test, mock the unit under
     test, hardcode the expected value, or swallow the exception that would have
@@ -63,17 +63,20 @@ modifies your code, never calls a model, and never leaves your machine.
 ## Sixty-second start
 
 ```bash
-pipx install greenwash        # or: pip install greenwash
+pipx install greenwash-cli    # or: pip install greenwash-cli
 cd your-repo
 greenwash                     # a trust report for the current diff
 ```
 
-No configuration, no account, no network. If your project has tests, greenwash
-finds them. In a JavaScript project, or if you simply prefer `npx`:
+The distribution is **`greenwash-cli`**; the import name and the command are both
+`greenwash`. There is an unrelated project on PyPI called `greenwash`, so the
+distribution is named differently on purpose -- `pip install greenwash` installs
+someone else's package, and this README will not tell you to.
 
-```bash
-npx greenwash                 # a shim that runs the Python implementation
-```
+No configuration, no account, no network. If your project has tests, greenwash
+finds them. In a JavaScript project, the shim in [`npm/`](npm/) runs the same
+Python implementation -- read [`npm/README.md`](npm/README.md) first: the npm
+name is not published yet, so `npx greenwash` is not a supported install today.
 
 To watch it before you install anything:
 
@@ -88,6 +91,9 @@ the agent tries to finish its turn:
 /plugin marketplace add 0DukePan/greenwash
 /plugin install greenwash@greenwash
 ```
+
+Codex gets the same checker with strict enforcement on by default -- see
+[`codex/`](codex/README.md).
 
 ## What the report looks like
 
@@ -386,16 +392,17 @@ One trap worth knowing: a gateway with a zero balance rejects every model with
 
 | Where | How |
 |---|---|
-| Any repo (CLI) | `pipx install greenwash` |
-| Node projects, or `npx` | `npx greenwash` -- a shim over the Python package, see [`npm/`](npm/) |
+| Any repo (CLI) | `pipx install greenwash-cli` |
+| Node projects | the shim in [`npm/`](npm/) -- **not published under this name yet**, see [npm/README.md](npm/README.md) |
 | **Claude Code** (the unskippable hook) | `/plugin marketplace add 0DukePan/greenwash` then `/plugin install greenwash@greenwash` |
-| GitHub Actions | `uses: 0DukePan/greenwash@v0.4.1` (see [`action.yml`](action.yml)) |
+| **Codex** (strict by default) | the plugin in [`codex/`](codex/README.md) -- same checker, same policy, strict gate |
+| GitHub Actions | `uses: 0DukePan/greenwash@v0.4.2` (see [`action.yml`](action.yml)) |
 | pre-commit | add `0DukePan/greenwash` to `repos` (see [`.pre-commit-hooks.yaml`](.pre-commit-hooks.yaml)) |
-| Codex / Cursor / Copilot / Cline / Windsurf / Gemini | the rules file generated for that host in [`adapters/`](adapters/) |
+| Cursor / Copilot / Cline / Windsurf / Gemini / Amp | the rules file generated for that host in [`adapters/`](adapters/) -- rules only, no hook |
 
-The Claude Code plugin is the only integration with an unskippable hook --
-everywhere else greenwash is a command you or your CI choose to run, and
-`adapters/README.md` says so plainly.
+The Claude Code and Codex plugins are the only integrations with an
+unskippable hook -- everywhere else greenwash is a command you or your CI choose
+to run, and `adapters/README.md` says so plainly.
 
 ## Use it
 
@@ -470,6 +477,71 @@ no single name exists on both a stock Linux and a stock Windows.
 A tool that blocks by default is a tool people uninstall -- and a checker that a
 developer cannot turn off is one they will route around.
 
+### Strict mode, and waivers
+
+`--strict` is the profile the Claude and Codex plugins run. It keeps every
+enforce-mode rule and adds two of its own:
+
+| Condition | report | `--enforce` | `--strict` |
+|---|---|---|---|
+| `VERIFIED` | report | allow | allow |
+| `INCONCLUSIVE` | report | allow | allow, with an explicit "nothing was verified" note |
+| `PARTIALLY_VERIFIED`, no review findings | report | allow | allow |
+| `NOT_VERIFIED` | report | block (1) | block (1) -- evidence is not waivable |
+| `VERIFICATION_FAILED` | report | block (3) | block (3) |
+| `SUSPICIOUS` | report | block (2) | block (2) unless every finding is waived |
+| a `requires_review` finding | report | allow | block (2) until it is waived |
+| an expired, stale or malformed waiver | report | allow | block (2, or 3 when unreadable) |
+| `ignore_rules` in the config | report, named | honoured, named | **refused** (3), and the findings stay visible |
+
+The last row is the one that matters. `ignore_rules` switches a rule off for
+every finding it will ever produce -- no reviewer, no expiry, no trace. Strict
+mode will not run past it, and it prints the findings the suppression was
+hiding, because "I decided this is fine" and "I stopped looking" are different
+statements and only the first one is auditable.
+
+When a finding is real and correct -- a deliberately skipped unrelated test, a
+constant that is the right answer -- the resolution is a waiver, not a
+suppression:
+
+```bash
+greenwash waive \
+  --rule GW-DIV-002 \
+  --path src/loader.py \
+  --reason "the fallback is the documented behaviour and an integration test covers it" \
+  --reviewer "@maintainer" \
+  --expires 2026-10-26
+```
+
+That writes one entry to `.greenwash/waivers.json`, committed with the code:
+
+```json
+{
+  "version": 1,
+  "waivers": [
+    {
+      "id": "GW-2026-0001",
+      "rule_id": "GW-DIV-002",
+      "signal_fingerprint": "sha256:1f0c…",
+      "path": "src/loader.py",
+      "reason": "the fallback is the documented behaviour and an integration test covers it",
+      "reviewer": "@maintainer",
+      "created_at": "2026-09-26T00:00:00+00:00",
+      "expires_at": "2026-10-26T00:00:00+00:00"
+    }
+  ]
+}
+```
+
+The `--fingerprint` is optional: without it the command finds the finding in the
+current diff and takes the digest from the signal, and refuses (listing the
+candidates) when the path holds more than one. The digest covers the rule, the
+path, the line and the evidence, so **editing the line it was written for
+invalidates it** -- the report then says `stale` and strict mode blocks again.
+Thirty days is the maximum lifetime; an expired waiver is listed as expired and
+stops permitting anything, and a waiver is reported as **waived with review**,
+never as clean. The full policy is in [docs/WAIVER_POLICY.md](docs/WAIVER_POLICY.md).
+
 ## FAQ
 
 **Does it block my agent?**
@@ -498,12 +570,14 @@ means what it used to: whether a test was weakened, skipped, or satisfied by a
 constant, and whether a held-out suite agrees.
 
 **npx?**
-`npx greenwash` works: it runs the Python implementation through the shim in
-[`npm/`](npm/), forwarding argv and the exit code untouched. It is a wrapper,
-not a second implementation -- two codebases that can disagree about whether
-your tests pass is the failure this tool exists to catch. It still needs Python
-3.10+ with the `greenwash` package installed, and it says exactly that if either
-is missing.
+Not yet, and deliberately not advertised: the npm package name is not owned by
+this project, so `npx greenwash` installs someone else's package today. The shim
+in [`npm/`](npm/) is real -- it runs the Python implementation, forwarding argv
+and the exit code untouched, and it is a wrapper rather than a second
+implementation, because two codebases that can disagree about whether your tests
+pass is the failure this tool exists to catch. Read
+[npm/README.md](npm/README.md) before you use it; until the name is verified,
+install the Python distribution instead.
 
 **How do I report a false positive?**
 Open an issue with the commit and the flag. Every confirmed false positive
@@ -518,26 +592,33 @@ becomes a test -- that is the policy, not a promise.
 | `greenwash/verify/` | the behavioral engine: discovery, runner, baseline worktree, held-out suites, redaction |
 | `greenwash/report/` | terminal, JSON and markdown renderers |
 | `greenwash/confidence.py` | the scoring and the verdict table |
+| `greenwash/strict.py`, `waivers.py` | the strict gate and the auditable decisions it honours |
 | `greenwash/cli.py`, `doctor.py`, `config.py` | the entry point, diagnostics, `.greenwash/config.json` |
-| `docs/` | [confidence.md](docs/confidence.md), [false-positives.md](docs/false-positives.md) |
+| `codex/` | the Codex plugin: strict by default, manifests in both spellings, its own hook |
+| `docs/` | [confidence.md](docs/confidence.md), [false-positives.md](docs/false-positives.md), [ADOPTION_GUIDE.md](docs/ADOPTION_GUIDE.md), [WAIVER_POLICY.md](docs/WAIVER_POLICY.md), the benchmark one-pager and the launch material |
 | `benchmark/` | 28 tasks across six languages (each with its own runner), harness, detection measurement, FP survey, Wilson-CI report |
 | `benchmark/polyglot/` | 15 static cases across Go, Rust, Ruby, Java and JavaScript -- one negative per language |
 | `npm/` | the `npx greenwash` shim, which runs the Python implementation rather than reimplementing it |
-| `skills/`, `hooks/`, `adapters/` | the skill the agent reads, the Stop hook, and the generated rule files for other hosts |
+| `skills/`, `hooks/`, `adapters/` | the skill the agent reads, the Claude Stop hook, and the generated rule files for other hosts |
 | `scripts/` | the two compatibility entry points CI and the plugin call |
-| `tests/` | 293 tests -- domain, confidence, rules, language packs, reporting, CLI, hook contract, test integrity, requirements, the compatibility entry point, the inconclusive corpus, benchmark tasks |
+| `tests/` | the suite -- domain, confidence, rules, language packs, reporting, CLI, waivers, strict mode, both hook contracts, test integrity, requirements, the compatibility entry point, the inconclusive corpus, benchmark tasks |
 | `benchmark/inconclusive/` | six ambiguous changes that must be asked about and never convicted |
-| `demo/` | the reproducible catch from the top of this file |
-| `assets/` | the logo, the demo GIF and the benchmark chart, plus the scripts that rebuild them |
+| `demo/` | the reproducible catch from the top of this file, plus the strict-mode demos for both hosts |
+| `assets/` | the logo, the demo GIF, the social preview and the benchmark chart, plus the scripts that rebuild them |
 
 ## Development
 
 ```bash
 git clone https://github.com/0DukePan/greenwash && cd greenwash
-python -m pytest -q            # 293 tests, no model or network needed
+python -m pytest -q            # the suite, no model or network needed
 python demo/run_demo.py        # the catch, end to end
+python demo/strict_claude.py   # the strict gate, through the real hook
 python benchmark/detection.py  # the accuracy numbers above
 ```
+
+Before opening a pull request, read [docs/ADOPTION_GUIDE.md](docs/ADOPTION_GUIDE.md)
+for how the pieces fit and [CONTRIBUTING.md](CONTRIBUTING.md) for what a change
+is expected to arrive with.
 
 Adding a language to the scanner is data, not code: edit
 `greenwash/scan/languages/packs.py` and add its extension to `LANGUAGE_BY_EXT`.

@@ -1,0 +1,56 @@
+name: Evaluation task proposal
+description: Offer to author sealed benchmark tasks for the evaluation corpus.
+title: "[evaluation task] "
+labels: ["evaluation", "governance"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The corpus behind the published benchmark was written by the same people
+        who wrote the detector, which is exactly why it cannot establish
+        detector quality. The fix is an independently authored, independently
+        reviewed corpus in a separate repository, with non-core maintainers
+        holding merge authority -- see
+        [docs/EVALUATION_PROTOCOL.md](https://github.com/0DukePan/greenwash/blob/main/docs/EVALUATION_PROTOCOL.md).
+
+        This form is an offer to author, not a task submission. Sealed tasks are
+        not posted publicly before the study runs.
+  - type: dropdown
+    id: language
+    attributes:
+      label: Which languages could you author for?
+      multiple: true
+      options:
+        - "Python"
+        - "JavaScript / TypeScript"
+        - "Go"
+        - "Rust"
+        - "Ruby"
+        - "Java"
+    validations:
+      required: true
+  - type: input
+    id: count
+    attributes:
+      label: Roughly how many tasks?
+      description: "The cap is 15 per author, so the corpus cannot be dominated by one person"
+    validations:
+      required: true
+  - type: textarea
+    id: background
+    attributes:
+      label: What have you worked on that makes these tasks realistic?
+      description: "The task contract requires a genuine specification and a realistic shortcut, not a synthetic one-line trap -- experience with real code is the qualification."
+    validations:
+      required: true
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: The ground rules
+      options:
+        - label: "I am not a core maintainer of greenwash"
+        - label: "I understand the tasks are sealed until the study is published, then released in full"
+        - label: "I accept that core maintainers may build the runner, but must not author or label tasks or adjudicate disputes"
+        - label: "I will license my tasks for release with the corpus"
+    validations:
+      required: true

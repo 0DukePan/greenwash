@@ -20,6 +20,8 @@ CONFIG_DIR = ".greenwash"
 CONFIG_FILE = "config.json"
 REPORT_MODE = "report"
 ENFORCE_MODE = "enforce"
+STRICT_MODE = "strict"
+MODES = (REPORT_MODE, ENFORCE_MODE, STRICT_MODE)
 
 DEFAULTS = {
     "mode": REPORT_MODE,
@@ -62,11 +64,24 @@ class Config:
 
     @property
     def mode(self) -> str:
-        return ENFORCE_MODE if self.get("mode") == ENFORCE_MODE else REPORT_MODE
+        """report | enforce | strict. Anything unrecognised reads as report.
+
+        An unknown mode must not be able to unlock a gate, and must not be able
+        to lock one either: the default is the mode that reports and lets the
+        developer decide, and a typo lands there with a note in the report
+        rather than silently choosing a policy nobody wrote.
+        """
+        value = str(self.get("mode") or REPORT_MODE).strip().lower()
+        return value if value in MODES else REPORT_MODE
+
+    @property
+    def strict(self) -> bool:
+        return self.mode == STRICT_MODE
 
     @property
     def enforcing(self) -> bool:
-        return self.mode == ENFORCE_MODE
+        """Whether the run gates at all -- strict is a gate, with a longer table."""
+        return self.mode in (ENFORCE_MODE, STRICT_MODE)
 
 
 def config_path(root=".") -> Path:

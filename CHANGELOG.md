@@ -1,8 +1,103 @@
 # Changelog
 
-## Unreleased
+## 0.4.2
 
 ### Added
+
+- **Strict mode: `--strict`, or `"mode": "strict"`.** Report mode's findings
+  plus one question -- *who signed off?* A `requires_review` finding (a new
+  mock, a touched `conftest.py`, an error path returning a default) blocks the
+  turn until it is decided, and `ignore_rules` is **refused** rather than
+  honoured: the run exits 3, and the findings the suppression was hiding stay
+  in the report, because "I decided this is fine" and "I stopped looking" are
+  different statements and only the first one is auditable. Two lines are drawn
+  deliberately -- evidence is not waivable (a held-out suite that failed is an
+  observation, not an opinion), and a broken check is not a pass. This is the
+  profile the Claude and Codex plugins run. `greenwash/strict.py`.
+- **Waivers: `greenwash waive`, and `.greenwash/waivers.json`.** The resolution
+  for a finding that is correct is a decision with a name, a reason and an
+  expiry on it -- not a rule switched off. A waiver binds one rule, one path and
+  one fingerprint; the fingerprint covers the rule, path, line and evidence, so
+  **editing the line invalidates it** and the report says `stale` rather than
+  silently permitting. Thirty days is the ceiling; an expired waiver is listed
+  as expired and permits nothing; a valid one is reported as **waived with
+  review**, never as clean. `--fingerprint` is optional -- without it the
+  command finds the finding in the current diff and refuses (listing the
+  candidates) when a path holds more than one. `greenwash/waivers.py`.
+- **The Codex plugin (`codex/`), strict by default.** Manifests in both
+  spellings (`.codex-plugin/plugin.json` and `plugin.json`), a Stop hook
+  (`hooks/codex-hooks.json`) with a POSIX command and a Windows one, its own
+  hook script, and a skill. A plugin is opted into once by someone who wants a
+  gate, so the profile here is the longer table even though the CLI's default
+  is not. The plugin root resolves from `PLUGIN_ROOT`, then the compatibility
+  spellings, then the hook's own location -- a host substituting a token this
+  file does not know about still starts the hook.
+- **The launch kit under `docs/`**, and the governance around it:
+  `docs/benchmark-summary.md` (one page, linking the raw rows),
+  `docs/what-did-not-work.md`, `docs/report-vs-strict.md`,
+  `docs/ADOPTION_GUIDE.md`, `docs/WAIVER_POLICY.md`,
+  `docs/EVALUATION_PROTOCOL.md`, `docs/RESULT_INTERPRETATION.md`,
+  `docs/social-preview.md`, `docs/releases/0.4.2.md`, `docs/launch-post.md`,
+  and `docs/launch-sequence.md` (the sequence, the scorecard, and the rule that
+  a missed target gets its gap published rather than a broader claim).
+- **Two recorded demos**: `demo/strict_claude.py` and `demo/strict_codex.py`
+  drive the real hooks and print captured output -- block, waive, allow, and the
+  could-not-check path. A `strict-hooks` CI job runs both, and the flows behind
+  them, on every push.
+
+### Changed
+
+- **The distribution is `greenwash-cli`, not `greenwash`.** The PyPI name
+  `greenwash` belongs to an unrelated project, so every install line in the
+  README, the npm shim's guidance and the package metadata now name the
+  distribution this repository actually publishes. The import name and the
+  command stay `greenwash`. Public install commands installing this project
+  rather than a namesake is a release gate, not a nicety.
+- **npm is no longer advertised as an install path.** The shim is real and
+  still tested, but the npm name is not owned by this project, so `npx
+  greenwash` installs someone else's package today. `README.md` and
+  `npm/README.md` say so, and `npm/README.md` documents the local `npm pack`
+  path instead of a registry install.
+- **`--fail-on` alongside `--strict` is ignored, and says so**, because strict
+  has its own policy and a silently-overridden policy is worse than a refused
+  flag.
+
+### Tests
+
+- 243 -> 404. New: the waiver fingerprint's stability and sensitivity (rule,
+  path, line, evidence), every validation field, the thirty-day ceiling, the
+  ledger on disk (round-trip, duplicate ids, a file that is not JSON), the four
+  statuses a waiver can hold against a diff, the whole strict decision table
+  with its exit codes, `ignore_rules` being refused rather than honoured, the
+  report rendering of a waived, expired and unresolved finding, the Codex
+  manifests and both hook command spellings, and the clean / block / waive /
+  error flows run through **both** stop gates so a policy difference between
+  them fails CI.
+
+### Fixed
+
+- **A byte-order mark silently switched off every Python AST rule.** The parser
+  read sources as `utf-8`, which leaves a leading U+FEFF in the string, and
+  `ast.parse` rejects it -- so a Python file written by PowerShell, Visual
+  Studio or Notepad was recorded as unparseable and the AST rules went quiet on
+  it. `test-skipped`, `hardcoded-return` and the rest would report nothing at
+  all for such a file, with no signal and no note: a report that read as clean.
+  Found while producing the npm forward-the-exit-code receipt for this release,
+  where a planted `@pytest.mark.skip` came back as `0 signal(s)`. Sources are
+  read as `utf-8-sig` now, and both cases are regression tests. The related
+  silence -- a file that genuinely cannot be parsed still produces no note --
+  is recorded in [docs/what-did-not-work.md](docs/what-did-not-work.md) rather
+  than left as a surprise.
+- **The Claude hook blocked turns it should have allowed.** It exited 2 for
+  *any* finding in enforce mode, including a `VERIFIED` report, because it
+  re-derived "should this block?" from the verdict instead of reading the CLI's
+  exit code -- a second copy of the decision table, free to drift from the
+  first. The CLI owns the policy now; the hook owns the wording; and the strict
+  tests run the same four flows through both hosts so a difference fails CI.
+
+### Also in 0.4.2, from the unreleased work
+
+#### Added
 
 - **Test integrity: the committed version of a changed test, against the new
   code.** The published measurement's blind spot is `json-load-default` -- the
@@ -36,7 +131,7 @@
   the false-positive survey: `docs/false-positives.md` says so rather than
   implying a measured zero.
 
-### Fixed
+#### Fixed
 
 - **`greenwash_check.py` exited 1 on a tool error, where its own docstring and
   `adapters/README.md` both publish 2.** `sys.exit(message)` exits 1, and 1 means
@@ -52,7 +147,7 @@
   the code, while the CLI and the Stop hook had it. `verify` now receives the
   diff `scan` already computed, so it is read once and shared.
 
-### Changed
+#### Changed
 
 - **The verdict table reads `verification.integrity`, not only its signal.** A
   signal is always raised with it, but a report that prints "2 case(s) fail in
@@ -106,7 +201,7 @@
   regenerated from the committed rows, and `tests/test_readme.py` guards it --
   that file was the one blind spot in the otherwise two-way guards.
 
-### Honesty
+#### Honesty (in that work)
 
 - **`analysis: regex` is on every rule that matches patterns in text.**
   `mock-in-test` and `assertion-weakened` were missing it, so the README's
@@ -126,7 +221,7 @@
   disk), removed dead code (`Signal.matches`, `_Model.from_dict`), and pointed
   a stale docstring at the README's rule table.
 
-### Tests
+#### Tests (in that work)
 
 - 225 -> 243. New: every verdict's enforce exit code (as a table and
   end-to-end), the two regex line-number fixtures, regex provenance on the

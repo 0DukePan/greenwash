@@ -13,8 +13,10 @@ the way a real terminal does, and the clip settles on the verdict. That last
 frame is also the first, so the loop is seamless and GitHub's poster frame is
 the punchline rather than a mostly-empty screen.
 
-Frames are drawn at 2x and downsampled. Needs Pillow and a monospace font
-(Consolas, Cascadia Mono, DejaVu Sans Mono).
+Frames are drawn at 3x and downsampled -- terminal text at 16px is where GIF
+dithering is most visible, and the extra sample plane is the difference
+between legible and blurred at GitHub's README width. Needs Pillow and a
+monospace font (Consolas, Cascadia Mono, DejaVu Sans Mono).
 
 Run:  python assets/make_demo_gif.py [--preview DIR]
 """
@@ -32,30 +34,42 @@ HERE = pathlib.Path(__file__).resolve().parent
 ROOT = HERE.parent
 OUT = HERE / "demo.gif"
 
-S = 2                    # supersampling factor
-W, H = 768, 486          # final canvas
-INSET = 14               # card distance from the canvas edge
-CARD_TOP = 78            # room above the card for the kicker
-RADIUS = 12
-HEADER = 26              # terminal chrome strip
-TEXT_LEFT = 30
-TEXT_TOP = CARD_TOP + 36
-LINE_H = 23
+S = 3                    # supersampling factor
+W, H = 840, 540          # roomy at README width, crisp on high-density displays
+INSET = 16               # card distance from the canvas edge
+CARD_TOP = 116           # room for the story, not just a terminal screenshot
+RADIUS = 14
+HEADER = 30              # terminal chrome strip
+TEXT_LEFT = 34
+TEXT_TOP = CARD_TOP + 42
+LINE_H = 24
 SIZE = 16
 
-BG = (9, 12, 17)
-CARD, BORDER, DIVIDER = (14, 18, 24), (31, 38, 47), (26, 32, 40)
+BG = (8, 12, 17)
+BG_BOTTOM = (5, 9, 13)
+CARD, BORDER, DIVIDER = (13, 18, 24), (39, 48, 59), (30, 38, 48)
 DOTS = [(255, 95, 86), (255, 189, 46), (39, 201, 63)]
-PROMPT, CMD = (63, 185, 80), (230, 237, 243)
-BODY, FLAG, DIM = (201, 209, 217), (240, 136, 62), (139, 148, 158)
-FLASH = (255, 176, 104)   # the tag's first 140ms, so the catch registers
+PROMPT, CMD = (68, 214, 120), (238, 243, 247)
+BODY, FLAG, DIM = (207, 217, 226), (255, 151, 76), (148, 160, 172)
+FLASH = (255, 192, 121)   # the tag's first 140ms, so the catch registers
 ALERT, VERDICT_BAD = (255, 123, 114), (255, 123, 114)
-TINT = (35, 29, 24)       # card colour, warmed up: the signal-row highlight
+TINT = (43, 31, 24)       # card colour, warmed up: the signal-row highlight
+LABEL, LABEL_BG = (112, 235, 161), (17, 48, 36)
+BADGE, BADGE_BG = (255, 183, 109), (67, 42, 25)
 
-# Above the card: two lines of framing, so the clip reads without its caption.
-KICKER = [('An agent "fixed" the failing test.', SIZE, CMD),
-          ("It hardcoded the answer.", SIZE - 2, DIM)]
-KICKER_TOP, KICKER_L1, KICKER_L2, KICKER_X = 18, 24, 22, INSET + 6
+# Above the card: enough framing that GitHub's poster frame reads as an
+# explanation, but the evidence inside the terminal remains verbatim.
+EYEBROW = "GREENWASH  /  LIVE LOCAL REPLAY"
+KICKER = [("The visible test passed.", 19, CMD),
+          ("The held-out test did not.", 17, FLAG)]
+EYEBROW_TOP, KICKER_TOP, KICKER_L1, KICKER_L2, KICKER_X = 18, 43, 27, 24, INSET + 7
+
+# The chrome identifies the command without making the window look like a
+# generic editor. The right-hand badge makes the loop's poster frame useful in
+# a README, a link preview, or a paused social clip.
+TITLE = "greenwash  /  trust report"
+COMMAND_LABEL = "python demo/run_demo.py --terse"
+STATUS = "HELD-OUT FAILED"
 
 FONT_DIRS = [
     pathlib.Path(r"C:\Windows\Fonts"),
@@ -123,8 +137,42 @@ def rows_visible() -> int:
     return max(1, ((H - INSET) - (TEXT_TOP + 12)) // LINE_H)
 
 
-def card() -> Image.Image:
+def rounded_rect(draw, box, radius, fill, outline=None, width=1):
+    """A scaled rounded rectangle, kept here to make the chrome readable."""
+    draw.rounded_rectangle([px(value) for value in box], radius=px(radius),
+                           fill=fill, outline=outline, width=px(width))
+
+
+def pill(draw, text, x, y, fill, foreground, size=10.5):
+    """Draw one small information chip and return its final x-coordinate."""
+    face = font("bold", size)
+    pad_x, pad_y = 8, 4
+    width = draw.textlength(text, font=face) / S
+    rounded_rect(draw, [x, y, x + width + pad_x * 2, y + size + pad_y * 2 + 1],
+                 7, fill)
+    draw.text((px(x + pad_x), px(y + pad_y - 1)), text, font=face, fill=foreground)
+    return x + width + pad_x * 2
+
+
+def background() -> Image.Image:
+    """A near-black gradient and restrained green glow, not a flat screenshot."""
     img = Image.new("RGB", (W * S, H * S), BG)
+    draw = ImageDraw.Draw(img)
+    for y in range(H * S):
+        ratio = y / max(1, H * S - 1)
+        colour = tuple(round(BG[channel] * (1 - ratio) + BG_BOTTOM[channel] * ratio)
+                       for channel in range(3))
+        draw.line([(0, y), (W * S, y)], fill=colour)
+
+    glow = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    glow_draw = ImageDraw.Draw(glow)
+    glow_draw.ellipse([px(-85), px(24), px(235), px(332)], fill=(29, 202, 113, 24))
+    glow = glow.filter(ImageFilter.GaussianBlur(px(64)))
+    return Image.alpha_composite(img.convert("RGBA"), glow).convert("RGB")
+
+
+def card() -> Image.Image:
+    img = background()
     x0, y0 = px(INSET), px(CARD_TOP)
     x1, y1 = px(W - INSET), px(H - INSET)
 
@@ -142,11 +190,28 @@ def card() -> Image.Image:
     for index, colour in enumerate(DOTS):
         cx, cy = x0 + px(16 + 15 * index), y0 + px(13)
         d.ellipse([cx - px(4.5), cy - px(4.5), cx + px(4.5), cy + px(4.5)], fill=colour)
+    title_font = font("bold", 11.5)
+    d.text((x0 + px(63), y0 + px(7)), TITLE, font=title_font, fill=BODY)
+    command_font = font("regular", 10)
+    d.text((x0 + px(63), y0 + px(18)), COMMAND_LABEL, font=command_font, fill=DIM)
+    status_font = font("bold", 9.5)
+    status_width = d.textlength(STATUS, font=status_font) / S
+    status_x = W - INSET - status_width - 20
+    rounded_rect(d, [status_x, CARD_TOP + 7, W - INSET - 11, CARD_TOP + 23],
+                 7, BADGE_BG, outline=(117, 71, 41))
+    d.text((px(status_x + 8), y0 + px(9)), STATUS, font=status_font, fill=BADGE)
+
+    d.text((px(KICKER_X), px(EYEBROW_TOP)), EYEBROW,
+           font=font("bold", 10.5), fill=LABEL)
+    eyebrow_width = d.textlength(EYEBROW, font=font("bold", 10.5)) / S
+    d.line([px(KICKER_X + eyebrow_width + 10), px(EYEBROW_TOP + 7),
+            px(W - INSET - 7), px(EYEBROW_TOP + 7)], fill=DIVIDER, width=px(1))
 
     y = px(KICKER_TOP)
     for text, size, colour in KICKER:
-        d.text((px(KICKER_X), y), text, font=font("regular", size), fill=colour)
-        y += px(KICKER_L1 if size == SIZE else KICKER_L2)
+        d.text((px(KICKER_X), y), text, font=font("bold" if size >= 19 else "regular", size),
+               fill=colour)
+        y += px(KICKER_L1 if size >= 19 else KICKER_L2)
     return img
 
 

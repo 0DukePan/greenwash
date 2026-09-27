@@ -12,6 +12,11 @@ Two modes, and the default is the one the project promises:
                      hands the agent the findings. Enabled with
                      `"mode": "enforce"` in .greenwash/config.json, or
                      GREENWASH_ENFORCE=1.
+  strict (opt-in)    the same exit-2 contract, under a longer table: a finding
+                     that only asks for review blocks until it is waived, and
+                     `ignore_rules` is refused rather than honoured. Enabled
+                     with `"mode": "strict"`, or GREENWASH_STRICT=1. This is
+                     the profile the Codex plugin runs by default.
 
 Plain exit-code signalling is deliberate: the exit-2 + stderr contract is
 stable regardless of which JSON schema a given Claude Code version expects for
@@ -41,7 +46,11 @@ def _report_command(root: str, claim: str) -> list:
         command += ["--heldout", os.environ["GREENWASH_HELDOUT"]]
     if claim:
         command += ["--claim", claim]
-    if os.environ.get("GREENWASH_ENFORCE") == "1":
+    if os.environ.get("GREENWASH_STRICT") == "1":
+        # ahead of --enforce: strict is the longer table, and a config file
+        # that says enforce must not shorten a profile the environment asked for
+        command.append("--strict")
+    elif os.environ.get("GREENWASH_ENFORCE") == "1":
         command.append("--enforce")
     return command
 
@@ -51,8 +60,20 @@ def _describe(report: dict) -> str:
     signals = report.get("signals") or []
     verification = report.get("verification") or {}
     confidence = report.get("confidence") or {}
+    gate = report.get("gate") or {}
     lines = [f"greenwash: {report.get('verdict', 'INCONCLUSIVE')} "
              f"({str(confidence.get('level', '')).lower()} confidence)"]
+
+    if gate.get("state") == "blocked":
+        # the strict decision itself, first: it is the reason the stop is
+        # being handed back, and it differs from the verdict on purpose
+        reasons = gate.get("reasons") or []
+        lines.append(f"  strict gate: blocked -- {reasons[0] if reasons else 'see the report'}")
+        for extra in reasons[1:2]:
+            lines.append(f"  {extra}")
+    elif gate:
+        for notice in (gate.get("notices") or [])[:2]:
+            lines.append(f"  strict gate: {notice}")
 
     ran = verification.get("outcome")
     if ran and ran != "not_requested":
@@ -70,7 +91,15 @@ def _describe(report: dict) -> str:
         lines.append("Suspicious patterns to explain:")
         for signal in signals[:8]:
             where = f" {signal.get('files', [''])[0]}" if signal.get("files") else ""
-            lines.append(f"  [{signal.get('rule_id', '?')}]{where} {signal.get('explanation', '')}")
+            waived = signal.get("waiver") or {}
+            mark = " (waived with review)" if waived.get("status") == "active" else ""
+            lines.append(f"  [{signal.get('rule_id', '?')}]{where} "
+                         f"{signal.get('explanation', '')}{mark}")
+    if gate.get("waived"):
+        lines.append("")
+        lines.append("Waived with review -- not clean, and not blocked:")
+        for item in gate["waived"][:4]:
+            lines.append(f"  {item}")
     for item in (verification.get("evidence") or [])[:3]:
         lines.append("")
         if item.get("expected"):
@@ -83,7 +112,9 @@ def _describe(report: dict) -> str:
     lines.append("")
     lines.append("If a pattern is not actually a problem (an intentionally skipped "
                  "unrelated test, a legitimate constant), say so explicitly and why. "
-                 "Otherwise fix it before calling this done.")
+                 "Otherwise fix it before calling this done. Where the profile "
+                 "requires a decision rather than a fix, record one with "
+                 "`greenwash waive`.")
     return "\n".join(lines)
 
 
@@ -123,10 +154,11 @@ def main() -> None:
         sys.exit(0)
 
     message = _describe(report)
-    enforcing = os.environ.get("GREENWASH_ENFORCE") == "1" or report.get("run", {}).get(
-        "mode") == "enforce"
-
-    if enforcing:
+    # The CLI owns the policy: it exited non-zero because this turn should not
+    # end yet, and its report says why. Re-deriving that decision here (from
+    # the verdict, the mode, a block_on list) is how the hook and the CLI would
+    # eventually disagree -- so the exit code is the whole contract.
+    if result.returncode != 0:
         print(message, file=sys.stderr)
         sys.exit(2)
     print(message)

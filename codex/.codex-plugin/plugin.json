@@ -1,0 +1,10 @@
+{
+  "name": "greenwash",
+  "description": "A strict stop gate: when the turn tries to end, greenwash reads the diff, runs the project's own tests against the committed baseline, and blocks unless every finding is fixed or waived -- with the verdict, the checks that ran, the blocked reasons and the waiver status printed back to the agent. Local, deterministic, no model, no network.",
+  "version": "0.4.2",
+  "author": {
+    "name": "greenwash contributors"
+  },
+  "hooks": "hooks/codex-hooks.json",
+  "skills": "skills"
+}

@@ -6,9 +6,12 @@ __pycache__/
 build/
 dist/
 uv.lock
-.greenwash/
+# Keep local reports and run state out of Git, but commit the policy that strict
+# mode needs in order to reproduce its gate decision.
+.greenwash/*
+!.greenwash/config.json
+!.greenwash/waivers.json
 
 # harness run output: volatile, and mock runs write here too
 benchmark/results/rows.jsonl
 benchmark/results/ci.json
-

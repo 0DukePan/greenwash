@@ -128,6 +128,28 @@ def test_test_file_deletion_is_caught(tmp_path, monkeypatch):
     assert "test-file-deleted" in _kinds(tmp_path, monkeypatch)
 
 
+def test_a_byte_order_mark_does_not_silence_the_ast_rules(tmp_path, monkeypatch):
+    """A BOM is legal Python source, and Windows editors write one routinely.
+
+    Read as plain utf-8, the leading U+FEFF made `ast.parse` fail, the module
+    was recorded as unparseable, and every AST rule went quiet on the file --
+    including the one that catches a skipped test. No signal, no note, and a
+    report that read as though nothing had been found.
+    """
+    _repo(tmp_path)
+    content = ("import pytest\n\n\n@pytest.mark.skip(reason='later')\n"
+               "def test_add():\n    assert True\n")
+    (tmp_path / "tests" / "test_calc.py").write_text(content, encoding="utf-8-sig")
+    assert "test-skipped" in _kinds(tmp_path, monkeypatch)
+
+
+def test_hardcoded_returns_survive_a_bom_too(tmp_path, monkeypatch):
+    _repo(tmp_path)
+    (tmp_path / "src" / "calc.py").write_text("def add(a, b):\n    return 5\n",
+                                              encoding="utf-8-sig")
+    assert "hardcoded-return" in _kinds(tmp_path, monkeypatch)
+
+
 def test_deleting_a_source_file_is_not_a_deleted_test(tmp_path, monkeypatch):
     _repo(tmp_path)
     (tmp_path / "src" / "calc.py").unlink()
