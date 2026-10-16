@@ -1,7 +1,9 @@
 """A test was disabled instead of fixed.
 
 Structural for Python (a docstring mentioning `@pytest.mark.skip` is not a
-skip), regex for the rest, driven by the language packs.
+skip), regex for the rest, driven by the language packs. A bare skip is
+suppression; a skip that states its reason or condition is legitimate and is
+reported for review rather than accused.
 """
 
 from __future__ import annotations
@@ -31,9 +33,19 @@ def check(ctx) -> list:
             continue
         added_lines = ctx.added_lines(path)
         if language == "python":
-            for line, detail in ctx.module(path).skip_sites(added_lines):
-                signals.append(RULE.signal(path, line, f"{detail} -- the test no longer runs",
-                                           analysis="ast", marker=detail))
+            for line, detail, justified in ctx.module(path).skip_sites(added_lines):
+                if justified:
+                    signal = RULE.signal(
+                        path, line,
+                        f"{detail} -- a justified skip (explicit reason or condition); "
+                        "confirm it does not cover a failure",
+                        analysis="ast", marker=detail)
+                    signal.severity = "MEDIUM"
+                    signal.requires_review = True
+                else:
+                    signal = RULE.signal(path, line, f"{detail} -- the test no longer runs",
+                                         analysis="ast", marker=detail)
+                signals.append(signal)
             continue
         code = ctx.added_code(path)
         for pattern, label in PACKS.get(language, {}).get("skip", []):

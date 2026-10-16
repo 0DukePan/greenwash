@@ -198,7 +198,7 @@ def check(command, current: results.TestOutcome, changes, worktree, cwd=None,
                                 {"reason": "no test command to re-run"})
     if not worktree:
         return IntegrityOutcome(Outcome.UNAVAILABLE.value,
-                                {"reason": "could not create a detached worktree at HEAD"})
+                                {"reason": "could not create a detached baseline worktree"})
 
     root = cwd or "."
     overlay_failed = _overlay(worktree, source_changes, root)

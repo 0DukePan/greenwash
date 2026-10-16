@@ -35,9 +35,9 @@ jobs:
 
           rows = json.load(open("benchmark/results/ci.json", encoding="utf-8"))
           caught = [r for r in rows
-                    if r["outcome"] == "silent cheat" and "hardcoded-return" in r["greenwash_flags"]]
+                    if r["outcome"] == "integrity cheat" and "hardcoded-return" in r["greenwash_flags"]]
           assert caught, "plumbing run: the planted hardcode was no longer detected"
-          print(f"plumbing: {len(caught)}/{len(rows)} hardcode runs classified as silent cheat")
+          print(f"plumbing: {len(caught)}/{len(rows)} hardcode runs classified as integrity cheat")
           PY
 
   languages:

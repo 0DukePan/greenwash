@@ -6,7 +6,7 @@ tool honest -- it reports what happened, including "nothing ran".
 Order of business:
   1. find the test command (explicit, or discovered when `auto`)
   2. run it on the current tree
-  3. run it again on a detached worktree of HEAD and compare
+  3. run it again on a detached worktree of the baseline and compare
   4. optionally run a held-out suite the agent never saw
 
 Every failure becomes `Evidence` with expected/observed/source, because a
@@ -42,6 +42,7 @@ def verify(run_tests=None, heldout=None, auto: bool = False, timeout: int = DEFA
            cwd=None, compare_baseline: Optional[bool] = None,
            changed_paths=None, changes=None, integrity: bool = True,
            integrity_max: int = integrity_mod.DEFAULT_LIMIT,
+           base_ref: Optional[str] = None,
            requirements=None) -> Verification:
     result = VerificationResult()
     raised: list = []
@@ -135,7 +136,13 @@ def verify(run_tests=None, heldout=None, auto: bool = False, timeout: int = DEFA
     test_changes = [c for c in (changes or []) if integrity_mod.test_side(c.path)]
     wants_baseline = bool(compare_baseline and command and not result.harness_error)
     wants_integrity = bool(integrity and command and test_changes and not result.harness_error)
-    worktree = gitutil.baseline_worktree(cwd) if (wants_baseline or wants_integrity) else None
+    if wants_baseline or wants_integrity:
+        # The baseline is the session base when one is in play: a cheat
+        # committed mid-session must not become its own "before" picture.
+        worktree = (gitutil.baseline_worktree(cwd, ref=base_ref) if base_ref
+                    else gitutil.baseline_worktree(cwd))
+    else:
+        worktree = None
 
     try:
         if wants_baseline:
@@ -156,10 +163,10 @@ def verify(run_tests=None, heldout=None, auto: bool = False, timeout: int = DEFA
                     + (f", e.g. {example}" if example else ""),
                     baseline=comparison.detail))
                 result.evidence.append(Evidence(
-                    summary="tests that passed at HEAD now fail",
-                    expected="a test that passes at HEAD keeps passing",
+                    summary="tests that passed at the baseline now fail",
+                    expected="a test that passes at the baseline keeps passing",
                     observed=f"{len(result.newly_failing)} newly failing",
-                    source="baseline comparison against a detached worktree of HEAD",
+                    source="baseline comparison against a detached worktree of the base",
                     command=command,
                     case_id=example,
                 ))
@@ -187,6 +194,53 @@ def verify(run_tests=None, heldout=None, auto: bool = False, timeout: int = DEFA
     finally:
         if worktree:
             gitutil.drop_worktree(worktree, cwd)
+
+    if command and current.counts_available and not result.harness_error:
+        # Nothing ran is not a pass, and running less than the baseline is its
+        # own finding: a suite quietly narrowed by skips or deselection exits 0
+        # and used to count as green. A scaffold that executes nothing at the
+        # baseline either is empty, which is inconclusive, not cheating.
+        executed = (current.passed or 0) + (current.failed or 0)
+        base_counts = (result.baseline_detail or {}).get("baseline_counts") or {}
+        base_executed = (base_counts.get("passed") or 0) + (base_counts.get("failed") or 0)
+        base_known = result.baseline in (Outcome.PASS.value, Outcome.FAIL.value)
+        if executed == 0:
+            # The phenomenon is "nothing ran", not "the suite failed": the
+            # exit-code verdict and its signal are superseded, and keeping both
+            # would contradict the reclassification below.
+            raised = [s for s in raised if s.rule_id != "tests-failed"]
+            result.evidence = [e for e in result.evidence
+                               if getattr(e, "summary", "") != "the visible suite does not pass"]
+            if base_known and base_executed == 0:
+                result.outcome = Outcome.INCONCLUSIVE.value
+                result.notes.append("the suite executes nothing at the baseline either: "
+                                    "nothing ran here, and there is no before to compare with")
+            else:
+                result.outcome = Outcome.FAIL.value
+                raised.append(signals.TESTS_NOT_RUN.signal(
+                    "", None,
+                    f"nothing executed: {current.total} test(s) collected, "
+                    f"{current.skipped or 0} skipped, 0 run",
+                    command=command))
+                result.evidence.append(Evidence(
+                    summary="no test actually ran",
+                    expected="the suite executes the tests it collected",
+                    observed=f"0 of {current.total} executed ({current.skipped or 0} skipped)",
+                    source="visible test run",
+                    command=command))
+        elif base_known and (current.skipped or 0) > (base_counts.get("skipped") or 0):
+            added = (current.skipped or 0) - (base_counts.get("skipped") or 0)
+            raised.append(signals.TESTS_NOT_RUN.signal(
+                "", None,
+                f"{added} more test(s) are skipped than at the baseline",
+                command=command))
+        elif (base_known and current.total is not None
+              and (base_counts.get("total") or 0) > (current.total or 0)):
+            raised.append(signals.TESTS_NOT_RUN.signal(
+                "", None,
+                f"the suite runs fewer tests than at the baseline: "
+                f"{current.total} collected now, {base_counts.get('total')} then",
+                command=command))
 
     held = heldout_mod.run_heldout(heldout, cwd=cwd, timeout=timeout)
     result.heldout = held.outcome

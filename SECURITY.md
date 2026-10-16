@@ -68,4 +68,10 @@ or pushes from somewhere else. Nothing local can, and this project does not
 claim otherwise.
 
 greenwash makes no network calls, has no telemetry, and stores nothing outside
-your repository (`.greenwash/config.json` and `.greenwash/waivers.json`).
+your repository (`.greenwash/config.json` and `.greenwash/waivers.json`), plus
+session state inside your git directory (`.git/greenwash/`): the session anchor
+and the Stop hook's block budget. The one exception is a hook that runs outside
+a git repository, which keeps its block budget in the system temp directory.
+That budget, like the session anchor, is a guard and not a security boundary:
+an agent that can run git and write files can rewrite it, which is why the
+report always prints what it found and the anchor carries tamper evidence.

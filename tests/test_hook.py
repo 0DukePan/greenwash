@@ -50,10 +50,12 @@ def _stop(tmp, payload=None, enforce=False):
     env = dict(os.environ)
     if enforce:
         env["GREENWASH_ENFORCE"] = "1"
+    message = {"hook_event_name": "Stop", **(payload or {})}
+    message.setdefault("session_id", str(Path(tmp).resolve()))
     return subprocess.run(
         [sys.executable, str(HOOK)],
         cwd=tmp,
-        input=json.dumps(payload or {"hook_event_name": "Stop"}),
+        input=json.dumps(message),
         capture_output=True, text=True, env=env)
 
 
@@ -80,11 +82,35 @@ def test_hook_allows_a_clean_tree(tmp_path):
     assert result.returncode == 0, result.stderr
 
 
-def test_hook_does_not_block_twice(tmp_path):
-    # stop_hook_active means a previous Stop hook already forced a retry this
-    # turn; blocking again is how you get an infinite loop.
+def test_stop_hook_active_does_not_bypass_the_gate(tmp_path):
+    """A retry after a block is bounded by the budget, not waved through.
+
+    stop_hook_active used to pass every later stop in the turn, whatever the
+    agent did in between: one block, then the cheat goes through.
+    """
     _repo(tmp_path)
     _write(tmp_path, "src/calc.py", "def add(a, b):\n    return 5\n")
-    result = _stop(tmp_path, {"hook_event_name": "Stop", "stop_hook_active": True},
-                   enforce=True)
-    assert result.returncode == 0
+    result = _stop(tmp_path, {"hook_event_name": "Stop", "stop_hook_active": True,
+                              "session_id": "retry-one"}, enforce=True)
+    assert result.returncode == 2, result.stdout
+
+
+def test_a_block_budget_bounds_the_loop(tmp_path):
+    """At most three blocks per session, then UNRESOLVED AT STOP.
+
+    This is the promise the old "never block twice" guard made, kept honestly:
+    no infinite loop on a finding the agent cannot resolve, and no unlimited
+    retries for one that simply ignores it.
+    """
+    _repo(tmp_path)
+    _write(tmp_path, "src/calc.py", "def add(a, b):\n    return 5\n")
+    payload = {"hook_event_name": "Stop", "session_id": "budget-one"}
+    for attempt in (1, 2, 3):
+        result = _stop(tmp_path, payload, enforce=True)
+        assert result.returncode == 2, (attempt, result.stdout, result.stderr)
+    result = _stop(tmp_path, {**payload, "stop_hook_active": True}, enforce=True)
+    assert result.returncode == 0, result.stderr
+    assert "UNRESOLVED AT STOP" in result.stdout
+    result = _stop(tmp_path, payload, enforce=True)
+    assert result.returncode == 0, "the budget is spent for good, not per window"
+    assert "UNRESOLVED AT STOP" in result.stdout

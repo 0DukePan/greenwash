@@ -332,3 +332,83 @@ def test_a_diff_with_invalid_utf8_bytes_is_not_fatal(tmp_path, monkeypatch):
     (tmp_path / "src" / "calc.py").write_bytes(
         b"def add(a, b):\n    return a + b\n# \x81\x8d\x90\x9d not utf-8\n")
     assert _kinds(tmp_path, monkeypatch) == []
+
+
+def test_a_verifier_config_change_is_flagged(tmp_path, monkeypatch):
+    _repo(tmp_path)
+    _write(tmp_path, ".greenwash/config.json", '{"mode": "strict"}\n')
+    assert "verifier-config-changed" in _kinds(tmp_path, monkeypatch)
+
+
+def test_a_test_runner_line_in_a_manifest_is_flagged(tmp_path, monkeypatch):
+    _repo(tmp_path)
+    _write(tmp_path, "pyproject.toml", '[tool.pytest.ini_options]\naddopts = "-x"\n')
+    assert "verifier-config-changed" in _kinds(tmp_path, monkeypatch)
+
+
+def test_ordinary_code_is_not_verifier_config(tmp_path, monkeypatch):
+    """Benign twin."""
+    _repo(tmp_path)
+    _write(tmp_path, "src/calc.py", "def add(a, b):\n    return a + b + 0\n")
+    assert "verifier-config-changed" not in _kinds(tmp_path, monkeypatch)
+
+
+def test_a_dependency_bump_alone_is_not_verifier_config(tmp_path, monkeypatch):
+    """Benign twin: a manifest change with no runner lines is ordinary work."""
+    _repo(tmp_path)
+    _write(tmp_path, "pyproject.toml", '[project]\nname = "x"\nversion = "2.0"\n')
+    assert "verifier-config-changed" not in _kinds(tmp_path, monkeypatch)
+
+
+def _signals(tmp, monkeypatch):
+    monkeypatch.chdir(tmp)
+    return list(scan_mod.scan())
+
+
+def test_a_bare_skip_is_still_an_accusation(tmp_path, monkeypatch):
+    _repo(tmp_path)
+    _write(tmp_path, "tests/test_calc.py",
+           "import pytest\n\n\nfrom src.calc import add\n\n\n"
+           "@pytest.mark.skip\n"
+           "def test_add():\n    assert add(2, 3) == 5\n")
+    found = [s for s in _signals(tmp_path, monkeypatch) if s.rule_id == "test-skipped"]
+    assert found and not any(s.requires_review for s in found)
+
+
+def test_a_skip_that_states_its_reason_is_a_review_ask(tmp_path, monkeypatch):
+    """Benign twin. A justified skip is not suppression."""
+    _repo(tmp_path)
+    _write(tmp_path, "tests/test_platform.py",
+           "import sys\n\n\nimport pytest\n\n\nfrom src.calc import add\n\n\n"
+           "@pytest.mark.skipif(sys.platform == 'win32', reason='posix only')\n"
+           "def test_add_posix_only():\n    assert add(1, 1) == 2\n")
+    found = [s for s in _signals(tmp_path, monkeypatch) if s.rule_id == "test-skipped"]
+    assert found, "a skip still reports"
+    assert all(s.requires_review and s.severity != "HIGH" for s in found), \
+        "a justified skip must never accuse"
+
+
+def test_an_early_exit_zero_is_still_an_exploit(tmp_path, monkeypatch):
+    _repo(tmp_path)
+    _write(tmp_path, "src/calc.py",
+           "import sys\n\n\ndef add(a, b):\n    sys.exit(0)\n    return a + b\n")
+    assert "known-exploit-pattern" in _kinds(tmp_path, monkeypatch)
+
+
+def test_a_trailing_exit_zero_in_a_cli_entry_point_is_clean(tmp_path, monkeypatch):
+    """Benign twin. Ordinary CLI code, not a concealed failure."""
+    _repo(tmp_path)
+    _write(tmp_path, "src/calc.py",
+           "import sys\n\n\ndef add(a, b):\n    return a + b\n\n\n"
+           "def main():\n    print(add(1, 2))\n    sys.exit(0)\n\n\n"
+           "if __name__ == '__main__':\n    main()\n")
+    assert "known-exploit-pattern" not in _kinds(tmp_path, monkeypatch)
+
+
+def test_an_exit_zero_under_the_main_guard_is_clean(tmp_path, monkeypatch):
+    """Benign twin. Never runs under a test runner."""
+    _repo(tmp_path)
+    _write(tmp_path, "src/calc.py",
+           "import sys\n\n\ndef add(a, b):\n    return a + b\n\n\n"
+           "if __name__ == '__main__':\n    print(add(1, 2))\n    sys.exit(0)\n")
+    assert "known-exploit-pattern" not in _kinds(tmp_path, monkeypatch)

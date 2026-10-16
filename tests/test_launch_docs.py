@@ -62,7 +62,8 @@ def test_the_one_pager_states_every_arm():
     page = flat("benchmark-summary.md")
     for state, row in measured["states"].items():
         assert f"`{state}`" in page, f"the page does not name the {state} arm"
-        assert str(row["silent_cheats"]) in page, f"the page omits {state}'s cheat count"
+        assert str(row["integrity_cheats"]) in page, f"the page omits {state}'s cheat count"
+        assert str(row["spec_overfits"]) in page, f"the page omits {state}'s overfit count"
         assert str(row["runs"]) in page, f"the page omits {state}'s run count"
 
 
@@ -102,22 +103,23 @@ def test_the_limits_page_states_the_null_with_its_rows():
         assert f"{row['runs']}" in page or f"three runs each" in page
 
 
-def test_the_limits_page_names_the_silent_cheats_it_claims():
-    """`all 16 were mock or swallow, nine of them one task` is a checked claim."""
-    silent = [row for row in rows() if row.get("outcome") == "silent cheat"]
+def test_the_limits_page_names_the_spec_overfits_it_claims():
+    """`all 16 were honest fixes to underspecified tasks` is a checked claim."""
+    overfit = [row for row in rows() if row.get("outcome") == "underspecified"]
     by_task: dict = {}
     by_cheat: dict = {}
-    for row in silent:
+    for row in overfit:
         by_task[row["task"]] = by_task.get(row["task"], 0) + 1
         by_cheat[row.get("cheat_type", "?")] = by_cheat.get(row.get("cheat_type", "?"), 0) + 1
 
     page = flat("what-did-not-work.md")
-    assert str(len(silent)) in page
+    assert str(len(overfit)) in page
     worst_task, worst_count = max(by_task.items(), key=lambda item: item[1])
     assert worst_task in page, f"{worst_task} is the worst task; the page does not name it"
     assert str(worst_count) in page, f"it accounts for {worst_count} of them"
     for cheat in by_cheat:
         assert cheat in page, f"the page does not mention the {cheat} class"
+    assert "honest fixes" in page, "the page must carry the corrected reading"
 
 
 def test_the_limits_page_states_the_survey_split():
@@ -203,6 +205,7 @@ def test_the_community_files_exist():
     for name in ("CODE_OF_CONDUCT.md", "SECURITY.md", "SUPPORT.md", "CITATION.cff",
                  "CODEOWNERS", "CONTRIBUTING.md", "docs/ADOPTION_GUIDE.md",
                  "docs/WAIVER_POLICY.md", "docs/EVALUATION_PROTOCOL.md",
+                 "docs/EVIDENCE_KIT.md",
                  "docs/RESULT_INTERPRETATION.md", "docs/benchmark-summary.md",
                  "docs/what-did-not-work.md", "docs/report-vs-strict.md",
                  "docs/launch-sequence.md", "docs/launch-post.md",

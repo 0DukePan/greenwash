@@ -36,12 +36,13 @@ python codex/scripts/greenwash_hook.py < payload.json
   --no-verify`, or works outside the host is not stopped by it -- that is what
   branch protection and CODEOWNERS are for, and no local tool can substitute
   for them.
-- **A broken checker never blocks a developer, and never claims a pass.** If
-  the CLI cannot run, the hook prints `could not verify this turn` and exits 0.
-  That is a decision, not an oversight: a verification tool that bricks your
-  editor when Python is missing is a tool people uninstall. The uncertainty is
-  printed into the transcript, so the turn is visibly unchecked rather than
-  silently clean.
+- **A broken checker never claims a pass, and never locks you out.** If the
+  CLI cannot run, the hook prints `could not verify this turn`. The Codex
+  profile is strict, so that uncertainty blocks at most three times before the
+  hook says `UNRESOLVED AT STOP` and lets the turn end. A crash must never read
+  as a pass, and a repository the verifier can never satisfy must never brick
+  your editor: the uncertainty is printed into the transcript, so the turn is
+  visibly unchecked rather than silently clean.
 - **The plugin root is resolved defensively.** `PLUGIN_ROOT` first,
   `CODEX_PLUGIN_ROOT` and `CLAUDE_PLUGIN_ROOT` as compatibility spellings, and
   the hook's own location as the last resort -- so a host that substitutes a

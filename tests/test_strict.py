@@ -264,8 +264,11 @@ def test_report_mode_still_honours_ignore_rules_and_names_them(cheat):
     (cheat / ".greenwash" / "config.json").write_text(
         json.dumps({"ignore_rules": ["hardcoded-return"]}), encoding="utf-8")
     result = cli(cheat, "scan", "--no-color")
-    assert result.returncode == 0
     assert "suppressed by config.ignore_rules: hardcoded-return" in result.stdout
+    # The suppression is honoured; the edit to the gate's own configuration is
+    # now its own finding, so the report is not clean.
+    assert "verifier-config-changed" in result.stdout
+    assert result.returncode == 1
 
 
 def test_strict_takes_precedence_over_fail_on_and_says_so(cheat):
@@ -314,8 +317,10 @@ def test_doctor_flags_a_ledger_it_cannot_read(cheat):
 def stop(hook, cwd, payload=None, env=None):
     environment = {**os.environ, "PYTHONPATH": str(ROOT), "PYTHONIOENCODING": "utf-8",
                    **(env or {})}
+    message = {"hook_event_name": "Stop", **(payload or {})}
+    message.setdefault("session_id", str(Path(cwd).resolve()))
     return subprocess.run([sys.executable, str(hook)], cwd=cwd,
-                          input=json.dumps(payload or {"hook_event_name": "Stop"}),
+                          input=json.dumps(message),
                           capture_output=True, text=True, encoding="utf-8",
                           errors="replace", env=environment, timeout=300)
 
@@ -348,10 +353,28 @@ def test_strict_hook_allows_a_waived_finding_and_still_reports_it(cheat, hook):
 
 
 @pytest.mark.parametrize("hook", [HOOK, CODEX_HOOK], ids=["claude", "codex"])
-def test_a_broken_checker_never_blocks(tmp_path, hook):
-    """Uncertainty is printed; the developer is not locked out of their own repo."""
+def test_a_broken_checker_blocks_bounded_in_strict(tmp_path, hook):
+    """Uncertainty blocks in strict, bounded by the budget.
+
+    Strict is fail-closed: a checker that cannot run is a block, never a pass.
+    The budget keeps the promise the old "never blocks" contract made -- a
+    developer is not locked out of a repository the verifier can never
+    satisfy -- by ending in UNRESOLVED AT STOP instead of a silent allow.
+    """
     tmp_path.joinpath("notes.txt").write_text("not a repository\n", encoding="utf-8")
+    for attempt in (1, 2, 3):
+        result = stop(hook, tmp_path, env={"GREENWASH_STRICT": "1"})
+        assert result.returncode == 2, (attempt, result.stdout, result.stderr)
     result = stop(hook, tmp_path, env={"GREENWASH_STRICT": "1"})
     assert result.returncode == 0
     combined = (result.stdout + result.stderr).lower()
     assert "could not" in combined
+    assert "unresolved at stop" in combined
+
+
+def test_a_broken_checker_never_blocks_in_report_mode(tmp_path):
+    """The default profile stays fail-open: a broken tool cannot block a person."""
+    tmp_path.joinpath("notes.txt").write_text("not a repository\n", encoding="utf-8")
+    result = stop(HOOK, tmp_path)
+    assert result.returncode == 0
+    assert "could not" in (result.stdout + result.stderr).lower()

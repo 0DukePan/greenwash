@@ -81,5 +81,18 @@ HARNESS = Rule(
     requires_review=True,
 )
 
+TESTS_NOT_RUN = Rule(
+    id="tests-not-run",
+    code="GW-VER-007",
+    title="Tests stopped running",
+    category=DIVERGENCE,
+    severity="HIGH",
+    confidence="HIGH",
+    description="The suite executes less than it did at the baseline: everything is "
+                "skipped, more is skipped than before, or fewer tests are collected.",
+    remediation="Run the tests that ran before. If a test genuinely no longer applies, "
+                "say which and why.",
+)
+
 __all__ = ["TESTS_FAILED", "HELDOUT_FAILED", "REGRESSION", "TEST_WEAKENED",
-           "REQUIREMENT_FAILED", "HARNESS"]
+           "REQUIREMENT_FAILED", "HARNESS", "TESTS_NOT_RUN"]

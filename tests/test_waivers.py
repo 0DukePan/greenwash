@@ -302,3 +302,75 @@ def test_the_command_takes_a_fingerprint_when_the_path_has_several_findings(chea
     assert result.returncode == 3
     assert "2 hardcoded-return findings" in result.stderr
     assert "sha256:" in result.stderr
+
+
+# ---- self-issued waivers -----------------------------------------------------
+
+
+def _repo(tmp):
+    subprocess.run(["git", "init", "-q"], cwd=tmp, check=True, capture_output=True)
+    (tmp / "src").mkdir()
+    (tmp / "src" / "calc.py").write_text("def add(a, b):\n    return 5\n", encoding="utf-8")
+    subprocess.run(["git", "add", "-A"], cwd=tmp, check=True, capture_output=True)
+    subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t",
+                    "commit", "-q", "-m", "base"], cwd=tmp, check=True, capture_output=True)
+
+
+def _write_ledger(tmp, entries):
+    directory = tmp / ".greenwash"
+    directory.mkdir(exist_ok=True)
+    (directory / "waivers.json").write_text(
+        json.dumps({"version": 1, "waivers": [entry.to_dict() for entry in entries]}),
+        encoding="utf-8")
+
+
+def _head(tmp):
+    return subprocess.run(["git", "rev-parse", "HEAD"], cwd=tmp,
+                          capture_output=True, text=True, check=True).stdout.strip()
+
+
+def test_a_waiver_written_this_session_is_self_issued(tmp_path):
+    """The agent's own waiver still applies, and the report says who issued it."""
+    _repo(tmp_path)
+    base = _head(tmp_path)
+    entry = waiver()
+    _write_ledger(tmp_path, [entry])
+    ledger = waivers.load(tmp_path)
+    marked = waivers.self_issued_ids(ledger, base, root=str(tmp_path))
+    assert marked == {entry.id}
+    application = waivers.apply([signal()], ledger, now=NOW, self_issued=marked)
+    assert application.rows[0].status == waivers.ACTIVE
+    assert "self-issued" in application.rows[0].note
+    assert application.signals[0].waiver["self_issued"] is True
+
+
+def test_a_waiver_ratified_at_the_base_is_not_self_issued(tmp_path):
+    _repo(tmp_path)
+    entry = waiver()
+    _write_ledger(tmp_path, [entry])
+    subprocess.run(["git", "add", "-A"], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t",
+                    "commit", "-q", "-m", "ratified"], cwd=tmp_path,
+                   check=True, capture_output=True)
+    base = _head(tmp_path)
+    ledger = waivers.load(tmp_path)
+    assert waivers.self_issued_ids(ledger, base, root=str(tmp_path)) == set()
+    application = waivers.apply([signal()], ledger, now=NOW, self_issued=set())
+    assert application.rows[0].note == "waived with review"
+    assert application.signals[0].waiver["self_issued"] is False
+
+
+def test_editing_a_ratified_waiver_makes_it_self_issued(tmp_path):
+    """Down-streaming a ratified waiver is a new decision, not the old one."""
+    _repo(tmp_path)
+    entry = waiver()
+    _write_ledger(tmp_path, [entry])
+    subprocess.run(["git", "add", "-A"], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t",
+                    "commit", "-q", "-m", "ratified"], cwd=tmp_path,
+                   check=True, capture_output=True)
+    base = _head(tmp_path)
+    edited = waiver(expires_at=waivers.iso(NOW + timedelta(days=29)))
+    _write_ledger(tmp_path, [edited])
+    ledger = waivers.load(tmp_path)
+    assert waivers.self_issued_ids(ledger, base, root=str(tmp_path)) == {edited.id}

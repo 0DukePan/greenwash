@@ -21,11 +21,13 @@ is set the hook uses its own location. A host that substitutes a token this
 file does not know about still starts the hook -- which matters, because a
 hook that cannot start is a hook that does not exist.
 
-**A broken checker never blocks a developer, and never claims a pass.** If the
-CLI cannot run, the hook prints "could not verify" and exits 0. That is a
-decision, not an oversight: a verification tool that bricks your editor when
-Python is missing is a tool people uninstall. The uncertainty is printed into
-the transcript so the turn is visibly unchecked rather than silently clean.
+**A broken checker blocks at most the budget, and never claims a pass.** If the
+CLI cannot run, the hook prints "could not verify" and, because the Codex
+profile is strict, blocks at most three times before ending in UNRESOLVED AT
+STOP. A crash must never read as a pass, and a repository the verifier can
+never satisfy must never lock a developer out for good. This hook always runs
+the strict profile; the CLI's own report mode, where a broken checker is
+printed and not blocked, is a different surface.
 """
 
 from __future__ import annotations
@@ -36,6 +38,9 @@ import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.dirname(os.path.dirname(HERE)))
+
+from greenwash import hooking  # noqa: E402
 
 
 def plugin_root() -> str:
@@ -76,7 +81,11 @@ def python_path(root: str) -> str:
 
 
 def run_report(root: str, payload: dict):
-    """(report, exit_code, error). A report or an error, never both."""
+    """(report, exit_code, error). A report or an error, never both.
+
+    A timeout is not retried on the next interpreter candidate: the command
+    hung, and a second run of a hung command only hangs again.
+    """
     claim = ""
     for key in ("claim", "summary", "task"):
         if isinstance(payload.get(key), str):
@@ -89,16 +98,19 @@ def run_report(root: str, payload: dict):
     error = ""
     for executable, prefix in interpreter_candidates():
         try:
-            result = subprocess.run([executable, *prefix, *command],
-                                    capture_output=True, text=True, env=env, timeout=300)
+            stdout, stderr, returncode = hooking.run_with_deadline(
+                [executable, *prefix, *command], env=env,
+                timeout=hooking.hook_timeout(default=270))
+        except subprocess.TimeoutExpired as exc:
+            raise exc
         except (OSError, subprocess.SubprocessError) as exc:
             error = str(exc)
             continue
         try:
-            return json.loads(result.stdout), result.returncode, None
+            return json.loads(stdout), returncode, None
         except (json.JSONDecodeError, ValueError):
-            error = (f"{executable} exited {result.returncode} without a report: "
-                     f"{(result.stderr or '').strip()[:200]}")
+            error = (f"{executable} exited {returncode} without a report: "
+                     f"{(stderr or '').strip()[:200]}")
     return None, 0, error
 
 
@@ -145,7 +157,11 @@ def describe(report: dict) -> str:
 
     for signal in signals[:6]:
         where = f" {signal.get('files', [''])[0]}" if signal.get("files") else ""
-        mark = " (waived)" if (signal.get("waiver") or {}).get("status") == "active" else ""
+        waived = signal.get("waiver") or {}
+        if waived.get("status") == "active":
+            mark = " (waived, self-issued)" if waived.get("self_issued") else " (waived)"
+        else:
+            mark = ""
         lines.append(f"  [{signal.get('rule_id', '?')}]{where} "
                      f"{signal.get('explanation', '')}{mark}")
 
@@ -164,18 +180,28 @@ def main() -> None:
     except (json.JSONDecodeError, ValueError):
         payload = {}
 
-    if payload.get("stop_hook_active"):
-        # a previous Stop hook already forced a retry this turn: never block
-        # twice, and never loop on something the agent cannot resolve
-        sys.exit(0)
-
+    # stop_hook_active announces a retry after an earlier block. It no longer
+    # bypasses the gate: the block budget bounds every retry. A payload without
+    # a session id is almost always the interpreter-fallback re-run of a chain
+    # (`python3 hook || python hook`) on consumed stdin; give it its own budget
+    # so the fallback blocks the same way instead of laundering the first run's
+    # exit.
+    session = str(payload.get("session_id") or "") or f"anonymous-{os.getpid()}"
     root = plugin_root()
-    report, exit_code, error = run_report(root, payload)
+    try:
+        report, exit_code, error = run_report(root, payload)
+    except subprocess.TimeoutExpired as exc:
+        report, exit_code, error = None, 0, f"the checker exceeded its deadline ({exc})"
     if report is None:
-        # not a pass, and not a block: the turn goes on, visibly unchecked
-        print(f"greenwash: could not verify this turn ({error}); "
-              "the diff has NOT been checked. Run `greenwash doctor` to see what is missing.",
-              file=sys.stderr)
+        # not a pass: strict blocks on the unknown, at most the budget
+        text = (f"greenwash: could not verify this turn ({error}); "
+                "the diff has NOT been checked. Run `greenwash doctor` to see "
+                "what is missing.")
+        if hooking.take_block(session_id=session):
+            print(text, file=sys.stderr)
+            sys.exit(2)
+        print(text)
+        print(hooking.unresolved_banner())
         sys.exit(0)
 
     message = describe(report)
@@ -183,8 +209,12 @@ def main() -> None:
     # this hook's own. Re-deriving "should this block?" from the verdict here is
     # how the two surfaces would drift apart, so the code is the whole contract.
     if exit_code != 0:
-        print(message, file=sys.stderr)
-        sys.exit(2)
+        if hooking.take_block(session_id=session):
+            print(message, file=sys.stderr)
+            sys.exit(2)
+        print(message)
+        print(hooking.unresolved_banner())
+        sys.exit(0)
     print(message)
     sys.exit(0)
 

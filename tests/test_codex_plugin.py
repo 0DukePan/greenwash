@@ -85,22 +85,32 @@ def test_the_posix_command_starts_a_hook(tmp_path):
         pytest.skip("the POSIX spelling is exercised on the Unix CI runner")
     command = hook_entries()[0]["command"].replace("${PLUGIN_ROOT}", str(CODEX))
     result = subprocess.run(command, shell=True, cwd=tmp_path, capture_output=True,
-                            text=True, input=json.dumps({"hook_event_name": "Stop"}),
+                            text=True, input=json.dumps({"hook_event_name": "Stop",
+                                                         "session_id": str(tmp_path.resolve())}),
                             env={**os.environ, "PLUGIN_ROOT": str(CODEX)},
                             encoding="utf-8", errors="replace", timeout=300)
-    assert result.returncode == 0, result.stderr
+    assert result.returncode == 2, result.stderr
     assert "greenwash" in (result.stdout + result.stderr)
 
 
 def test_the_windows_command_starts_a_hook(tmp_path):
+    """The Windows spelling launches the hook and gets an answer from it.
+
+    The answer here is a block: the Codex profile is strict and an empty
+    directory is exactly the "could not verify" case, which blocks at most the
+    budget. Starting and answering is this test's contract; the policy is
+    pinned in tests/test_strict.py.
+    """
     if os.name != "nt":
         pytest.skip("the Windows spelling is exercised on the Windows CI runner")
     command = hook_entries()[0]["command_windows"].replace("%PLUGIN_ROOT%", str(CODEX))
     result = subprocess.run(command, shell=True, cwd=tmp_path, capture_output=True,
-                            text=True, input=json.dumps({"hook_event_name": "Stop"}),
+                            text=True, input=json.dumps({"hook_event_name": "Stop",
+                                                         "session_id": str(tmp_path.resolve())}),
                             env={**os.environ, "PLUGIN_ROOT": str(CODEX)},
                             encoding="utf-8", errors="replace", timeout=300)
-    assert result.returncode == 0, result.stderr
+    assert result.returncode == 2, result.stderr
+    assert "greenwash" in (result.stdout + result.stderr)
 
 
 def test_the_windows_command_names_an_interpreter_the_other_one_does_not():
@@ -127,9 +137,11 @@ def cheat(tmp_path):
 
 
 def codex_hook(cwd, payload=None, env=None):
+    message = {"hook_event_name": "Stop", **(payload or {})}
+    message.setdefault("session_id", str(os.path.realpath(str(cwd))))
     return subprocess.run(
         [sys.executable, str(CODEX / "scripts" / "greenwash_hook.py")], cwd=cwd,
-        input=json.dumps(payload or {"hook_event_name": "Stop"}),
+        input=json.dumps(message),
         capture_output=True, text=True, encoding="utf-8", errors="replace",
         env={**os.environ, "PYTHONPATH": str(ROOT), "PYTHONIOENCODING": "utf-8",
              **(env or {})}, timeout=300)
@@ -169,7 +181,9 @@ def test_the_hook_resolves_its_own_root_when_no_variable_is_set(cheat):
     env["PYTHONPATH"] = str(ROOT)
     result = subprocess.run(
         [sys.executable, str(CODEX / "scripts" / "greenwash_hook.py")], cwd=cheat,
-        input=json.dumps({"hook_event_name": "Stop"}), capture_output=True, text=True,
+        input=json.dumps({"hook_event_name": "Stop",
+                          "session_id": str(cheat.resolve())}),
+        capture_output=True, text=True,
         encoding="utf-8", errors="replace", env=env, timeout=300)
     assert result.returncode == 2, (result.stdout, result.stderr)
 
@@ -223,7 +237,9 @@ def test_the_two_gates_agree_on_the_same_fixture(cheat):
     """One checker, two host packs: a difference here is a bug in one of them."""
     claude = subprocess.run(
         [sys.executable, str(ROOT / "scripts" / "greenwash_hook.py")], cwd=cheat,
-        input=json.dumps({"hook_event_name": "Stop"}), capture_output=True, text=True,
+        input=json.dumps({"hook_event_name": "Stop",
+                          "session_id": str(cheat.resolve())}),
+        capture_output=True, text=True,
         encoding="utf-8", errors="replace",
         env={**os.environ, "PYTHONPATH": str(ROOT), "GREENWASH_STRICT": "1"},
         timeout=300)

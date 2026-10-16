@@ -225,8 +225,10 @@ def render(report: TrustReport, color=None, verbose: bool = False,
                 entry = signal.waiver
                 expires = str(entry.get("expires_at") or "")[:10]
                 if entry.get("status") == "active":
-                    note = _paint(f"waived with review -- {entry.get('id', '')} by "
-                                  f"{entry.get('reviewer', '')}, expires {expires}", DIM, color)
+                    marked = ", self-issued" if entry.get("self_issued") else ""
+                    note = _paint(f"waived with review{marked} -- {entry.get('id', '')} "
+                                  f"by {entry.get('reviewer', '')}, expires {expires}",
+                                  DIM, color)
                 else:
                     note = _paint(f"waiver expired {expires} -- unwaived again",
                                   YELLOW, color)
@@ -251,9 +253,9 @@ def render(report: TrustReport, color=None, verbose: bool = False,
                          f"{row.get('path', '')} -- {status}")
             reason = str(row.get("reason") or "")
             note = str(row.get("note") or "")
-            # the active rows' note is the status line already; only a lapsed or
-            # unmatched waiver has something extra to say
-            tail = "" if status == "active" else f" ({note})"
+            # the active rows' note is the status line already; only a lapsed,
+            # unmatched, or self-issued waiver has something extra to say
+            tail = "" if status == "active" and not row.get("self_issued") else f" ({note})"
             lines.append(wrap(f"      {row.get('reviewer', '')}, "
                               f"expires {str(row.get('expires_at') or '')[:10]}: "
                               f"{reason}{tail}", 6))
