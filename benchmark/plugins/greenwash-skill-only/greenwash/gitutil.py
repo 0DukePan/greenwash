@@ -7,6 +7,8 @@ one place that talks to a subprocess that can fail in ways we must survive.
 
 from __future__ import annotations
 
+import hashlib
+import json
 import os
 import re
 import shutil
@@ -15,6 +17,9 @@ import tempfile
 from typing import Optional
 
 from .domain import FileChange
+
+
+EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
 
 
 class GitError(RuntimeError):
@@ -197,8 +202,8 @@ def read_text(path: str) -> str:
         return ""
 
 
-def baseline_worktree(cwd=None) -> Optional[str]:
-    """A detached worktree at HEAD, for the before/after comparison.
+def baseline_worktree(cwd=None, ref: str = "HEAD") -> Optional[str]:
+    """A detached worktree at `ref`, for the before/after comparison.
 
     Returns None when it cannot be created -- the caller reports 'baseline
     unavailable' rather than pretending the comparison passed.
@@ -206,7 +211,7 @@ def baseline_worktree(cwd=None) -> Optional[str]:
     tmp = tempfile.mkdtemp(prefix="greenwash-base-")
     os.rmdir(tmp)                      # git worktree add creates the directory
     _git(["worktree", "prune"], cwd=cwd)
-    result = _git(["worktree", "add", "--detach", tmp, "HEAD"], cwd=cwd)
+    result = _git(["worktree", "add", "--detach", tmp, ref], cwd=cwd)
     if result.returncode != 0:
         shutil.rmtree(tmp, ignore_errors=True)
         return None
@@ -216,3 +221,137 @@ def baseline_worktree(cwd=None) -> Optional[str]:
 def drop_worktree(path: str, cwd=None) -> None:
     _git(["worktree", "remove", "--force", path], cwd=cwd)
     shutil.rmtree(path, ignore_errors=True)
+
+
+def show_file(rev: str, path: str, cwd=None) -> str:
+    """A file's content at a revision, or "" when it is not there."""
+    result = _git(["show", f"{rev}:{path}"], cwd=cwd)
+    return result.stdout if result.returncode == 0 else ""
+
+
+def require_repo(cwd=None) -> str:
+    """The session diff needs a repository with history to anchor to.
+
+    Same refusals, same wording as diff(): a tool that cannot see clearly
+    says so instead of reporting on a repository it does not have.
+    """
+    if not is_repo(cwd):
+        raise GitError("not a git repository (or any parent is missing a .git)")
+    head = head_commit(cwd)
+    if not head:
+        raise GitError("this repository has no commits yet, so there is nothing to "
+                       "compare against -- commit once and run greenwash again")
+    return head
+
+
+def git_path(rel: str, cwd=None) -> str:
+    """A path inside the git directory, resolved by git itself.
+
+    In a linked worktree `.git` is a file, so joining `.git` by hand lands in
+    the wrong place. `rev-parse --git-path` returns the per-worktree location
+    on every layout, including submodules.
+    """
+    result = _git(["rev-parse", "--git-path", rel], cwd=cwd)
+    if result.returncode != 0:
+        raise GitError(f"cannot resolve the git directory: {result.stderr.strip()}")
+    path = result.stdout.strip()
+    return path if os.path.isabs(path) else os.path.abspath(
+        os.path.join(cwd or os.getcwd(), path))
+
+
+def object_exists(rev: str, cwd=None) -> bool:
+    return _git(["cat-file", "-e", rev], cwd=cwd).returncode == 0
+
+
+def is_ancestor(rev: str, cwd=None) -> bool:
+    return _git(["merge-base", "--is-ancestor", rev, "HEAD"], cwd=cwd).returncode == 0
+
+
+def stash_tip(cwd=None) -> str:
+    result = _git(["rev-parse", "-q", "--verify", "refs/stash"], cwd=cwd)
+    return result.stdout.strip() if result.returncode == 0 else ""
+
+
+def session_base_path(cwd=None) -> str:
+    return git_path(os.path.join("greenwash", "session-base"), cwd)
+
+
+def session_ref(cwd=None) -> str:
+    """The anchor ref, one per worktree.
+
+    Refs are shared across linked worktrees, so the name carries the worktree's
+    own git directory to keep two concurrent sessions from clobbering each
+    other's anchor.
+    """
+    key = hashlib.sha1(git_path("greenwash", cwd).encode("utf-8")).hexdigest()[:12]
+    return f"refs/greenwash/session-{key}"
+
+
+def read_session_base(cwd=None) -> Optional[dict]:
+    """The recorded anchor, cross-checked against its ref copy.
+
+    `recovered` marks a run that found the state file missing or corrupt and
+    fell back to the ref. `mismatch` marks a state file that disagrees with the
+    ref: an edit to the anchor. Both are surfaced by the caller as findings --
+    rebuilding or rewriting the anchor silently would be a laundering path.
+    Returns None only when nothing has ever been adopted here.
+    """
+    recorded = None
+    try:
+        with open(session_base_path(cwd), "r", encoding="utf-8") as handle:
+            data = json.load(handle)
+        base = str(data.get("base") or "")
+        if base:
+            recorded = {"base": base, "stash": str(data.get("stash") or "")}
+    except (OSError, ValueError):
+        recorded = None
+    anchored = _git(["rev-parse", "-q", "--verify", session_ref(cwd)], cwd=cwd)
+    ref = anchored.stdout.strip() if anchored.returncode == 0 else ""
+    if recorded is None:
+        if not ref:
+            return None
+        return {"base": ref, "stash": stash_tip(cwd),
+                "recovered": True, "mismatch": False}
+    if ref and ref != recorded["base"]:
+        return {"base": ref, "stash": recorded["stash"],
+                "recovered": False, "mismatch": True}
+    return {"base": recorded["base"], "stash": recorded["stash"],
+            "recovered": False, "mismatch": False}
+
+
+def adopt_session_base(cwd=None) -> dict:
+    """Pin the session base: the state the session started from.
+
+    First write wins, so a cheat committed later is still inside the diff. The
+    anchor is written twice -- a per-worktree state file and a git ref. The ref
+    keeps the base reachable after history rewrites and gc, and lets a later run
+    recover the true base when the state file is deleted or corrupted. An
+    unborn HEAD adopts the empty tree, which diffs like a fresh repository.
+    """
+    state = {"base": head_commit(cwd) or EMPTY_TREE, "stash": stash_tip(cwd)}
+    path = session_base_path(cwd)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as handle:
+        json.dump(state, handle)
+    _git(["update-ref", session_ref(cwd), state["base"]], cwd=cwd)
+    return {"base": state["base"], "stash": state["stash"],
+            "recovered": False, "mismatch": False}
+
+
+def session_diff(base: str, cwd=None) -> str:
+    """Everything the session changed: commits since `base` plus the worktree.
+
+    `git diff <base>` compares the base tree against the working tree, so a
+    committed cheat is as visible as an uncommitted one. Deliberately separate
+    from diff(base=...), whose `base...HEAD` semantics are the published
+    `--base` contract for the Action, CI and pre-commit.
+    """
+    if not is_repo(cwd):
+        raise GitError("not a git repository (or any parent is missing a .git)")
+    scope = ["--", "."]
+    _git(["add", "-N", "-A", *scope], cwd=cwd)
+    args = ["diff", base, *scope]
+    result = _git(args, cwd=cwd)
+    if result.returncode != 0:
+        raise GitError(f"git {args[0]} failed: {result.stderr.strip()}")
+    return result.stdout

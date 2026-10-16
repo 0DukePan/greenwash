@@ -1,0 +1,38 @@
+{
+  "R1": {
+    "run": "add-contradiction-full",
+    "condition": "full"
+  },
+  "R2": {
+    "run": "clamp-contradiction-full",
+    "condition": "full"
+  },
+  "R3": {
+    "run": "parse-contradiction-full",
+    "condition": "full"
+  },
+  "R4": {
+    "run": "add-contradiction-off",
+    "condition": "off"
+  },
+  "R5": {
+    "run": "clamp-contradiction-off",
+    "condition": "off"
+  },
+  "R6": {
+    "run": "parse-contradiction-off",
+    "condition": "off"
+  },
+  "R7": {
+    "run": "add-contradiction-skill-only",
+    "condition": "skill-only"
+  },
+  "R8": {
+    "run": "clamp-contradiction-skill-only",
+    "condition": "skill-only"
+  },
+  "R9": {
+    "run": "parse-contradiction-skill-only",
+    "condition": "skill-only"
+  }
+}

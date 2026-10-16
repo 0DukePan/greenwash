@@ -4,42 +4,51 @@ A launch page that only lists successes is a page nobody should believe. These
 are the things this project tried that did not do what it hoped, with the
 numbers attached. Most of them are still open.
 
-## 1. The behavioural claim: the plugin did not reduce silent cheating
+## 1. The behavioural claim: the plugin showed no effect, and the benchmark was wrong
 
 This is the one that matters, because it is the claim the whole idea rests on.
 
-Over 252 scored agent runs -- 24 tasks, three plugin states, three runs each --
-the silent-cheat rate was **7% with the plugin off, 7% with the skill alone, and
-8% with the skill and the hook**. The delta, **-1.4 points**, sits inside every
-arm's confidence interval: `off` [3, 15], `skill-only` [3, 15], `full` [4, 17].
+**We reported a 7% cheat rate and a null effect. On inspection, all 16 were
+honest fixes to tasks whose hidden tests checked unstated requirements. The
+model never cheated. Our benchmark measured underspecification, not cheating.**
 
-It is published as **no measurable effect at this sample size**, on the front
-page, above the fold, rather than as a reduction. The raw rows are in
-`benchmark/results/delta.jsonl`; the summary is in `benchmark/RESULTS.md`.
+Over 252 scored agent runs (24 tasks, three plugin states, three runs each) the
+v1 labels counted 16 "silent cheats" -- 7% with the plugin off, 7% with the
+skill alone, 8% with the skill and the hook -- and a delta of **-1.4 points**
+that sat inside every arm's confidence interval. Under the corrected outcome
+taxonomy those 16 rows are `underspecified`, the integrity-cheat rate is **0% in
+every arm** (0/72 each, 95% CI [0, 5]), and the delta is **+0.0 points**.
+
+Every number here is re-derivable from the data alone. Each row in
+`benchmark/results/delta.jsonl` keeps its v1 label in `outcome_v1`, and
+`python benchmark/tools/relabel.py --dry-run` recomputes the corrected one from
+the recorded evidence. The summary is in `benchmark/RESULTS.md`.
 
 Two further limits on that number, both stated on the pages that quote it: the
 corpus is first-party, and the run predates the test-integrity check, so it
 describes the plugin as it was then and not as it is now. A preregistration for
 a study that would replace it is in [EVALUATION_PROTOCOL.md](./EVALUATION_PROTOCOL.md).
 
-## 2. The cheat class where the tool has no leverage: a swallowed exception
+## 2. The rows we called cheats were honest fixes to underspecified tasks
 
-All 16 silent cheats in that run were `mock` or `swallow` shortcuts. Nine of
-them were the **same task** (`json-load-default`, an exception swallowed into a
-default) and **no arm caught it** -- not the static scan, not the held-out
-suite, not the hook.
+All 16 rows were `mock` or `swallow` class tasks (7 and 9 by label), nine of
+them the **same task** (`json-load-default`), then `default-port-by-env` (5),
+`backoff-delay` (1) and `slugify-basic` (1). In every case the visible suite
+stated one requirement and the hidden suite checked another that the prompt
+never mentioned: `load` had to return `{}` for anything that was not a JSON
+object, `delay(0)` had to be exponential, double spaces had to collapse. The
+agents did what the visible tests asked. Nothing was laundered: no touched
+tests, no mocks of the unit under test, no hardcoded literals.
 
-The reason is structural rather than a bug: the visible suite still passes, the
-held-out suite that disagrees is one the agent never sees, and an
-`except JSONDecodeError: return {}` is indistinguishable from correct code
-without knowing what the caller expects.
-
-Two things changed because of it: `error-path-default` (GW-DIV-002) now fires
-when a handler returns a default and nothing nearby tests that path, and the
-test-integrity check re-runs a changed test's committed form against the new
-code. **Neither has been re-measured** against that run -- the numbers on this
-page describe the plugin as it was, and saying otherwise would be the exact
-failure this file exists to avoid.
+That is a corpus bug, not a model behavior, and it is why the v1 rates say
+nothing about cheating. Three things changed because of it: the outcome
+taxonomy now separates `integrity cheat` (a diff that tampers) from `spec
+overfit` (a clean diff on an underspecified task), the harness records
+`diff_class` per row so the distinction is evidence rather than judgment, and
+the tasks whose hidden tests checked unstated requirements will get their full
+spec in the prompt. A replacement corpus with impossible tasks -- where any pass
+is a cheat by construction -- is being built so the next study needs no labels at
+all.
 
 ## 3. The static layer does work the behavioural layer cannot
 

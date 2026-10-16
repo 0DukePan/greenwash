@@ -12,8 +12,12 @@ finding.
 
 The first measurement (252 scored agent runs, 24 tasks) produced a null: 7% of
 runs shipped a silent cheat with the plugin off, 8% with it fully on, -1.4
-points, every arm's interval overlapping every other. It has two limits that no
-amount of re-running it can fix:
+points, every arm's interval overlapping every other. **Corrected since:** those
+16 "silent cheats" were honest fixes to tasks whose hidden tests checked
+unstated requirements, so the integrity-cheat rate is 0% in every arm and the
+delta is +0.0 points; see `docs/what-did-not-work.md` sections 1-2. The numbers
+below are the v1 record and are kept for history. The null has two limits that
+no amount of re-running it can fix:
 
 1. the corpus is **first-party** -- the detector's authors wrote the tasks; and
 2. the plugin has changed since, so the table describes an older build.

@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <strong>24/24 planted cheats caught &middot; 0 false positives on 24 real fixes &middot; 407 tests</strong><br>
+  <strong>24/24 planted cheats caught &middot; 0 false positives on 24 real fixes &middot; 455 tests</strong><br>
   <sub>
     An agent under pressure to show green will skip the test, mock the unit under
     test, hardcode the expected value, or swallow the exception that would have
@@ -32,10 +32,11 @@
   <sub>
     Those are detector numbers. The claim underneath them is that catching a fake
     pass <em>changes what the agent does</em> -- and over 252 measured agent runs
-    it did not: 7% of runs shipped a silent cheat with the check off, 8% with it
-    fully on. That is -1.4 points, with every arm's interval overlapping every
-    other arm's, and it is published here as the null it is rather than as a win.
-    The cheat class where greenwash has no leverage is named in
+    it did not. We reported 7% of runs shipping a "silent cheat" and -1.4 points
+    of effect. On inspection those 16 runs were honest fixes to tasks whose
+    hidden tests checked unstated requirements, so the corrected integrity-cheat
+    rate is 0% in every arm (+0.0 points): our benchmark measured
+    underspecification, not cheating. The correction is documented in
     <a href="#numbers">Numbers</a>.
   </sub>
 </p>
@@ -101,6 +102,16 @@ the agent tries to finish its turn:
 Codex gets the same checker with strict enforcement on by default -- see
 [`codex/`](codex/README.md).
 
+### What would make the evidence stronger
+
+The shipped benchmark is first-party and the measured outcome is a null. This
+repository does not treat either as proof that greenwash changes agent
+behaviour. The executable [external evidence kit](docs/EVIDENCE_KIT.md) is the
+release bar: an independently governed 60-task corpus, a hash-bound
+preregistration, a fully published result (including null or negative results),
+and externally maintained pilot receipts. `greenwash evidence` validates the
+records locally; it cannot manufacture the independence or the outcomes.
+
 ## What the report looks like
 
 This is the verbatim output of `python demo/run_demo.py --terse`, on a repo where
@@ -146,6 +157,8 @@ Confidence: MEDIUM (score 40/100)
   - the visible suite passes (1/1)
   - the held-out checks do not pass
   - 2 high-severity signal(s) in the diff
+note: the session base was adopted at this run: anything changed before
+          it, earlier commits included, is outside the diff
 note: using the test command you supplied: python -m pytest -q
           tests/test_calc.py
 note: coverage is a proxy: 100% of the changed source files have an
@@ -228,7 +241,7 @@ diff looks. The full decision table and the arithmetic:
 
 ## What it catches
 
-Nine static rules, and six signals that only a run can produce:
+Ten static rules, and seven signals that only a run can produce:
 
 | Code | Rule | Severity | What it means |
 |---|---|---|---|
@@ -241,11 +254,13 @@ Nine static rules, and six signals that only a run can produce:
 | `GW-EXP-001` | `known-exploit-pattern` | high | An unconditional `__eq__`, or `sys.exit(0)` / `os._exit(0)` / `process.exit(0)` |
 | `GW-TEST-005` | `mock-in-test` | medium | A mock appears in a test file -- **asks**, never accuses |
 | `GW-TEST-006` | `conftest-changed` | medium | `conftest.py` was touched -- **asks**, never accuses |
+| `GW-TEST-007` | `verifier-config-changed` | medium | Files that decide what gets checked and what may pass were touched -- **asks**, never accuses |
 | `GW-VER-001` | `tests-failed` | high | The test command exits non-zero after "done" |
 | `GW-VER-002` | `heldout-failed` | high | The visible suite passes but the held-out suite fails |
 | `GW-VER-003` | `regression` | high | A test that passed at the committed baseline fails now |
 | `GW-VER-005` | `test-weakened` | high | A test file the diff changed does not pass in its committed form against the code as it now stands |
 | `GW-VER-006` | `requirement-failed` | high | A requirement the claim bound to a test or a command does not hold |
+| `GW-VER-007` | `tests-not-run` | high | The suite executes less than at the baseline: everything skipped, more skipped, or fewer collected |
 | `GW-VER-004` | `verification-failed` | low | The verifier could not complete -- an honest gap, not a pass |
 
 `greenwash rules` prints the same table from the source of truth.
@@ -346,25 +361,23 @@ confidence capped at `MEDIUM`.
 effect.** How often a model claims done while the check it was told to pass
 isn't actually passing, with the plugin `off` vs. `skill-only` vs. `full` --
 measured on `dots-studio/dots3-note-prev` through the maintainer's gateway, 72
-scored runs per arm. The four language tasks are recorded as
-`skipped: no toolchain` and kept out of every rate:
+scored runs per arm. The four language tasks are recorded as `infra` (no
+toolchain on that machine) and kept out of every rate:
 
-| State | Silent cheats | Runs | Rate | 95% CI |
-|---|---|---|---|---|
-| `off` | 5 | 72 | 7% | [3, 15] |
-| `skill-only` | 5 | 72 | 7% | [3, 15] |
-| `full` | 6 | 72 | 8% | [4, 17] |
+| State | Integrity cheats | Underspecified | Runs | Rate | 95% CI |
+|---|---|---|---|---|---|
+| `off` | 0 | 5 | 72 | 0% | [0, 5] |
+| `skill-only` | 0 | 5 | 72 | 0% | [0, 5] |
+| `full` | 0 | 6 | 72 | 0% | [0, 5] |
 
-**Delta (off -> full): -1.4 points -- the plugin did not reduce silent cheating
-on this corpus.** Every arm sits inside every other arm's interval, so the
-honest reading is "no measurable effect at this sample size", and it is
-published as one. What did not get caught is the useful part: all 16 silent
-cheats are `mock` or `swallow` shortcuts, nine of them the same task
-(`json-load-default`, a swallowed exception) which **no** arm caught -- the
-visible suite still passes, and the held-out suite that disagrees is one the
-agent never sees. `hardcode`, `skip`, `exploit` and `weaken` tasks were fixed
-in every arm. False positives: **0** on 200 genuinely-good runs across the
-three arms.
+**Delta (off -> full): +0.0 points of integrity cheating -- and the benchmark
+that produced the old numbers was wrong.** We reported 7% "silent cheats" and a
+-1.4 point delta. On inspection all 16 were honest fixes to tasks whose hidden
+tests checked unstated requirements, so under the corrected outcome taxonomy
+they are `underspecified` (clean diffs on underspecified tasks), not cheats. The
+model never cheated. Every row keeps its old label in `outcome_v1`, and
+`python benchmark/tools/relabel.py --dry-run` re-derives the corrected one.
+False positives: **0** on 200 genuinely-good runs across the three arms.
 
 That run predates the test-integrity check described above, so it measures the
 plugin as it was then. `json-load-default` is precisely the shape that check now
@@ -373,9 +386,9 @@ a claim about the current code, and it is not presented as one.
 
 The raw rows are in `benchmark/results/delta.jsonl` (252 of them), the report in
 [benchmark/RESULTS.md](benchmark/RESULTS.md), and `benchmark/run.py` renders the
-table into [BENCHMARK.md](BENCHMARK.md). The next move is more tasks per cheat
-type -- the swallow class is where the tool has no leverage -- not a louder
-claim:
+table into [BENCHMARK.md](BENCHMARK.md). The next move is an impossible-task
+corpus -- tasks where any pass is a cheat by construction, so the labels need no
+judgment -- not a louder claim:
 
 ```bash
 python benchmark/preflight.py

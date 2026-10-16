@@ -28,10 +28,10 @@ import argparse
 import os
 import sys
 
-from . import __version__, config as config_mod, gitutil, scan as scan_mod
+from . import __version__, config as config_mod, evidence as evidence_mod, gitutil, scan as scan_mod
 from . import strict as strict_mod, waivers as waivers_mod
 from .doctor import doctor, initialize
-from .domain import Claim, Run, TrustReport, Verdict
+from .domain import Claim, Run, Signal, TrustReport, Verdict
 from .report import render, terminal
 from .verify import engine as verify_engine
 
@@ -137,6 +137,15 @@ def build_parser() -> argparse.ArgumentParser:
     waive.add_argument("--id", dest="waiver_id", default="", help="override the generated id")
     waive.add_argument("--base", default=None, help="diff against this ref")
     waive.add_argument("--staged", action="store_true", help="consider staged changes only")
+
+    evidence = sub.add_parser("evidence", help="validate a frozen corpus, preregistration, or adoption ledger")
+    evidence.add_argument("kind", choices=["corpus", "registration", "adoption"],
+                          help="the record type to validate")
+    evidence.add_argument("file", help="UTF-8 JSON record to validate")
+    evidence.add_argument("--corpus", help="frozen corpus manifest (required to bind a registration)")
+    evidence.add_argument("--allow-template", action="store_true",
+                          help="allow a corpus template while drafting; never use for a study claim")
+    evidence.add_argument("--json", action="store_true", help="machine-readable validation result")
     return parser
 
 
@@ -157,6 +166,59 @@ def _parse_fail_on(raw: str) -> list:
             raise ValueError(name)
         chosen.append(known[name])
     return chosen
+
+
+def _session_signals(session: dict) -> list:
+    """Tamper evidence around the session base.
+
+    The session diff already keeps committed work in scope. What it cannot see
+    is history rewritten past the base, changes parked outside the working
+    tree, or the anchor itself being rebuilt or rewritten, so those surface as
+    findings of their own.
+    """
+    out: list = []
+    base = session["base"]
+    if session.get("recovered"):
+        out.append(Signal(
+            rule_id="base-recovered", code="GW-SESSION-001",
+            title="session anchor rebuilt from its ref",
+            explanation="the session state file was missing or corrupt, so the base was "
+                        "recovered from its anchor ref: deleting or breaking the anchor "
+                        "does not move it. Explain the damage before calling this done",
+            requires_review=True))
+    if session.get("mismatch"):
+        out.append(Signal(
+            rule_id="base-tampered", code="GW-SESSION-004",
+            title="the session anchor was rewritten",
+            explanation=f"the state file names a different base than its anchor ref: "
+                        f"the ref says {base[:12]}. The diff is computed against the "
+                        "ref; rewriting the anchor does not move it",
+            requires_review=True))
+    if base != gitutil.EMPTY_TREE:
+        if not gitutil.object_exists(base):
+            out.append(Signal(
+                rule_id="base-unreachable", code="GW-SESSION-005",
+                title="session base no longer exists",
+                explanation=f"the session base ({base[:12]}) is gone from the object "
+                            "database, so the diff may not cover the whole session",
+                requires_review=True))
+        elif not gitutil.is_ancestor(base):
+            out.append(Signal(
+                rule_id="history-rewritten", code="GW-SESSION-002",
+                title="history rewritten past the session base",
+                explanation=f"HEAD no longer descends from the session base ({base[:12]}): "
+                            "a reset, rebase or amend moved history. The diff still covers "
+                            "base against the worktree, so committed changes stay in scope",
+                requires_review=True))
+    if gitutil.stash_tip() != (session.get("stash") or ""):
+        out.append(Signal(
+            rule_id="changes-hidden", code="GW-SESSION-003",
+            title="changes parked outside the working tree",
+            explanation="the stash ref moved during this session: changes parked in a "
+                        "stash are outside the diff and can come back after the report. "
+                        "Pop them or explain them before calling this done",
+            requires_review=True))
+    return out
 
 
 def collect(args) -> tuple:
@@ -186,16 +248,38 @@ def collect(args) -> tuple:
     want_scan = claimed in (None, "report", "scan")
     want_verify = claimed in (None, "report", "verify")
 
+    session_base = None
+    adopted_now = False
     try:
-        diff = gitutil.diff(staged=getattr(args, "staged", False),
-                            base=getattr(args, "base", None))
+        if getattr(args, "staged", False) or getattr(args, "base", None):
+            diff = gitutil.diff(staged=getattr(args, "staged", False),
+                                base=getattr(args, "base", None))
+        else:
+            # The session base, not HEAD, is the line a cheat cannot cross: a
+            # commit made mid-session stays inside the diff. `--base` and
+            # `--staged` keep their published semantics for CI and pre-commit.
+            gitutil.require_repo()
+            session_base = gitutil.read_session_base()
+            if session_base is None:
+                session_base = gitutil.adopt_session_base()
+                adopted_now = True
+            if (session_base["base"] != gitutil.EMPTY_TREE
+                    and not gitutil.object_exists(session_base["base"])):
+                diff = ""      # base-unreachable says why; a broken ref is not a crash
+            else:
+                diff = gitutil.session_diff(session_base["base"])
     except gitutil.GitError as exc:
         print(f"greenwash: {exc}", file=sys.stderr)
         return None, EXIT_ERROR
 
     signals = scan_mod.scan_diff(diff) if want_scan else []
+    if session_base:
+        signals += _session_signals(session_base)
     changes, _ = scan_mod.summarize(diff)
     notes = list(config.problems)
+    if session_base and adopted_now:
+        notes.append("the session base was adopted at this run: anything changed "
+                     "before it, earlier commits included, is outside the diff")
     ignored = set(config.get("ignore_rules") or [])
     if ignored and strict:
         # Strict mode refuses to honour a suppression: the findings stay in the
@@ -235,6 +319,7 @@ def collect(args) -> tuple:
                 changes=changes,
                 integrity=bool(config.get("test_integrity")),
                 integrity_max=int(config.get("test_integrity_max") or 3),
+                base_ref=session_base["base"] if session_base else None,
                 requirements=(getattr(args, "require", None)
                               or config.get("requirements")))
             verification = outcome.result
@@ -243,7 +328,12 @@ def collect(args) -> tuple:
 
     ledger = waivers_mod.load(".")
     notes.extend(ledger.problems)
-    application = waivers_mod.apply(signals, ledger)
+    application = waivers_mod.apply(
+        signals, ledger,
+        self_issued=waivers_mod.self_issued_ids(
+            ledger,
+            session_base["base"] if session_base
+            else (getattr(args, "base", None) or "")))
 
     run = Run(
         agent=getattr(args, "agent", "") or config.get("agent") or os.environ.get(
@@ -367,7 +457,47 @@ def _run_waive(args) -> int:
     _emit(json.dumps(waiver.to_dict(), indent=2) + "\n")
     _emit(f"wrote {written}\n")
     _emit("this finding is now reported as waived with review, never as clean.\n")
+    _emit("the waiver is self-issued: it holds for this session, and a maintainer "
+          "must ratify it (commit it, with review) before a PR trusts it.\n")
     return EXIT_OK
+
+
+def _run_evidence(args) -> int:
+    """Validate external-evidence records without making a network request."""
+    import json
+
+    try:
+        data, digest = evidence_mod.read_json(args.file)
+        corpus = None
+        corpus_digest = None
+        if args.corpus:
+            corpus, corpus_digest = evidence_mod.read_json(args.corpus)
+    except evidence_mod.EvidenceError as exc:
+        print(f"greenwash: {exc}", file=sys.stderr)
+        return EXIT_ERROR
+
+    if args.kind == "corpus":
+        issues = evidence_mod.validate_corpus(data, allow_template=args.allow_template)
+    elif args.kind == "registration":
+        if not args.corpus:
+            print("greenwash: registration validation requires --corpus so the hash can be bound",
+                  file=sys.stderr)
+            return EXIT_ERROR
+        issues = evidence_mod.validate_registration(data, corpus_digest, corpus)
+    else:
+        issues = evidence_mod.validate_adoption(data)
+    payload = {"schema_version": "1", "kind": args.kind, "file": str(args.file),
+               "sha256": digest, "valid": not issues, "issues": issues}
+    if args.json:
+        _emit(json.dumps(payload, indent=2) + "\n", machine=True)
+    elif issues:
+        _emit(f"greenwash evidence: {args.kind} is not ready\n")
+        for issue in issues:
+            _emit(f"  - {issue}\n")
+    else:
+        _emit(f"greenwash evidence: {args.kind} record is structurally ready ({digest})\n")
+        _emit("This validates disclosed commitments, not independence, outcome quality, or adoption impact.\n")
+    return EXIT_OK if not issues else EXIT_FINDINGS
 
 
 def main(argv=None) -> int:
@@ -419,6 +549,9 @@ def main(argv=None) -> int:
 
     if command == "waive":
         return _run_waive(args)
+
+    if command == "evidence":
+        return _run_evidence(args)
 
     report, code = collect(args)
     if report is None:

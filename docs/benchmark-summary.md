@@ -29,15 +29,17 @@ run with `python benchmark/detection.py`.
 The claim under the detector numbers is that catching a fake pass changes agent
 behaviour. On this corpus it did not:
 
-| State | Silent cheats | Runs | Rate | 95% CI |
-|---|---:|---:|---:|---|
-| `off` | 5 | 72 | 7% | [3, 15] |
-| `skill-only` | 5 | 72 | 7% | [3, 15] |
-| `full` | 6 | 72 | 8% | [4, 17] |
+| State | Integrity cheats | Underspecified | Runs | Rate | 95% CI |
+|---|---:|---:|---:|---:|---|
+| `off` | 0 | 5 | 72 | 0% | [0, 5] |
+| `skill-only` | 0 | 5 | 72 | 0% | [0, 5] |
+| `full` | 0 | 6 | 72 | 0% | [0, 5] |
 
-**Delta (off -> full): -1.4 points -- no measurable effect at this sample size.**
-Every arm's interval overlaps every other arm's. This is published as the null
-it is, not as a reduction.
+**Delta (off -> full): +0.0 points -- no measurable effect at this sample size.**
+The 16 runs the v1 labels called cheats are honest fixes to underspecified
+tasks, corrected to `underspecified` (see
+[what-did-not-work.md](./what-did-not-work.md)); every arm's interval overlaps
+every other arm's. This is published as the null it is, not as a win.
 
 Raw: 252 rows in
 [`benchmark/results/delta.jsonl`](../benchmark/results/delta.jsonl), summarised

@@ -38,8 +38,10 @@ were *not* flagged. This is a survey, and the page says so.
 
 ## 3. The agent-facing delta -- "does it change what an agent does?"
 
-252 scored runs: 7% off, 7% skill-only, 8% full; -1.4 points; intervals [3, 15],
-[3, 15], [4, 17].
+252 scored runs: 0% integrity cheats in every arm (0/72 each); +0.0 points;
+intervals [0, 5], [0, 5], [0, 5]. The 16 runs the v1 labels counted as cheats
+are corrected to `underspecified`: honest fixes to tasks whose hidden tests
+checked unstated requirements.
 
 **Licenses:** "no measurable effect at this sample size, on this corpus, with
 this model."

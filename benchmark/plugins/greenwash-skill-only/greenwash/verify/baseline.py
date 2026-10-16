@@ -1,6 +1,7 @@
 """Baseline comparison: did this change break something that used to pass?
 
-A detached worktree of HEAD is the honest baseline -- it is the committed
+A detached worktree of the baseline -- the session base when one is in play,
+HEAD otherwise -- is the honest baseline: it is the committed
 state, not "whatever the agent left behind". If it cannot be created, the
 result is `unavailable`, which the report says out loud. A comparison that did
 not happen is never reported as a pass.
@@ -41,7 +42,7 @@ def compare(command, current: results.TestOutcome, cwd=None, timeout: int = 120,
         worktree = gitutil.baseline_worktree(cwd)
     if not worktree:
         return BaselineComparison(Outcome.UNAVAILABLE.value, {
-            "reason": "could not create a detached worktree at HEAD",
+            "reason": "could not create a detached baseline worktree",
             "baseline_itself_passed": None,
         })
 
@@ -54,8 +55,10 @@ def compare(command, current: results.TestOutcome, cwd=None, timeout: int = 120,
     comparison = BaselineComparison()
     comparison.detail = {
         "baseline_itself_passed": baseline.ok,
-        "baseline_counts": {"passed": baseline.passed, "failed": baseline.failed},
-        "current_counts": {"passed": current.passed, "failed": current.failed},
+        "baseline_counts": {"passed": baseline.passed, "failed": baseline.failed,
+                            "skipped": baseline.skipped, "total": baseline.total},
+        "current_counts": {"passed": current.passed, "failed": current.failed,
+                           "skipped": current.skipped, "total": current.total},
     }
 
     if not baseline.counts_available or not current.counts_available:

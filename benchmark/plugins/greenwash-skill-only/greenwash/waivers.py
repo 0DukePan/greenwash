@@ -215,6 +215,7 @@ class Row:
     waiver: Waiver
     status: str
     note: str = ""
+    self_issued: bool = False
 
     @property
     def blocking(self) -> bool:
@@ -228,6 +229,7 @@ class Row:
         entry = self.waiver.to_dict()
         entry["status"] = self.status
         entry["note"] = self.note
+        entry["self_issued"] = self.self_issued
         return entry
 
 
@@ -329,8 +331,41 @@ def known_rules() -> dict:
     return table
 
 
+def self_issued_ids(ledger: Ledger, base_ref: str, root=".") -> set:
+    """Ids of entries that do not match the ledger as it stood at the base.
+
+    A waiver written inside the session still counts in-session: the documented
+    waive-and-continue path keeps working. It is marked self-issued instead.
+    The ledger at the base is what a maintainer had ratified; anything added or
+    changed after it needs one before a PR should trust it.
+    """
+    if not base_ref:
+        return set()
+    from . import gitutil
+    text = gitutil.show_file(base_ref, f"{DIR}/{FILE}", cwd=root)
+    base_waivers = {}
+    if text:
+        try:
+            data = json.loads(text)
+            base_waivers = {w.id: w for w in
+                            (Waiver.from_dict(entry) for entry in (data.get("waivers") or []))
+                            if w.id}
+        except (ValueError, AttributeError, TypeError):
+            base_waivers = {}
+    out = set()
+    for waiver in ledger.waivers:
+        base = base_waivers.get(waiver.id)
+        # The whole entry, not just the fingerprint: a ratified waiver whose
+        # expiry, reviewer or reason is edited mid-session is no longer the
+        # decision a maintainer made.
+        if base is None or base.to_dict() != waiver.to_dict():
+            out.add(waiver.id)
+    return out
+
+
 def apply(signals: Iterable, ledger: Ledger,
-          now: Optional[datetime] = None) -> Application:
+          now: Optional[datetime] = None,
+          self_issued: Optional[set] = None) -> Application:
     """Annotate every signal a waiver covers, and classify every waiver.
 
     Signatures are matched on rule and path first, then confirmed by
@@ -344,6 +379,8 @@ def apply(signals: Iterable, ledger: Ledger,
     for waiver in ledger.waivers:
         status = waiver.status(moment)
         note = ""
+        marked = False
+        exact: list = []
         if status == MALFORMED:
             reason = "; ".join(waiver.problems()[:2])
             note = f"not honoured ({reason})"
@@ -353,8 +390,10 @@ def apply(signals: Iterable, ledger: Ledger,
                      if waiver.path == s.path
                      and waiver.signal_fingerprint == fingerprint(s)]
             if exact:
+                marked = bool(self_issued and waiver.id in self_issued)
                 if status == ACTIVE:
-                    note = "waived with review"
+                    note = ("waived with review (self-issued -- written this session; "
+                            "a maintainer must ratify it)") if marked else "waived with review"
                 else:
                     note = (f"waiver expired {waiver.expires_at[:10]} -- "
                             "the finding is unwaived again")
@@ -362,7 +401,8 @@ def apply(signals: Iterable, ledger: Ledger,
                     signal.waiver = {"id": waiver.id, "reviewer": waiver.reviewer,
                                      "reason": waiver.reason,
                                      "expires_at": waiver.expires_at,
-                                     "status": status}
+                                     "status": status,
+                                     "self_issued": marked}
             elif any(waiver.path == s.path for s in same_rule):
                 status = STALE
                 note = ("the finding on this path changed since the waiver was "
@@ -370,6 +410,7 @@ def apply(signals: Iterable, ledger: Ledger,
             else:
                 status = UNMATCHED
                 note = "nothing in this diff matches it"
-        application.rows.append(Row(waiver=waiver, status=status, note=note))
+        application.rows.append(Row(waiver=waiver, status=status, note=note,
+                                    self_issued=marked))
 
     return application

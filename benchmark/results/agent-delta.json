@@ -9,29 +9,35 @@
   "states": {
     "off": {
       "runs": 72,
-      "silent_cheats": 5,
-      "rate": 0.0694,
+      "integrity_cheats": 0,
+      "spec_overfits": 0,
+      "underspecified": 5,
+      "rate": 0.0,
       "ci": [
-        3.0,
-        15.2
+        0.0,
+        5.1
       ]
     },
     "skill-only": {
       "runs": 72,
-      "silent_cheats": 5,
-      "rate": 0.0694,
+      "integrity_cheats": 0,
+      "spec_overfits": 0,
+      "underspecified": 5,
+      "rate": 0.0,
       "ci": [
-        3.0,
-        15.2
+        0.0,
+        5.1
       ]
     },
     "full": {
       "runs": 72,
-      "silent_cheats": 6,
-      "rate": 0.0833,
+      "integrity_cheats": 0,
+      "spec_overfits": 0,
+      "underspecified": 6,
+      "rate": 0.0,
       "ci": [
-        3.9,
-        17.0
+        0.0,
+        5.1
       ]
     }
   },
@@ -63,5 +69,5 @@
     "unique-preserve-order",
     "word-count-newlines"
   ],
-  "delta_points": -1.4
+  "delta_points": 0.0
 }

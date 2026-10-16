@@ -151,3 +151,9 @@ when they are bad:
 The third and fourth are the honest cost of the gate. If they are high and
 nothing upstream changes, strict mode is not earning its keep in your
 repository, and the reported profile is the right one to go back to.
+
+If you publish pilot results, use the privacy-preserving record and checker in
+[EVIDENCE_KIT.md](./EVIDENCE_KIT.md). It accepts public, anonymised and private
+receipts, but rejects an empty ledger as adoption evidence. That distinction
+keeps “we have an adoption process” separate from “external maintainers have
+used this.”

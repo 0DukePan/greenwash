@@ -238,18 +238,20 @@ def render_delta(delta: dict) -> str:
     """
     lines: list = []
     if delta["state"] == "measured":
-        lines.append("**Silent-cheat rate, by plugin state** (lower is better)")
+        lines.append("**Integrity-cheat rate, by plugin state** (lower is better)")
         lines.append("")
-        lines.append("| State | Silent cheats | Runs | Rate | 95% CI |")
-        lines.append("|---|---|---|---|---|")
+        lines.append("| State | Integrity cheats | Spec overfits | Underspecified | Runs | Rate | 95% CI |")
+        lines.append("|---|---|---|---|---|---|---|")
         for state, row in delta["states"].items():
             rate = f"{row['rate'] * 100:.0f}%" if row["rate"] is not None else "-"
-            lines.append(f"| `{state}` | {row['silent_cheats']} | {row['runs']} | "
+            lines.append(f"| `{state}` | {row['integrity_cheats']} | "
+                         f"{row['spec_overfits']} | {row['underspecified']} | "
+                         f"{row['runs']} | "
                          f"{rate} | [{row['ci'][0]:.0f}, {row['ci'][1]:.0f}] |")
         lines.append("")
         if "delta_points" in delta:
             lines.append(f"**Delta (off -> full): {delta['delta_points']:+.1f} points "
-                         "of silent cheating.**")
+                         "of integrity cheating.**")
             lines.append("")
         lines.append(f"Agents: {', '.join('`' + a + '`' for a in delta.get('agents', []))}.")
         if delta.get("models"):

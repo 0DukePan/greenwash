@@ -169,7 +169,7 @@ which drive the real hooks in a throwaway repository. No model, no network.
 
 ```bash
 git clone https://github.com/0DukePan/greenwash && cd greenwash
-python -m pytest -q                  # 407 tests, no model needed
+python -m pytest -q                  # 412 tests, no model needed
 python demo/run_demo.py              # the catch, end to end
 python demo/strict_claude.py --terse # the strict gate, through the real hook
 python benchmark/detection.py        # 24/24, and the runtime
