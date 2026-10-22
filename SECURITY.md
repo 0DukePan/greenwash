@@ -75,3 +75,46 @@ a git repository, which keeps its block budget in the system temp directory.
 That budget, like the session anchor, is a guard and not a security boundary:
 an agent that can run git and write files can rewrite it, which is why the
 report always prints what it found and the anchor carries tamper evidence.
+
+## What is pinned, and what a sandbox can move
+
+The diff under inspection is untrusted, and so is everything an agent can write
+inside the working tree -- including the files the verifier reads to decide
+what gets checked and what may pass. Three classes of input are pinned at the
+**base ref** (the session base locally, the merge target in CI) and
+hash-verified before use, which is what "loaded from outside the agent's
+writable sandbox" means here: the git object at the base ref, not the working
+copy.
+
+- **The checker's own code** (`greenwash/`, `scripts/greenwash_check.py`,
+  `scripts/greenwash_hook.py`) as tracked in the repository -- the self-check
+  case. A copy that is edited, deleted, or introduced where the base ref had
+  none stops the run before any verdict, with exit code 4. When the checker
+  runs from outside the repository (the pinned GitHub Action path), it is
+  outside the sandbox entirely and pinning it is the installer's job.
+- **The configuration** (`.greenwash/config.json`). A pinned copy that moved
+  stops the run the same way, so a branch cannot lower its own bar. The one
+  deliberate exception: a config that *appears* mid-session is honoured and
+  flagged (`verifier-config-changed`, requires review) rather than refused --
+  it cannot move a pinned policy, because a pinned policy that moves stops the
+  run first. The waiver ledger (`.greenwash/waivers.json`) is not config: it
+  has its own lifecycle, and a forged waiver reads "waived with review", never
+  clean.
+- **The pinned original tests.** An edited or deleted test file is detected
+  before the run starts and named in the report with the digest of the base
+  copy, which is what counts as evidence. A test edit is diff content for the
+  verdict to judge (`test-weakened`, `test-deleted`), never a moved pin.
+
+Digests are taken over newline-normalised text, because a checkout's CRLF
+translation is not a modification. An integrity failure is its own exit code
+(4), is printed before any verdict exists, and says in so many words that it
+is not a verdict about the diff.
+
+This is a guard, not a security boundary. An agent with git access can rewrite
+the base ref or run the checker from somewhere else; that is the same class of
+deliberate routing-around described above. What the guard removes is the
+unnoticed move: a checker input cannot change under a run without either
+stopping it or being named in its report. A scripted integrity suite
+(`tests/test_verifier_integrity.py`) attempts these alterations from inside a
+sandbox -- config, checker code, pinned tests, and the run's output -- and
+requires zero successes.
