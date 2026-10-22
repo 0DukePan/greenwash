@@ -28,7 +28,8 @@ import argparse
 import os
 import sys
 
-from . import __version__, config as config_mod, evidence as evidence_mod, gitutil, scan as scan_mod
+from . import (__version__, config as config_mod, evidence as evidence_mod, gitutil,
+               scan as scan_mod, taxonomy as taxonomy_mod)
 from . import strict as strict_mod, waivers as waivers_mod
 from .doctor import doctor, initialize
 from .domain import Claim, Run, Signal, TrustReport, Verdict
@@ -390,6 +391,29 @@ def _enforced_exit(report: TrustReport, config, fail_on=None) -> int:
     return EXIT_OK
 
 
+def _coverage_matrix() -> str:
+    """The coverage matrix, generated from the technique taxonomy.
+
+    One wrapped paragraph per technique rather than a fixed-width grid: it
+    survives any terminal width the report does, and it cannot drift from the
+    table it is rendered from. The statuses are the taxonomy's, not prose.
+    """
+    lines = [f"Coverage matrix -- technique taxonomy v{taxonomy_mod.TAXONOMY_VERSION}",
+             terminal.wrap("every tampering technique, its status "
+                           "(covered / partial / not covered), whether catching "
+                           "it needs replay, and what catches it", 0),
+             ""]
+    for technique in taxonomy_mod.TECHNIQUES:
+        replay = "replay: needed" if technique.replay else "replay: not needed"
+        caught = ("caught by " + ", ".join(technique.mechanisms)
+                  if technique.mechanisms else "nothing catches this yet")
+        lines.append(terminal.wrap(
+            f"  {technique.id} [{technique.status}] ({replay}) -- "
+            f"{technique.name} -- {caught}.", 2))
+        lines.append("")
+    return "\n".join(lines).rstrip() + "\n"
+
+
 def _run_waive(args) -> int:
     """`greenwash waive`: write one decision into .greenwash/waivers.json.
 
@@ -545,6 +569,7 @@ def main(argv=None) -> int:
                 review = "yes" if rule["requires_review"] else ""
                 _emit(f"{rule['code']:<12}{rule['id']:<24}{rule['severity']:<10}"
                       f"{review:<9}{rule['description']}\n")
+            _emit("\n" + _coverage_matrix())
         return EXIT_OK
 
     if command == "waive":
