@@ -16,12 +16,14 @@ wins.
 | 3 | The visible suite passes and the held-out suite fails | `NOT_VERIFIED` |
 | 4 | A test that passed at the baseline fails now | `NOT_VERIFIED` |
 | 5 | A requirement the claim bound evidence to does not hold | `NOT_VERIFIED` |
-| 6 | A high-severity signal that is not `requires_review`, or a changed test that fails in its committed form | `SUSPICIOUS` |
-| 7 | Nothing ran, and no signals | `INCONCLUSIVE` |
-| 8 | Signals, but nothing contradicts the claim | `PARTIALLY_VERIFIED` |
-| 9 | A requirement nobody could check | `PARTIALLY_VERIFIED` |
-| 10 | The visible suite passes | `VERIFIED` |
-| 11 | Anything else | `INCONCLUSIVE` |
+| 6 | A finding whose evidence verdict stands | that verdict -- `TAMPERED`, `INCONCLUSIVE` or `WEAK_VERIFIER`, by the precedence below |
+| 7 | A high-severity signal that is not `requires_review`, or a changed test that fails in its committed form | `SUSPICIOUS` |
+| 8 | Nothing ran, and no finding is left standing | `INCONCLUSIVE` |
+| 9 | Findings, but nothing contradicts the claim | `PARTIALLY_VERIFIED` |
+| 10 | A requirement nobody could check | `PARTIALLY_VERIFIED` |
+| 11 | The visible suite passes, and every evidence finding resolved `CLEAN` | `CLEAN` |
+| 12 | The visible suite passes | `VERIFIED` |
+| 13 | Anything else | `INCONCLUSIVE` |
 
 Two properties are deliberate:
 
@@ -41,6 +43,38 @@ committed version of a changed test failing against the new code is real
 evidence, but a legitimate specification change produces an identical signal —
 so it asks for an explanation instead of convicting. `--fail-on suspicious` is
 the opt-in gate for teams that want it to block.
+
+## Evidence verdicts, flags, and the fields beside them
+
+Three verdicts complete the domain: `TAMPERED`, `WEAK_VERIFIER` and `CLEAN`,
+joining `INCONCLUSIVE`, `NOT_VERIFIED` and `VERIFICATION_FAILED`. When
+findings overlap, the evidence verdicts resolve by fixed precedence:
+
+    TAMPERED > INCONCLUSIVE > WEAK_VERIFIER > CLEAN
+
+The composition picks the winner only. **No finding is ever dropped**: the
+report keeps every finding listed beside the verdict it lost to, so a
+`TAMPERED` verdict never hides the weak-verifier finding under it.
+
+Every finding may carry two evidence fields, kept separate on purpose:
+
+- **`mechanism`** — how the verdict could be steered (what was changed, and
+  where).
+- **`grade_relevance`** — why that mechanism matters to the grade (what the
+  change decides).
+
+`TAMPERED` requires **both**. A finding that claims tampering with only one of
+them — or with neither — degrades to `INCONCLUSIVE`, because a pattern alone
+stays `INCONCLUSIVE` and is never promoted to an accusation. A finding that
+carries both fields and no explicit claim claims `TAMPERED` by derivation; a
+finding whose evidence resolved clean carries `CLEAN` and stops standing
+against the run, without being dropped from the report.
+
+The secondary flags — `spec_edited`, `strength_low`, `edits_listed`,
+`flaky_original`, `replay_infra_error` — live **beside** the verdict in the
+JSON report and are never folded into it: a verdict is identical with the
+advisory on and off. Every verdict has its exit code, stated once in
+`greenwash/cli.py`'s module docstring and pinned by `tests/test_cli.py`.
 
 ## The score
 

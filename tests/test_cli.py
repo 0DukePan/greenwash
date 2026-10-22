@@ -73,8 +73,11 @@ ENFORCED = [
     (Verdict.VERIFIED.value, 0),
     (Verdict.PARTIALLY_VERIFIED.value, 0),
     (Verdict.INCONCLUSIVE.value, 0),
+    (Verdict.CLEAN.value, 0),
     (Verdict.NOT_VERIFIED.value, 1),
     (Verdict.SUSPICIOUS.value, 2),
+    (Verdict.TAMPERED.value, 2),
+    (Verdict.WEAK_VERIFIER.value, 2),
     (Verdict.VERIFICATION_FAILED.value, 3),
 ]
 
@@ -246,8 +249,11 @@ NAMED = [
     (Verdict.VERIFIED.value, 1),
     (Verdict.PARTIALLY_VERIFIED.value, 1),
     (Verdict.INCONCLUSIVE.value, 1),
+    (Verdict.CLEAN.value, 1),
     (Verdict.NOT_VERIFIED.value, 1),
     (Verdict.SUSPICIOUS.value, 2),
+    (Verdict.TAMPERED.value, 2),
+    (Verdict.WEAK_VERIFIER.value, 2),
     (Verdict.VERIFICATION_FAILED.value, 3),
 ]
 
@@ -290,3 +296,23 @@ def test_fail_on_rejects_a_verdict_it_does_not_know(cheat, monkeypatch, capsys):
     assert code == 3
     assert "unknown verdict" in err
     assert "not_verified" in err
+
+
+def test_the_exit_code_table_is_documented_for_every_verdict():
+    """The exit-code table is a contract: it names every answer the verdict
+    domain can give, in the code and in the docstring that states it once."""
+    assert {verdict for verdict, _ in ENFORCED} == {v.value for v in Verdict}
+    for verdict in Verdict:
+        assert verdict.value in cli.__doc__, f"{verdict.value} is undocumented"
+
+
+def test_the_json_report_carries_flags_and_finding_evidence_fields(cheat, monkeypatch, capsys):
+    code, out, _ = _run(monkeypatch, capsys, ["--json"])
+    payload = json.loads(out)
+    assert code == 0
+    assert payload["flags"] == {"spec_edited": False, "strength_low": False,
+                                "edits_listed": False, "flaky_original": False,
+                                "replay_infra_error": False}
+    assert payload["signals"], "the fixture diff raises a finding"
+    for finding in payload["signals"]:
+        assert "mechanism" in finding and "grade_relevance" in finding

@@ -7,8 +7,14 @@ Exit codes are the whole safety story, so they are stated once, here:
                             greenwash never fails your build unless you ask
                             it to; the report is the product
     scan / verify           0 clean, 1 findings, 3 could not run
-    --enforce               0 verified, 1 not verified, 2 suspicious,
-                            3 could not check (VERIFICATION_FAILED)
+    --enforce               the verdict decides the code, one row per verdict:
+                            0  CLEAN, VERIFIED, PARTIALLY_VERIFIED,
+                               INCONCLUSIVE
+                            1  NOT_VERIFIED -- a check the claim depends on
+                               does not pass
+                            2  SUSPICIOUS, TAMPERED, WEAK_VERIFIER -- nothing
+                               was verified well enough to let it end green
+                            3  VERIFICATION_FAILED -- could not check at all
     --fail-on VERDICTS      the same codes, for exactly the verdicts named;
                             it implies --enforce and replaces the policy
     --strict                the same codes again, under a longer table: a
@@ -37,9 +43,15 @@ from .verify import engine as verify_engine
 
 EXIT_OK, EXIT_FINDINGS, EXIT_BLOCKED, EXIT_ERROR = 0, 1, 2, 3
 
+BLOCKING_ON_NOTHING_VERIFIED = (Verdict.SUSPICIOUS.value, Verdict.TAMPERED.value,
+                                Verdict.WEAK_VERIFIER.value)
+"""Verdicts that always block in enforce mode: nothing was verified well
+enough to end the turn green, whatever `block_on` says."""
+
 EPILOG = """exit codes:
   report mode (default) 0 whenever a report is produced, 3 when it cannot be
-  --enforce returns 1 (not verified), 2 (suspicious), 3 (could not check)
+  --enforce returns 1 (not verified), 2 (suspicious, tampered or weak
+    verifier), 3 (could not check)
   --strict  does the same, and also blocks on a finding nobody has waived
 
 greenwash reads your diff, runs your tests, and reports what the claim is worth.
@@ -365,15 +377,16 @@ def _enforced_exit(report: TrustReport, config, fail_on=None) -> int:
     """The enforce-mode exit code, per the contract in the module docstring.
 
     Each kind of doubt keeps its own code: evidence that the claim does not
-    hold (1), a pattern with nothing verified (2), a check that could not run
-    at all (3). Collapsing any two of them would be the exact conflation this
-    tool exists to catch.
+    hold (1), an answer that nothing was verified well enough (2) -- a
+    pattern, an established tampering mechanism, or a verifier that cannot
+    discriminate -- and a check that could not run at all (3). Collapsing any
+    two of them would be the exact conflation this tool exists to catch.
     """
     if fail_on is None:
-        # The shipped policy: a pattern with nothing verified always blocks,
-        # and `block_on` adds the verdicts that also do. Stated in the module
+        # The shipped policy: nothing verified well enough always blocks, and
+        # `block_on` adds the verdicts that also do. Stated in the module
         # docstring, and unchanged by --fail-on's existence.
-        if report.verdict == Verdict.SUSPICIOUS.value:
+        if report.verdict in BLOCKING_ON_NOTHING_VERIFIED:
             return EXIT_BLOCKED
         blocking = config.get("block_on") or ["NOT_VERIFIED", "VERIFICATION_FAILED"]
     else:
@@ -384,7 +397,7 @@ def _enforced_exit(report: TrustReport, config, fail_on=None) -> int:
     if report.verdict in blocking:
         if report.verdict == Verdict.VERIFICATION_FAILED.value:
             return EXIT_ERROR
-        if report.verdict == Verdict.SUSPICIOUS.value:
+        if report.verdict in BLOCKING_ON_NOTHING_VERIFIED:
             return EXIT_BLOCKED
         return EXIT_FINDINGS
     return EXIT_OK

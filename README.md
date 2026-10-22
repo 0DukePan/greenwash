@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <strong>24/24 planted cheats caught &middot; 0 false positives on 24 real fixes &middot; 455 tests</strong><br>
+  <strong>24/24 planted cheats caught &middot; 0 false positives on 24 real fixes &middot; 474 tests</strong><br>
   <sub>
     An agent under pressure to show green will skip the test, mock the unit under
     test, hardcode the expected value, or swallow the exception that would have
@@ -483,7 +483,7 @@ than a mystery. Naming `--run-tests`, naming a `heldout` suite, or writing
 |---|---|
 | report (default) | 0 whenever it produces a report; 3 when it cannot (not a repository, or no commits) |
 | `scan` / `verify` subcommands | 0 clean, 1 findings, 3 could not run |
-| `--enforce`, or `"mode": "enforce"` | 0 verified, 1 not verified, 2 suspicious, 3 could not check (a `VERIFICATION_FAILED` verdict) |
+| `--enforce`, or `"mode": "enforce"` | the verdict decides: 0 clean or verified, 1 not verified, 2 suspicious / tampered / weak verifier, 3 could not check (a `VERIFICATION_FAILED` verdict) |
 | `--fail-on VERDICTS` | the same codes, for exactly the verdicts named. It implies `--enforce` and **replaces** the policy rather than adding to it, so `--fail-on not_verified` lets a merely-suspicious report through. An unknown verdict name is exit 3, not a silently open gate. |
 
 The Stop hook follows the same rule: in report mode it prints the report and
@@ -504,11 +504,14 @@ enforce-mode rule and adds two of its own:
 | Condition | report | `--enforce` | `--strict` |
 |---|---|---|---|
 | `VERIFIED` | report | allow | allow |
+| `CLEAN` | report | allow | allow |
 | `INCONCLUSIVE` | report | allow | allow, with an explicit "nothing was verified" note |
 | `PARTIALLY_VERIFIED`, no review findings | report | allow | allow |
 | `NOT_VERIFIED` | report | block (1) | block (1) -- evidence is not waivable |
 | `VERIFICATION_FAILED` | report | block (3) | block (3) |
 | `SUSPICIOUS` | report | block (2) | block (2) unless every finding is waived |
+| `TAMPERED` | report | block (2) | block (2) -- evidence is not waivable |
+| `WEAK_VERIFIER` | report | block (2) | block (2) -- the verifier cannot discriminate |
 | a `requires_review` finding | report | allow | block (2) until it is waived |
 | an expired, stale or malformed waiver | report | allow | block (2, or 3 when unreadable) |
 | `ignore_rules` in the config | report, named | honoured, named | **refused** (3), and the findings stay visible |

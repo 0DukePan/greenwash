@@ -56,6 +56,51 @@ def _counting_signals(signals: Iterable[Signal]) -> list:
     return [s for s in signals if not s.requires_review]
 
 
+EVIDENCE_PRECEDENCE = (Verdict.CLEAN, Verdict.WEAK_VERIFIER,
+                       Verdict.INCONCLUSIVE, Verdict.TAMPERED)
+"""The evidence verdicts, lowest to highest. Overlap resolves to the highest."""
+
+
+def finding_evidence_verdict(signal: Signal) -> Optional[Verdict]:
+    """The evidence verdict one finding stands for, or None if it carries none.
+
+    A tampering claim needs both `mechanism` and `grade_relevance` -- without
+    both it degrades to INCONCLUSIVE, because a pattern alone stays
+    INCONCLUSIVE and is never promoted to an accusation. A finding that
+    carries both fields and no explicit claim claims TAMPERED by derivation;
+    an explicit claim (the resolved evidence, from the pinned-evidence
+    resolver) is honoured as given, downgrades aside.
+    """
+    raw = (signal.evidence_verdict or "").strip()
+    if raw:
+        claim = Verdict.parse(raw)
+        if claim not in EVIDENCE_PRECEDENCE:
+            claim = Verdict.INCONCLUSIVE
+    elif signal.mechanism and signal.grade_relevance:
+        claim = Verdict.TAMPERED
+    elif signal.mechanism or signal.grade_relevance:
+        claim = Verdict.INCONCLUSIVE
+    else:
+        return None
+    if claim == Verdict.TAMPERED and not (signal.mechanism and signal.grade_relevance):
+        claim = Verdict.INCONCLUSIVE
+    return claim
+
+
+def evidence_verdict_for(signals: Iterable[Signal]) -> Optional[Verdict]:
+    """The composed evidence verdict, or None when no finding carries evidence.
+
+    TAMPERED over INCONCLUSIVE over WEAK_VERIFIER over CLEAN. Composition
+    picks the winner only: no finding is dropped from the report, and a
+    finding that resolves CLEAN never erases one that still stands.
+    """
+    claims = [claim for claim in (finding_evidence_verdict(s) for s in signals)
+              if claim is not None]
+    if not claims:
+        return None
+    return max(claims, key=EVIDENCE_PRECEDENCE.index)
+
+
 def score(verification: Optional[VerificationResult],
           signals: Iterable[Signal] = (),
           requirements: Iterable = ()) -> Confidence:
@@ -136,14 +181,15 @@ def verdict_for(verification: Optional[VerificationResult],
                 requirements: Iterable = ()) -> Verdict:
     """The decision table. Each branch is a test in `tests/unit/`.
 
-    A failed check outranks any signal: evidence beats inference. Signals on
-    their own can make a report suspicious, never "not verified" -- the tool
-    does not get to convict anyone on a pattern match.
+    A failed check outranks any signal: evidence beats inference. Findings
+    that carry an evidence verdict resolve next, by TAMPERED over INCONCLUSIVE
+    over WEAK_VERIFIER over CLEAN. Signals on their own can make a report
+    suspicious, never "not verified" -- the tool does not get to convict
+    anyone on a pattern match.
     """
     verification = verification or VerificationResult()
     signals = list(signals)
     requirements = list(requirements)
-    strong = [s for s in signals if not s.requires_review]
 
     if verification.harness_error:
         return Verdict.VERIFICATION_FAILED
@@ -157,6 +203,17 @@ def verdict_for(verification: Optional[VerificationResult],
         # A requirement the claim named and bound evidence to is a check the
         # claim depends on, so failing it is evidence rather than inference.
         return Verdict.NOT_VERIFIED
+
+    evidence = evidence_verdict_for(signals)
+    if evidence is not None and evidence != Verdict.CLEAN:
+        return evidence
+
+    # A finding that resolved CLEAN stops standing against the run, but it is
+    # never dropped from the report, and it never erases a pattern that still
+    # stands -- a cleared finding is not a pardon for an unrelated one.
+    standing = [s for s in signals if finding_evidence_verdict(s) is not Verdict.CLEAN]
+    strong = [s for s in standing if not s.requires_review]
+
     if verification.integrity == Outcome.FAIL.value:
         # A signal is raised alongside this, but the table reads the result
         # rather than depending on one being attached: a report that says a
@@ -164,15 +221,15 @@ def verdict_for(verification: Optional[VerificationResult],
         return Verdict.SUSPICIOUS
     if any(s.severity == Level.HIGH.value for s in strong):
         return Verdict.SUSPICIOUS
-    if not verification.ran and not signals:
+    if not verification.ran and not standing:
         return Verdict.INCONCLUSIVE
-    if strong or signals:
+    if strong or standing:
         return Verdict.PARTIALLY_VERIFIED
     if any(r.status != Outcome.PASS.value for r in requirements):
         # A requirement nobody could check is not a pass.
         return Verdict.PARTIALLY_VERIFIED
     if verification.outcome == Outcome.PASS.value:
-        return Verdict.VERIFIED
+        return Verdict.CLEAN if evidence is Verdict.CLEAN else Verdict.VERIFIED
     return Verdict.INCONCLUSIVE
 
 

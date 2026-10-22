@@ -59,8 +59,11 @@ def verification(outcome=Outcome.PASS.value, heldout=Outcome.NOT_REQUESTED.value
     (Verdict.VERIFIED.value, 0),
     (Verdict.PARTIALLY_VERIFIED.value, 0),
     (Verdict.INCONCLUSIVE.value, 0),
+    (Verdict.CLEAN.value, 0),
     (Verdict.NOT_VERIFIED.value, 1),
     (Verdict.SUSPICIOUS.value, 2),
+    (Verdict.TAMPERED.value, 2),
+    (Verdict.WEAK_VERIFIER.value, 2),
     (Verdict.VERIFICATION_FAILED.value, 3),
 ])
 def test_each_verdict_keeps_its_own_exit_code(verdict, expected_exit):
