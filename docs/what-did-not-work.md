@@ -133,6 +133,30 @@ instead of reading the CLI's exit code. Two copies of a decision table drift.
 Found while building the strict profile, fixed by deleting the copy: the CLI
 owns the policy, the hook owns the wording.
 
+## 11. The claim ledger
+
+Every public claim maps to the evidence that licenses it, the status of that
+evidence, and the strongest wording allowed today. The table below is the
+ledger itself, rendered from `benchmark/claim_ledger.py` -- regenerate it with
+`python benchmark/claim_ledger.py --table`. `tests/test_claim_ledger.py` fails
+when a public page states more than a row allows (naming the claim and the
+page), when a row quotes a number no generated artifact backs, and when this
+table stops matching the data.
+
+<!-- claim-ledger:begin -->
+| Claim | Evidence required | Status | Strongest wording allowed today |
+|---|---|---|---|
+| detector-recall | A frozen evaluation run on a corpus this project did not author, at the pre-registered sample size. | Measured on the first-party internal corpus only; the frozen run has not happened. | On a labelled corpus of 24 tasks with one planted cheat each, the scanner caught 24 of 24 planted cheats (95% CI 86.2%-100%). |
+| false-alarms | A labelled sample of real code large enough for a rate, not a hand-classified flag count. | Measured on the recorded honest fixes of the internal corpus only. | It flagged 0 of 24 recorded honest fixes (95% upper bound 13.8% at this sample size). |
+| behavioural-effect | The pre-registered behavioural study: an independent corpus, a pinned image, and an instrument that is not the treatment. | One live first-party run; the pages that quote it say it predates the test-integrity check. | No measurable effect at this sample size: +0.0 points over 252 scored runs (95% CI [0, 5] in every arm). |
+| fp-survey | A labelled sample of real code; classifying flags by hand gives a number, not a population estimate. | A survey of recent history in three repositories, published for inspection. | On the recent history of 3 repositories (59 commits, 1,225 file changes) the scanner produced 29 flags: 20 are the rules that always ask for an explanation, 9 are genuine false positives. This is a survey, not a rate. |
+| first-party-corpus | Corpus authorship independent of this project, with merge authority outside it. | Not established; the governance documents are the invitation. | The corpus is first-party: it measures the detector against its own authors' idea of a cheat and cannot establish detector quality. |
+| rate-claims | The frozen run at the pre-registered sample size; until then every number is a count with an interval. | Not available; the current corpus is first-party and small. | Every published number is an interval-qualified count on the internal corpus; a rate claim waits on the frozen run. |
+| strength-advisory | The strength check's error rate, measured; promotion to a verdict is deliberately deferred. | Ships as an advisory flag in this version. | The strength check ships as an advisory flag, not a verdict; promotion waits until its error rate is measured. |
+| verdict-vocabulary | Correctness proofs, which no run of this tool produces. | A verdict reports the checks that ran and the diff's shape. | A verdict reports the checks that ran; it is evidence, not proof of correctness. |
+| scope-exclusions | Retrieval and leakage detection; training-time reward hacking; languages beyond Python and pytest. | Out of scope for this version; never claimed. | What greenwash does not cover: retrieval and leakage detection, training-time reward hacking, languages beyond Python and pytest in this version. |
+<!-- claim-ledger:end -->
+
 ## What is still open
 
 | Open | Why it is not closed |
