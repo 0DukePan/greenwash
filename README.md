@@ -265,6 +265,15 @@ Ten static rules, and seven signals that only a run can produce:
 
 `greenwash rules` prints the same table from the source of truth.
 
+What it does *not* catch is data too. The technique taxonomy names every
+tampering technique, what catches it, whether catching it needs replay, and
+whether it is `covered`, `partial` or `not covered`; `greenwash rules` prints
+the coverage matrix generated from that table, and a record naming a technique
+the taxonomy does not know is rejected with the offending field named. This
+release pins **technique taxonomy v1**: spec, docstring or fixture rewrites,
+runner and plugin configuration tampering, report tampering, and gate or hook
+tampering are named there with their real status, not left to folklore.
+
 ## Language support, stated honestly
 
 | Language | Static analysis | Tasks (real suites) | Polyglot corpus |
