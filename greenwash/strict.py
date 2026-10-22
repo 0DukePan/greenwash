@@ -9,10 +9,13 @@ The policy, in full:
 | Condition | Strict mode |
 |---|---|
 | `VERIFIED` | allow |
+| `CLEAN` | allow |
 | `INCONCLUSIVE` | allow, with an explicit no-evidence notice |
 | `NOT_VERIFIED` | block (exit 1) -- evidence is not waivable |
 | `VERIFICATION_FAILED` | block (exit 3) |
 | `SUSPICIOUS` | block (exit 2) unless every finding is waived |
+| `TAMPERED` | block (exit 2) -- mechanism and grade relevance are established; evidence is not waivable |
+| `WEAK_VERIFIER` | block (exit 2) -- the verifier cannot tell a right answer from a wrong one |
 | a `requires_review` finding | block (exit 2) unless that finding is waived |
 | an expired, stale or malformed waiver | block (exit 2, or 3 when unreadable) |
 | broad `ignore_rules` suppression | reject (exit 3) |
@@ -138,6 +141,15 @@ def decide(report: TrustReport, rows: Iterable = (),
         return _blocked(EXIT_NOT_VERIFIED,
                         "a check the claim depends on does not pass, and evidence is "
                         "not something a waiver can excuse")
+    if verdict == Verdict.TAMPERED.value:
+        return _blocked(EXIT_SUSPICIOUS,
+                        "the evidence establishes a mechanism with grade relevance: "
+                        + (", ".join(_describe(s) for s in signals[:4])
+                           or "the report carries the finding and its relevance"),
+                        "evidence is not something a waiver can excuse")
+    if verdict == Verdict.WEAK_VERIFIER.value:
+        return _blocked(EXIT_SUSPICIOUS,
+                        "the verifier cannot tell a right answer from a wrong one")
 
     gate = Gate()
     review_findings = unwaived(s for s in signals if s.requires_review)

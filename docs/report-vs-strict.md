@@ -9,11 +9,14 @@ turn when the evidence lands.
 |---|---|---|---|
 | What it is for | reading | a policy you name | an agent that finishes its own turn |
 | `VERIFIED` | report | allow | allow |
+| `CLEAN` | report | allow | allow |
 | `INCONCLUSIVE` | report | allow | allow, with a "nothing was verified" note |
 | `PARTIALLY_VERIFIED`, no review findings | report | allow | allow |
 | `NOT_VERIFIED` | report | block (1) | block (1) -- evidence is not waivable |
 | `VERIFICATION_FAILED` | report | block (3) | block (3) |
 | `SUSPICIOUS` | report | block (2) | block (2) unless every finding is waived |
+| `TAMPERED` | report | block (2) | block (2) -- evidence is not waivable |
+| `WEAK_VERIFIER` | report | block (2) | block (2) -- the verifier cannot discriminate |
 | a `requires_review` finding | report | allow | block (2) until it is waived |
 | expired / stale / malformed waiver | report | allow | block (2, or 3 when unreadable) |
 | `ignore_rules` | honoured, and named | honoured, and named | **refused** (3), findings stay visible |
