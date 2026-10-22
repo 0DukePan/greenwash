@@ -14,6 +14,13 @@ Exit codes are the whole safety story, so they are stated once, here:
     --strict                the same codes again, under a longer table: a
                             requires_review finding blocks until it is waived,
                             and ignore_rules is refused rather than honoured
+    any run                 4 when the checker's own code or its config does
+                            not match its pinned copy at the base ref. The run
+                            stops before any verdict: this is integrity
+                            failure, and it never reads as a verdict about the
+                            diff. An edited pinned original test is detected
+                            and judged as diff content instead -- the base
+                            copy is what counts as evidence
 
 `--enforce` is never implied. A tool that starts blocking work by default is a
 tool people uninstall. `--fail-on` is an explicit policy rather than a louder
@@ -29,6 +36,7 @@ import os
 import sys
 
 from . import __version__, config as config_mod, evidence as evidence_mod, gitutil, scan as scan_mod
+from . import guard as guard_mod
 from . import strict as strict_mod, waivers as waivers_mod
 from .doctor import doctor, initialize
 from .domain import Claim, Run, Signal, TrustReport, Verdict
@@ -36,11 +44,14 @@ from .report import render, terminal
 from .verify import engine as verify_engine
 
 EXIT_OK, EXIT_FINDINGS, EXIT_BLOCKED, EXIT_ERROR = 0, 1, 2, 3
+EXIT_INTEGRITY = 4
 
 EPILOG = """exit codes:
   report mode (default) 0 whenever a report is produced, 3 when it cannot be
   --enforce returns 1 (not verified), 2 (suspicious), 3 (could not check)
   --strict  does the same, and also blocks on a finding nobody has waived
+  4  verifier integrity failure: the checker's code or config did not match
+     its pinned copy at the base ref, and no verdict about the diff was made
 
 greenwash reads your diff, runs your tests, and reports what the claim is worth.
 It never modifies your code, never calls a model, and never leaves your machine.
@@ -223,8 +234,6 @@ def _session_signals(session: dict) -> list:
 
 def collect(args) -> tuple:
     """(report, exit_code)."""
-    config = config_mod.load(".")
-
     fail_on = None
     raw_fail_on = getattr(args, "fail_on", None)
     if raw_fail_on:
@@ -235,18 +244,6 @@ def collect(args) -> tuple:
             print(f"greenwash: unknown verdict in --fail-on: {exc.args[0]!r} "
                   f"(known verdicts: {known})", file=sys.stderr)
             return None, EXIT_ERROR
-
-    strict = bool(getattr(args, "strict", False)) or config.strict
-    if strict:
-        mode = config_mod.STRICT_MODE
-    elif (getattr(args, "enforce", False) or fail_on is not None or config.enforcing):
-        mode = "enforce"
-    else:
-        mode = "report"
-
-    claimed = getattr(args, "cmd", None)
-    want_scan = claimed in (None, "report", "scan")
-    want_verify = claimed in (None, "report", "verify")
 
     session_base = None
     adopted_now = False
@@ -272,11 +269,49 @@ def collect(args) -> tuple:
         print(f"greenwash: {exc}", file=sys.stderr)
         return None, EXIT_ERROR
 
+    changes, _ = scan_mod.summarize(diff)
+
+    # Verifier integrity, before anything is read as evidence: the checker,
+    # its config and the pinned original tests are hash-verified against their
+    # copies at the base ref -- loaded outside the agent's writable sandbox. A
+    # checker or config that does not match its pin stops the run here, with
+    # its own exit code, and never as a verdict about the diff.
+    guard_report = guard_mod.check(
+        session_base["base"] if session_base
+        else (getattr(args, "base", None) or "HEAD"),
+        changes=changes)
+    for line in guard_report.notices():
+        print(f"greenwash: {line}", file=sys.stderr)
+    if guard_report.failures:
+        if getattr(args, "json", False):
+            import json
+            _emit(json.dumps(guard_mod.failure_payload(guard_report), indent=2) + "\n",
+                  machine=True)
+        print(guard_mod.describe_failure(guard_report), file=sys.stderr)
+        return None, EXIT_INTEGRITY
+    guard_notes = guard_report.notes()
+    if not guard_report.pinned:
+        guard_notes = ["verifier integrity: no usable base ref to pin the checker's inputs "
+                       "at; nothing was hash-verified for this run"] + guard_notes
+
+    config = config_mod.load(".")
+
+    strict = bool(getattr(args, "strict", False)) or config.strict
+    if strict:
+        mode = config_mod.STRICT_MODE
+    elif (getattr(args, "enforce", False) or fail_on is not None or config.enforcing):
+        mode = "enforce"
+    else:
+        mode = "report"
+
+    claimed = getattr(args, "cmd", None)
+    want_scan = claimed in (None, "report", "scan")
+    want_verify = claimed in (None, "report", "verify")
+
     signals = scan_mod.scan_diff(diff) if want_scan else []
     if session_base:
         signals += _session_signals(session_base)
-    changes, _ = scan_mod.summarize(diff)
-    notes = list(config.problems)
+    notes = list(config.problems) + guard_notes
     if session_base and adopted_now:
         notes.append("the session base was adopted at this run: anything changed "
                      "before it, earlier commits included, is outside the diff")

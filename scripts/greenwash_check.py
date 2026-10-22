@@ -14,6 +14,15 @@ Exit codes:
   0   clean
   1   one or more flags raised
   2   tool error (not a git repo, git missing, ...)
+  4   verifier integrity failure -- the checker's own code or
+      .greenwash/config.json did not match the pinned copy at the base ref, so
+      the run stopped before any verification. This is never a verdict about
+      the diff. (An edited pinned original test is detected and reported, and
+      the base copy is what counts as evidence -- it is judged as diff content,
+      not refused.)
+
+Codes 0, 1 and 2 stay exactly as they were; 4 is the new refusal this script
+prints loudly and never as a finding about the change.
 
 For the trust report -- verdicts, confidence, evidence, JSON schema v1 -- use
 the `greenwash` command instead. This one speaks the old dialect so that a
@@ -33,11 +42,13 @@ if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 from greenwash import gitutil  # noqa: E402
+from greenwash import guard as guard_mod  # noqa: E402
 from greenwash.domain import Outcome  # noqa: E402
 from greenwash.scan import scan_diff, summarize  # noqa: E402
 from greenwash.verify import verify as run_verification  # noqa: E402
 
 EXIT_CLEAN, EXIT_FLAGS, EXIT_TOOL_ERROR = 0, 1, 2
+EXIT_INTEGRITY = 4
 
 
 @dataclass
@@ -119,6 +130,18 @@ def do_verify(args, diff=None) -> tuple:
         except gitutil.GitError:
             diff = ""              # nothing readable to diff; still report statically
     changes, _ = summarize(diff)
+
+    # Verifier integrity, before any verification runs: the checker's inputs
+    # are hash-verified against the base ref (in CI, the merge target). A
+    # modified checker or config exits 4 loudly -- never a verdict, never a
+    # flag about the diff.
+    report = guard_mod.check(getattr(args, "base", None) or "HEAD", changes=changes)
+    for line in report.notices():
+        print(f"greenwash: {line}", file=sys.stderr)
+    if report.failures:
+        print(guard_mod.describe_failure(report), file=sys.stderr)
+        sys.exit(EXIT_INTEGRITY)
+
     outcome = run_verification(run_tests=args.run_tests, heldout=args.heldout,
                                auto=args.auto, changes=changes)
     return _verification_dict(outcome.result), _flags(outcome.signals)
