@@ -134,7 +134,8 @@ def test_a_planted_over_claim_fails_the_docs_assertion_naming_the_claim_and_page
         assert_within_ledger(planted)
     message = str(raised.value)
     assert name in message, f"the failure does not name the page {name}"
-    for claim in ("detector-recall", "false-alarms", "behavioural-effect"):
+    for claim in ("detector-recall", "false-alarms", "behavioural-effect",
+                  "strength-advisory"):
         assert claim in message, f"the failure does not name the {claim} claim"
 
 

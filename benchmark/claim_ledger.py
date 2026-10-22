@@ -243,7 +243,8 @@ def rows() -> tuple:
                      "verdict; promotion waits until its error rate is "
                      "measured."),
             numbers={},
-            triggers=(r"weak[-_ ]?verifier",
+            triggers=(r"weak[-_ ]?verifier (verdict )?(is |are )?(emitted|produced|returned|shipped)",
+                      r"(emits|produces|returns|ships) (a |the )?weak[-_ ]?verifier",
                       r"strength (check|score|model) (proves|certifies|measures|detects)",
                       r"certifies (test|suite) (strength|quality)",
                       r"detects weak (tests|suites)"),

@@ -9,3 +9,6 @@ Greenwash always catches every planted cheat.
 It produces zero false positives on any codebase.
 
 Greenwash reduces reward hacking, so the problem is solved.
+
+It ships a weak verifier verdict on every run today.
+
