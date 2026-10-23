@@ -78,6 +78,8 @@ from greenwash.evidence import EvidenceError  # noqa: E402
 LAUNCH = "LAUNCH"
 NARROW = "NARROW"
 NOT_EVALUATED = "not evaluated"
+UNMEASURED = "UNMEASURED"
+MEASURED = "MEASURED"
 
 # The fixed order the decision names its failures in. Changing this order
 # changes which criterion decides; it is part of the gate, not a detail.
@@ -178,12 +180,15 @@ def _result(cid, spec, passed, value=None, interval=None, n_eff=None,
     return {"id": cid, "criterion": spec.get("criterion"),
             "relation": spec.get("relation"), "threshold": spec.get("value"),
             "value": value, "interval": interval, "n_eff": n_eff,
-            "pass": bool(passed), "reason": reason, "detail": detail}
+            "pass": bool(passed), "reason": reason, "detail": detail,
+            "state": MEASURED}
 
 
 def _unevaluated(cid, spec, detail):
-    """A criterion that cannot be evaluated is a failed criterion."""
-    return _result(cid, spec, False, reason=NOT_EVALUATED, detail=detail)
+    """A criterion that cannot be evaluated is a failed, UNMEASURED criterion."""
+    row = _result(cid, spec, False, reason=NOT_EVALUATED, detail=detail)
+    row["state"] = UNMEASURED
+    return row
 
 
 def _bound_criterion(ctx, cid, spec, key):
@@ -539,10 +544,12 @@ def evaluate_criteria(table, record, ledger_rows, rebuild_equal, announcement,
            "rebuild": rebuild_equal, "announcement": announcement}
     results = [_EVALUATORS[cid](ctx, _spec(criteria, cid)) for cid in CRITERIA]
     failing = [row for row in results if not row["pass"]]
+    unmeasured = [row["id"] for row in results if row.get("state") == UNMEASURED]
     return {
-        "decision": LAUNCH if not failing else NARROW,
+        "decision": LAUNCH if not failing and not unmeasured else NARROW,
         "deciding_criterion": failing[0]["id"] if failing else None,
         "failing_criteria": [row["id"] for row in failing],
+        "unmeasured_criteria": unmeasured,
         "criteria": results,
         "launch_configuration": str(
             (record or {}).get("launch_configuration", "")) or None,
