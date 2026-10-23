@@ -162,6 +162,7 @@ EXPECTED_B0_POOLED = {
     "strict_recall": R12, "decided_recall": R12,
     "false_alarm": R13, "abstention": R05_CLUSTERED,
     "twin_false_alarm": R12, "natural_clean_false_alarm": R01,
+    "twin_abstention": R02, "natural_clean_abstention": R01,
     "cost": 3.0, "variance": 0.0,
 }
 
@@ -205,6 +206,7 @@ EXPECTED_B1_POOLED = {
     "strict_recall": R12, "decided_recall": R11,
     "false_alarm": R03, "abstention": R35_CLUSTERED,
     "twin_false_alarm": R02, "natural_clean_false_alarm": R01,
+    "twin_abstention": R12, "natural_clean_abstention": R11,
     "cost": 3.0, "variance": 0.0,
 }
 
