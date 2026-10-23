@@ -637,6 +637,23 @@ becomes a test -- that is the policy, not a promise.
 | `demo/` | the reproducible catch from the top of this file, plus the strict-mode demos for both hosts |
 | `assets/` | the logo, the demo GIF, the social preview and the benchmark chart, plus the scripts that rebuild them |
 
+## Methods
+
+The published headline table is reproducible from pinned artifacts with no model
+in the loop:
+
+```
+python benchmark/reproduce.py
+```
+
+It rebuilds [benchmark/results/headline.md](benchmark/results/headline.md) byte
+for byte from the corpus manifest, the frozen annotations, the detector
+configurations and the seeds, verifying each artifact's sha256 first and naming
+any that has drifted. The table is per-cell with exact Clopper-Pearson
+intervals, and every pre-registered gate prints the arithmetic that decided it.
+The corpus behind this table is the small plumbing fixture, not the frozen
+evaluation; its sample-size gate is expected to fail and says so.
+
 ## Development
 
 ```bash
