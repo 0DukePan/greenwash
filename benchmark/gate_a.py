@@ -273,6 +273,10 @@ def _check_assumptions(assumptions) -> list:
                  else "assumptions register")
         row = {field: _string(entry[field], field, where)
                for field in ASSUMPTION_FIELDS}
+        gates = entry.get("gates", ["gate-a"])
+        if not isinstance(gates, list) or not all(isinstance(g, str) for g in gates):
+            _fail(f"{where}: 'gates' must be a list of gate ids; refusing")
+        row["gates"] = list(gates)
         if row["status"] not in ASSUMPTION_STATUSES:
             _fail(f"{where}: status {row['status']!r} is not one of "
                   f"{ASSUMPTION_STATUSES}; refusing")
@@ -304,8 +308,13 @@ def _refuse_frozen(dev_rows, label_rows, baseline_rows) -> None:
 
 
 def _refuse_open_assumptions(rows) -> None:
-    """A gate may not depend on an assumption nobody verified."""
-    open_rows = [row for row in rows if row["status"] != "verified"]
+    """A gate may not depend on an assumption nobody verified.
+
+    Only assumptions this gate consumes refuse it: an open Stage 5 speed target
+    is not a reason to block Gate A.
+    """
+    open_rows = [row for row in rows
+                 if row["status"] != "verified" and "gate-a" in row.get("gates", ["gate-a"])]
     if open_rows:
         _fail("refused to decide with open assumption(s): "
               + "; ".join(f"{row['id']} ({row['status']})"

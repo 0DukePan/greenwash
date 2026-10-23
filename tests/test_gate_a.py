@@ -145,15 +145,16 @@ def test_an_open_assumption_in_the_register_refuses_the_run_naming_it():
     assert "open" in message
 
 
-def test_the_shipped_assumptions_register_is_open_and_therefore_refuses():
+def test_the_shipped_register_refuses_only_on_the_assumptions_gate_a_consumes():
     register = json.loads(
         (ROOT / "benchmark" / "assumptions.json").read_text(encoding="utf-8"))
     with pytest.raises(gate_a.GateAError) as excinfo:
         gate_a.gate_a(*load("go")[:3], register)
     message = str(excinfo.value)
     assert "labeling-time-per-case" in message
-    assert "speed-slos" in message
     assert "competitor-overhead-figures" in message
+    assert "speed-slos" not in message, (
+        "a Stage 5 speed target must not block Gate A")
 
 
 def test_a_missing_field_is_a_refusal_naming_the_field():

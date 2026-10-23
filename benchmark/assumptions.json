@@ -4,6 +4,7 @@
       "id": "labeling-time-per-case",
       "number": "15 minutes per case",
       "status": "open",
+      "gates": ["gate-a"],
       "owner": "operator",
       "check": "measured in the calibration round of the label workflow (benchmark/label_workflow.py calibration_round); the measurement replaces the assumption"
     },
@@ -11,6 +12,7 @@
       "id": "speed-slos",
       "number": "static p95 milliseconds, replay overhead as a multiple of the test run, and cold start",
       "status": "open",
+      "gates": ["gate-c"],
       "owner": "operator",
       "check": "measured on five repository sizes in Stage 5 (docs/specs/validation-program.md, Stage 5 integration); the targets are proposals until measured"
     },
@@ -18,6 +20,7 @@
       "id": "competitor-overhead-figures",
       "number": "the pinned competitor's overhead figures",
       "status": "open",
+      "gates": ["gate-a"],
       "owner": "operator",
       "check": "measured when the competitor is pinned by version and date and run on the same corpus (docs/specs/validation-program.md, user story 35)"
     }

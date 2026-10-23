@@ -10,9 +10,12 @@
     {
       "id": "speed-slos",
       "number": "static p95 milliseconds, replay overhead multiple, cold start",
-      "status": "verified",
+      "status": "open",
       "owner": "fixture-operator",
-      "check": "fixture register: verified on five repository sizes"
+      "check": "fixture register: verified on five repository sizes",
+      "gates": [
+        "gate-c"
+      ]
     },
     {
       "id": "competitor-overhead-figures",
