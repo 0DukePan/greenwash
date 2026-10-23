@@ -1,0 +1,9 @@
+{
+  "decisions": [
+    {
+      "license": "MIT",
+      "permits": true,
+      "checked": "2026-04-02: the operator read the MIT text and recorded that importing local run artifacts is permitted"
+    }
+  ]
+}
