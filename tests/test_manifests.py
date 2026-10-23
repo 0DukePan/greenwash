@@ -95,9 +95,14 @@ SYNCED = [
 
 
 def test_skill_only_plugin_matches_the_main_checker():
+    """The copies must carry the same content; line endings are checkout
+    artifacts, not detector differences (the plugin tree is pinned `-text`)."""
+    def normalized(path: Path) -> bytes:
+        return path.read_bytes().replace(b"\r\n", b"\n")
+
     drifted = [rel for rel in SYNCED
                if not (PLUGIN / rel).is_file()
-               or (ROOT / rel).read_bytes() != (PLUGIN / rel).read_bytes()]
+               or normalized(ROOT / rel) != normalized(PLUGIN / rel)]
     assert drifted == [], (
         f"skill-only plugin out of sync: {drifted}; "
         "run python benchmark/tools/sync_skill_only.py")

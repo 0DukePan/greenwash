@@ -35,7 +35,9 @@ def main() -> None:
     for rel in FILES:
         src, dst = ROOT / rel, PLUGIN / rel
         dst.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(src, dst)
+        # The plugin tree is pinned -text so its bytes survive checkout; write
+        # LF so a CRLF working copy cannot make the two trees disagree.
+        dst.write_bytes(src.read_bytes().replace(b"\r\n", b"\n"))
 
     expected = {PLUGIN / rel for rel in FILES}
     for directory in SYNCED_DIRS:

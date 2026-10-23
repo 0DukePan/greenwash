@@ -7,9 +7,10 @@ explicit denominator:
 
 * interruption rate -- flagged pull requests over the pull requests that
   touched tests (the class that can be interrupted);
-* unnecessary interruptions -- alerts a human judged illegitimate over the
-  alerts with a recorded human judgment; a legitimate alert is a necessary
-  interruption, and an unreviewed alert is never counted as unnecessary and
+* unnecessary interruptions -- alerts a human judged the change legitimate
+  (the alert was a false alarm, so the interruption was unnecessary) over the
+  alerts with a recorded human judgment; a change judged illegitimate made the
+  alert necessary, and an unreviewed alert is never counted as unnecessary and
   never enters the reviewed denominator;
 * time to resolve -- the interval between the two recorded timestamps, over
   the alerts where both timestamps exist;
@@ -168,7 +169,7 @@ def replay(pr_log, consent) -> dict:
     interruption["denominator"] = DEN_INTERRUPTION
 
     unnecessary = evaluation.rate(
-        (r["repository"], 1 if r["human_judgment"] == "illegitimate" else 0)
+        (r["repository"], 1 if r["human_judgment"] == "legitimate" else 0)
         for r in reviewed)
     unnecessary["denominator"] = DEN_UNNECESSARY
     unnecessary["unreviewed_alerts"] = len(flagged) - len(reviewed)

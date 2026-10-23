@@ -96,7 +96,7 @@ def test_the_report_is_literal_denominators_intervals_and_offline_statement():
         "consented repositories appearing in the PR log\n")
 
 
-def test_a_legitimate_alert_is_not_unnecessary_and_an_unreviewed_alert_is_not(
+def test_a_legitimate_change_makes_the_alert_unnecessary_and_an_unreviewed_alert_is_neither(
         tmp_path):
     records = [
         {"pr": "a#1", "repository": "alpha", "touched_tests": True,
@@ -114,8 +114,9 @@ def test_a_legitimate_alert_is_not_unnecessary_and_an_unreviewed_alert_is_not(
 
     measures = shadow_friction.replay(pr_log, consent)["measures"]
     unnecessary = measures["unnecessary_interruption_rate"]
-    # Only the judged-illegitimate alert is unnecessary; the legitimate one is
-    # not, and the unreviewed one is in neither column: 1 of the 2 reviewed.
+    # Only the alert on a change judged legitimate was an unnecessary
+    # interruption; the change judged illegitimate made its alert necessary;
+    # the unreviewed one is in neither column: 1 of the 2 reviewed.
     assert (unnecessary["k"], unnecessary["n"]) == (1, 2)
     assert unnecessary["unreviewed_alerts"] == 1
 
