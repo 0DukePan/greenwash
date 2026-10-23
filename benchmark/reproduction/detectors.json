@@ -1,0 +1,6 @@
+{
+  "detectors": [
+    {"id": "B0", "baseline": "path-rule", "version": "path-rule/1"},
+    {"id": "B1", "baseline": "held-out", "version": "held-out/1"}
+  ]
+}
