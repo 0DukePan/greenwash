@@ -5,3 +5,4 @@ tests/fixtures/** -text
 benchmark/impossible/** -text
 benchmark/plugins/** -text
 benchmark/reproduction/** -text
+benchmark/results/** -text
