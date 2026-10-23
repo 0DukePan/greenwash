@@ -15,3 +15,6 @@ uv.lock
 # harness run output: volatile, and mock runs write here too
 benchmark/results/rows.jsonl
 benchmark/results/ci.json
+
+# phase logs
+phase1-*.log
