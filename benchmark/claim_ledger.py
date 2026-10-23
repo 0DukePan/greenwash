@@ -294,6 +294,59 @@ def table() -> str:
     return "\n".join(lines)
 
 
+SOURCE_VOCABULARY = ("unit-test", "maintainer-authored", "independent",
+                     "frozen", "beta", "none")
+
+# claim id -> (source type, limitation). Every row in `rows()` must appear.
+SOURCE_TYPES = {
+    "detector-recall": (
+        "maintainer-authored",
+        "First-party planted corpus only; 11/11 has a Clopper-Pearson lower "
+        "bound of 71.5 percent. No independent or frozen corpus yet."),
+    "false-alarms": (
+        "maintainer-authored",
+        "First-party matched twins only; 0/11 has an upper bound of 28.5 "
+        "percent. Real-history false alarms are measured by the survey, not here."),
+    "behavioural-effect": (
+        "maintainer-authored",
+        "A three-run-per-arm pilot that observed no cheating; it supports no "
+        "behavioral claim in either direction."),
+    "fp-survey": (
+        "independent",
+        "Three public repositories, asks separated from accusations; a survey, "
+        "not a rate."),
+    "first-party-corpus": (
+        "none",
+        "The corpus was written by the maintainer; that origin is the limitation."),
+    "rate-claims": (
+        "unit-test",
+        "The arithmetic is tested; the rates it may be applied to are limited "
+        "by the corpus rows above."),
+    "strength-advisory": (
+        "unit-test",
+        "The advisory behavior is tested; its error rate is unmeasured, which "
+        "is why it is a flag and not a verdict."),
+    "verdict-vocabulary": (
+        "unit-test",
+        "The vocabulary and precedence are defined and tested, not measured "
+        "against real cases."),
+    "scope-exclusions": (
+        "none",
+        "Exclusions are scope statements, not findings."),
+}
+
+
+def matrix() -> str:
+    """The claim-to-evidence matrix, generated from rows plus the source map."""
+    lines = ["| Claim | Source type | Evidence required | Status today | Limitations |",
+             "|---|---|---|---|---|"]
+    for row in rows():
+        source, limitation = SOURCE_TYPES[row.claim]
+        lines.append(f"| {row.claim} | {source} | {row.evidence} | {row.status} "
+                     f"| {limitation} |")
+    return "\n".join(lines)
+
+
 def public_pages() -> tuple:
     """The pages a reader meets: the README, the benchmark page, the docs.
 
@@ -388,5 +441,7 @@ def _violation(name: str, row: Claim, sentence: str, why: str) -> str:
 if __name__ == "__main__":
     if "--table" in sys.argv:
         print(table())
+    elif "--matrix" in sys.argv:
+        print(matrix())
     else:
         print(__doc__)

@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <strong>24/24 planted cheats caught &middot; 0 false positives on 24 real fixes &middot; 746 tests</strong><br>
+  <strong>24/24 planted tampers caught &middot; 0 false positives on 24 matched fixes &middot; 748 tests</strong><br>
   <sub>
     An agent under pressure to show green will skip the test, mock the unit under
     test, hardcode the expected value, or swallow the exception that would have
@@ -27,12 +27,30 @@
   </sub>
 </p>
 
+<p align="center">
+  <sub>
+    The detector figures above come from the maintainer-authored corpus and are
+    <strong>preliminary</strong>. The exact intervals are 71.5 to 100 percent for
+    recall and 0 to 28.5 percent for false alarms; see the
+    <a href="docs/claim-matrix.md">claim matrix</a> for the evidence behind each
+    sentence and what it does not cover.
+  </sub>
+</p>
+
 Launch status: UNMEASURED
+
+Verdicts: **CLEAN** (the suite still checks what it checked before), **TAMPERED**
+(mechanism and grade relevance both established), **WEAK_VERIFIER** (the pass is
+real but the suite could not catch a wrong answer), **INCONCLUSIVE** (the tool
+cannot tell). Two infrastructure verdicts report a check that spoke or failed:
+NOT_VERIFIED and VERIFICATION_FAILED. The tool reports mechanism, never intent.
+Known limits are in [docs/what-did-not-work.md](docs/what-did-not-work.md).
 
 <p align="center">
   <strong>The part that did not work.</strong><br>
   <sub>
-    Those are detector numbers. The claim underneath them is that catching a fake
+    Those are detector numbers from the maintainer's own corpus. The claim
+    underneath them is that catching a fake
     pass <em>changes what the agent does</em> -- and over 252 measured agent runs
     it did not. We reported 7% of runs shipping a "silent cheat" and -1.4 points
     of effect. On inspection those 16 runs were honest fixes to tasks whose

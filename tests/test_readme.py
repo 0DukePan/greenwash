@@ -66,10 +66,10 @@ def test_readme_headline_matches_the_detection_results():
         (ROOT / "benchmark" / "results" / "detection.json").read_text(encoding="utf-8")
     )["summary"]
     headline = next(line for line in readme().splitlines()
-                    if "planted cheats caught" in line)
-    assert f"{summary['either_caught']}/{summary['tasks']} planted cheats caught" in headline
+                    if "planted tampers caught" in line)
+    assert f"{summary['either_caught']}/{summary['tasks']} planted tampers caught" in headline
     assert (f"{summary['false_positives']} false positives on "
-            f"{summary['solutions_clean']} real fixes") in headline
+            f"{summary['solutions_clean']} matched fixes") in headline
 
 
 def test_readme_corpus_size_matches_the_detector_run():

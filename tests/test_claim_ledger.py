@@ -166,3 +166,19 @@ def test_allowed_wording_numbers_come_from_generated_artifacts():
         assert quoted <= backed, (
             f"{row.claim} quotes {sorted(quoted - backed)} in its allowed "
             "wording without an artifact behind it")
+
+
+def test_every_claim_has_a_source_type_and_limitation():
+    claims = {row.claim for row in claim_ledger.rows()}
+    assert claims == set(claim_ledger.SOURCE_TYPES), (
+        "a claim has no source type, or a source row has no claim")
+    for claim, (source, limitation) in claim_ledger.SOURCE_TYPES.items():
+        assert source in claim_ledger.SOURCE_VOCABULARY, (claim, source)
+        assert len(limitation) > 20, f"{claim} has no real limitation sentence"
+
+
+def test_the_claim_matrix_is_generated_not_typed():
+    committed = (ROOT / "docs" / "claim-matrix.md").read_text(encoding="utf-8").strip()
+    assert committed == claim_ledger.matrix().strip(), (
+        "docs/claim-matrix.md is stale; regenerate it with "
+        "python benchmark/claim_ledger.py --matrix")
