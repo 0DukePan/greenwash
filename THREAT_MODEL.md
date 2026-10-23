@@ -4,6 +4,9 @@ greenwash exists because an agent under pressure to show a green suite
 sometimes makes the suite green instead of making the code correct. Be clear
 about what it does and does not buy you.
 
+The Phase 1 audit, the untrusted-input surfaces and the open issues are in
+[docs/threat-model.md](docs/threat-model.md).
+
 ## What it is not
 
 - **Not a prover.** A flag means "explain this," not "you are cheating." Every

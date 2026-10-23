@@ -21,12 +21,16 @@ runs:
   steps:
     - name: greenwash
       shell: bash
+      env:
+        GW_BASE: ${{ inputs.base }}
+        GW_RUN_TESTS: ${{ inputs.run-tests }}
+        GW_HELDOUT: ${{ inputs.heldout }}
       run: |
         set -euo pipefail
-        cmd=(python "${{ github.action_path }}/scripts/greenwash_check.py" all)
-        [ -n "${{ inputs.base }}" ]      && cmd+=(--base "${{ inputs.base }}")
-        [ -n "${{ inputs.run-tests }}" ] && cmd+=(--run-tests "${{ inputs.run-tests }}")
-        [ -n "${{ inputs.heldout }}" ]   && cmd+=(--heldout "${{ inputs.heldout }}")
+        cmd=(python "$GITHUB_ACTION_PATH/scripts/greenwash_check.py" all)
+        [ -n "$GW_BASE" ]      && cmd+=(--base "$GW_BASE")
+        [ -n "$GW_RUN_TESTS" ] && cmd+=(--run-tests "$GW_RUN_TESTS")
+        [ -n "$GW_HELDOUT" ]   && cmd+=(--heldout "$GW_HELDOUT")
         if "${cmd[@]}"; then
           echo "greenwash: clean"
         else
