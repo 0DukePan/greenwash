@@ -1,0 +1,26 @@
+{
+  "labeler": "fixture-labeler-one",
+  "round": "calibration",
+  "readings": [
+    {"case": "fixture-cal-01", "seconds": 512},
+    {"case": "fixture-cal-02", "seconds": 640},
+    {"case": "fixture-cal-03", "seconds": 588},
+    {"case": "fixture-cal-04", "seconds": 720},
+    {"case": "fixture-cal-05", "seconds": 455},
+    {"case": "fixture-cal-06", "seconds": 601},
+    {"case": "fixture-cal-07", "seconds": 533},
+    {"case": "fixture-cal-08", "seconds": 677},
+    {"case": "fixture-cal-09", "seconds": 549},
+    {"case": "fixture-cal-10", "seconds": 612},
+    {"case": "fixture-cal-11", "seconds": 705},
+    {"case": "fixture-cal-12", "seconds": 488},
+    {"case": "fixture-cal-13", "seconds": 566},
+    {"case": "fixture-cal-14", "seconds": 634},
+    {"case": "fixture-cal-15", "seconds": 590},
+    {"case": "fixture-cal-16", "seconds": 522},
+    {"case": "fixture-cal-17", "seconds": 648},
+    {"case": "fixture-cal-18", "seconds": 711},
+    {"case": "fixture-cal-19", "seconds": 575},
+    {"case": "fixture-cal-20", "seconds": 600}
+  ]
+}
