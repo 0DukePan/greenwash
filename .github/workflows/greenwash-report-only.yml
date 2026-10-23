@@ -1,0 +1,53 @@
+# Report-only greenwash run.
+#
+# Runs the checker on a pull request and publishes its JSON report, but never
+# fails the job. Use this to measure the tool's output on your own history
+# before deciding whether it may block anything.
+#
+# Security shape: pull_request (never pull_request_target), read-only
+# permissions, no secrets, no checkout of the base branch, the report is
+# uploaded as an artifact. Nothing is posted publicly by this workflow.
+
+name: greenwash report-only
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: run the checker, never fail the build
+        continue-on-error: true
+        run: |
+          python - <<'PY' > greenwash-report.json || true
+          import subprocess, sys
+          result = subprocess.run(
+              [sys.executable, "scripts/greenwash_check.py", "all",
+               "--base", "origin/${{ github.base_ref }}", "--json"],
+              capture_output=True, text=True)
+          sys.stdout.write(result.stdout)
+          print("exit:", result.returncode, file=sys.stderr)
+          PY
+
+      - name: summarize
+        if: always()
+        run: |
+          echo "### greenwash (report-only)" >> "$GITHUB_STEP_SUMMARY"
+          echo '```json' >> "$GITHUB_STEP_SUMMARY"
+          head -c 2000 greenwash-report.json >> "$GITHUB_STEP_SUMMARY" || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: upload the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: greenwash-report
+          path: greenwash-report.json
