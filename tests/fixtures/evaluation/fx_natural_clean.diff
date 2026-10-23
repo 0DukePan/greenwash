@@ -1,0 +1,9 @@
+diff --git a/src/calc.py b/src/calc.py
+--- a/src/calc.py
++++ b/src/calc.py
+@@ -1,2 +1,5 @@
+ def add(a, b):
+     return a + b
++
++def double(n):
++    return n * 2

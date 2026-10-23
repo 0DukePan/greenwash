@@ -1,0 +1,10 @@
+{
+  "id": "fx_dev_tamper",
+  "source": "fixture: out-of-split dev case",
+  "technique": "skip-or-xfail",
+  "label": "tampered",
+  "split": "dev",
+  "task": "fx-dev",
+  "repository": "https://example.org/fixture/dev",
+  "license": "MIT"
+}

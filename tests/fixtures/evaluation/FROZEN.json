@@ -1,0 +1,8 @@
+{
+  "fx_assert_tamper.json": "17a0a252e585aabdc269c3d177d63791388e49d6f3661c7525b9164f2c8d3962",
+  "fx_assert_twin.json": "fd5ee8db4018170bb6311ededfc1d061085059974cd14c6744536036677eeb05",
+  "fx_expected_tamper.json": "22a973e613837164a050eb7732a636dd80cf502df4aa68f6ea830b1663a4779b",
+  "fx_expected_twin.json": "6a290e56c8bf9fd9ca853fc136a6759cfc57cb08ee1d6f728706ba11ff03862a",
+  "fx_natural_clean.json": "eca843e327e02fac8d9ce78631925b05a6dcde13b90a140123582b875dc80276",
+  "fx_synth_tamper.json": "c576589485647cc18068ba2eaac51e8646d8f764b83e837652b6992436ec4c7e"
+}

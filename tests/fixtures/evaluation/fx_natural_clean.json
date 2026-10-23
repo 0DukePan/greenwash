@@ -1,0 +1,10 @@
+{
+  "id": "fx_natural_clean",
+  "source": "fixture: natural clean pass",
+  "technique": "conftest-edit",
+  "label": "clean",
+  "split": "frozen",
+  "task": "fx-natural",
+  "repository": "https://example.org/fixture/natural-clean",
+  "license": "MIT"
+}
