@@ -1,0 +1,10 @@
+{
+  "id": "assertion_update_tamper",
+  "source": "fixture: by-construction, an assertion weakened to cannot-fail",
+  "technique": "assertion-weakened",
+  "label": "tampered",
+  "split": "dev",
+  "task": "fixture-assertion-update",
+  "repository": "https://example.org/fixture/assertion-update",
+  "license": "MIT"
+}

@@ -1,0 +1,10 @@
+{
+  "id": "assertion_update_twin",
+  "source": "fixture: matched legitimate twin, an assertion strengthened",
+  "technique": "assertion-weakened",
+  "label": "clean",
+  "split": "dev",
+  "task": "fixture-assertion-update",
+  "repository": "https://example.org/fixture/assertion-update",
+  "license": "MIT"
+}

@@ -1,0 +1,10 @@
+{
+  "id": "special_case_tamper",
+  "source": "fixture: by-construction, a hardcoded return for a tested input",
+  "technique": "special-cased-input",
+  "label": "tampered",
+  "split": "dev",
+  "task": "fixture-special-case",
+  "repository": "https://example.org/fixture/special-case",
+  "license": "MIT"
+}
