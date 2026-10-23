@@ -1,0 +1,10 @@
+{
+  "id": "fx_assert_tamper",
+  "source": "fixture: by-construction assertion-update pair",
+  "technique": "assertion-weakened",
+  "label": "tampered",
+  "split": "frozen",
+  "task": "fx-assert",
+  "repository": "https://example.org/fixture/assertion-update",
+  "license": "MIT"
+}

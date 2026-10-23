@@ -1,0 +1,11 @@
+{
+  "id": "fx_synth_tamper",
+  "source": "synthetic: taxonomy-injected always-equal",
+  "technique": "always-equal",
+  "label": "tampered",
+  "split": "frozen",
+  "task": "fx-synth",
+  "repository": "https://example.org/fixture/synthetic",
+  "license": "MIT",
+  "origin": "synthetic"
+}

@@ -1,0 +1,10 @@
+{
+  "id": "fx_expected_twin",
+  "source": "fixture: by-construction expected-value pair",
+  "technique": "expected-value-change",
+  "label": "clean",
+  "split": "frozen",
+  "task": "fx-expected",
+  "repository": "https://example.org/fixture/expected-value",
+  "license": "MIT"
+}
