@@ -14,6 +14,16 @@ The contracts, each one load-bearing:
   files (the pattern the impossible-task corpus froze with) and is verified on
   load: a tampered case file fails with the file and the failed hash named,
   and a frozen case the manifest does not hash-record refuses to load.
+* **Pre-registration lives inside the manifest.** The pre-registration record
+  is stored under the reserved `preregistration` key of the same file, written
+  once by `write_preregistration` (a second write is refused), and read by
+  `read_preregistration`. `manifest_sha256` is the hash of the canonical
+  case-file mapping -- the manifest's identity -- so embedding the record does
+  not change it.
+* **Retired repositories cannot be re-frozen.** Every repository an evaluation
+  touches is added to a retired registry (`retire_repositories`), and
+  `write_manifest` refuses to freeze any split that reuses one, naming the
+  repository.
 * **Synthetic tampers are a separate class.** A tamper injected from the
   detector's own taxonomy is loadable and reportable like any case, but
   `SyntheticCase.gated` is False by construction -- no field in the record can
@@ -57,6 +67,15 @@ SYNTHETIC = "synthetic"
 ORIGINS = (NATURAL, SYNTHETIC)
 
 MANIFEST = "FROZEN.json"
+
+# The manifest's reserved key: the pre-registration record, stored inside the
+# frozen manifest itself. A case file is named `<something>.json`, so the bare
+# key can never collide with one.
+PREREGISTRATION = "preregistration"
+
+# Where the retired-repository registry lives, relative to the project that
+# ships this kit. Callers may pass their own path everywhere.
+RETIRED_REGISTRY = "benchmark/retired-repositories.json"
 
 FIELDS = ("id", "source", "technique", "label", "split", "task", "repository",
           "license", "origin")
@@ -213,13 +232,22 @@ def _sha256(path: Path) -> str:
     return hashlib.sha256(raw).hexdigest()
 
 
-def write_manifest(root: str | Path) -> dict:
+def write_manifest(root: str | Path, retired_registry=None) -> dict:
     """Hash-record the frozen split's case files into FROZEN.json.
 
     Freezing refuses to record a corpus it cannot validate, so the manifest
     can never bless a record with an unknown technique or a missing field.
+    It also refuses to rewrite a manifest that is already pre-registered (the
+    record is committed once) and to freeze any case from a retired
+    repository, naming the repository and the registry.
     """
     root = Path(root)
+    existing = read_manifest(root)
+    if PREREGISTRATION in existing:
+        raise EvidenceError(f"{MANIFEST}: already pre-registered; a frozen "
+                            "manifest is pre-registered once and its record "
+                            "cannot be rewritten")
+    retired = read_retired_repositories(retired_registry)
     manifest = {}
     for path in _case_files(root):
         record, _ = read_json(path)
@@ -228,6 +256,12 @@ def write_manifest(root: str | Path) -> dict:
         except EvidenceError as exc:
             raise EvidenceError(f"{path.name}: {exc}") from exc
         if case.split == FROZEN:
+            if case.repository in retired:
+                raise EvidenceError(
+                    f"{path.name}: repository {case.repository!r} is retired "
+                    f"({retired_registry_path(retired_registry)}); a new "
+                    f"frozen split may not reuse a repository an evaluation "
+                    f"already consumed")
             manifest[path.relative_to(root).as_posix()] = _sha256(path)
     (root / MANIFEST).write_text(json.dumps(manifest, indent=2) + "\n",
                                  encoding="utf-8")
@@ -235,17 +269,112 @@ def write_manifest(root: str | Path) -> dict:
 
 
 def read_manifest(root: str | Path) -> dict:
-    """FROZEN.json as written, {} when the corpus is not frozen."""
+    """FROZEN.json as written, {} when the corpus is not frozen.
+
+    The `preregistration` key is reserved for the pre-registration record and
+    validated by `read_preregistration`; every other key must name a case file
+    by a lowercase sha256 digest.
+    """
     path = Path(root) / MANIFEST
     if not path.exists():
         return {}
     payload, _ = read_json(path)
     for name, digest in payload.items():
+        if name == PREREGISTRATION:
+            continue
         if not (isinstance(digest, str) and len(digest) == 64
                 and all(ch in "0123456789abcdef" for ch in digest)):
             raise EvidenceError(f"{MANIFEST}: {name} is not a lowercase sha256 "
                                 f"digest: {digest!r}")
     return payload
+
+
+def manifest_sha256(root: str | Path) -> str:
+    """The frozen manifest's identity: sha256 over its canonical case-file mapping.
+
+    The mapping is serialized as compact JSON with sorted keys, never as the
+    file's bytes, so the hash is stable across formatting and line-ending
+    settings and is unchanged by embedding the pre-registration record.
+    """
+    root = Path(root)
+    if not (root / MANIFEST).exists():
+        raise EvidenceError(f"{MANIFEST}: no frozen manifest in {root}")
+    cases = {name: digest for name, digest in read_manifest(root).items()
+             if name != PREREGISTRATION}
+    canonical = json.dumps(cases, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+# -- the pre-registration record, stored inside the frozen manifest -----------
+
+PREREGISTRATION_REQUIRED = ("thresholds_sha256", "launch_configuration",
+                            "detector_sha256", "detector_version",
+                            "baseline_pins", "taxonomy_version", "tool_commit",
+                            "manifest_sha256")
+PREREGISTRATION_DIGESTS = ("thresholds_sha256", "detector_sha256",
+                           "manifest_sha256")
+
+
+def validate_preregistration(record) -> list:
+    """Every way the pre-registration record is incomplete, naming the field."""
+    issues: list = []
+    if not isinstance(record, dict):
+        return ["preregistration: must be a JSON object of pinned fields"]
+    for field in PREREGISTRATION_REQUIRED:
+        if field == "baseline_pins":
+            continue
+        if not str(record.get(field, "")).strip():
+            issues.append(f"preregistration: {field} is missing; the record "
+                          f"must pin {field}")
+    for field in PREREGISTRATION_DIGESTS:
+        value = str(record.get(field, ""))
+        if value and not (len(value) == 64
+                          and all(ch in "0123456789abcdef" for ch in value)):
+            issues.append(f"preregistration: {field} is not a lowercase sha256 "
+                          f"digest: {value!r}")
+    pins = record.get("baseline_pins")
+    if not isinstance(pins, dict) or not pins:
+        issues.append("preregistration: baseline_pins is missing; every "
+                      "baseline version, including the competitor's, must be "
+                      "pinned")
+    return issues
+
+
+def read_preregistration(root: str | Path) -> dict:
+    """The pre-registration record inside FROZEN.json, {} when there is none."""
+    record = read_manifest(root).get(PREREGISTRATION)
+    if record is None:
+        return {}
+    issues = validate_preregistration(record)
+    if issues:
+        raise EvidenceError(f"{MANIFEST}: " + "; ".join(issues))
+    return record
+
+
+def write_preregistration(root: str | Path, record: Mapping) -> dict:
+    """Store the pre-registration record inside FROZEN.json -- exactly once.
+
+    The case-file hash records are preserved verbatim; only the reserved
+    `preregistration` key is added. A manifest may be pre-registered once, so
+    the commitment cannot be quietly replaced after the fact.
+    """
+    root = Path(root)
+    manifest = read_manifest(root)
+    if not manifest:
+        raise EvidenceError(f"{MANIFEST}: no frozen manifest in {root} to "
+                            "pre-register; freeze the split first")
+    if PREREGISTRATION in manifest:
+        raise EvidenceError(f"{MANIFEST}: already pre-registered; a frozen "
+                            "manifest is pre-registered once")
+    issues = validate_preregistration(record)
+    if issues:
+        raise EvidenceError("; ".join(issues))
+    payload = {name: digest for name, digest in manifest.items()
+               if name != PREREGISTRATION}
+    payload[PREREGISTRATION] = dict(record)
+    (root / MANIFEST).write_text(json.dumps(payload, indent=2) + "\n",
+                                 encoding="utf-8")
+    return dict(record)
 
 
 def load_corpus(root: str | Path) -> tuple:
@@ -260,13 +389,15 @@ def load_corpus(root: str | Path) -> tuple:
     manifest = read_manifest(root)
     paths = _case_files(root)
     digests = {path.relative_to(root).as_posix(): _sha256(path) for path in paths}
-    for name in sorted(manifest):
+    cases_recorded = {name: digest for name, digest in manifest.items()
+                      if name != PREREGISTRATION}
+    for name in sorted(cases_recorded):
         if name not in digests:
             raise EvidenceError(f"{MANIFEST} hash-records {name} but the "
                                 "file is missing")
-        if digests[name] != manifest[name]:
+        if digests[name] != cases_recorded[name]:
             raise EvidenceError(f"{MANIFEST}: {name} hash mismatch: recorded "
-                                f"{manifest[name]}, found {digests[name]}")
+                                f"{cases_recorded[name]}, found {digests[name]}")
     loaded = {}
     for path in paths:
         record, _ = read_json(path)
@@ -280,8 +411,8 @@ def load_corpus(root: str | Path) -> tuple:
     cases = tuple(case_from_record(record) for record in loaded.values())
     frozen_files = {name for name in sorted(loaded)
                     if loaded[name].get("split") == FROZEN}
-    unrecorded = sorted(frozen_files - set(manifest))
-    mislabelled = sorted(set(manifest) - frozen_files)
+    unrecorded = sorted(frozen_files - set(cases_recorded))
+    mislabelled = sorted(set(cases_recorded) - frozen_files)
     if unrecorded or mislabelled:
         problems = [f"{MANIFEST} does not hash-record frozen case(s): "
                     f"{', '.join(unrecorded)}"] if unrecorded else []
@@ -289,6 +420,46 @@ def load_corpus(root: str | Path) -> tuple:
                      f"{FROZEN}" for name in mislabelled]
         raise EvidenceError("; ".join(problems))
     return cases
+
+
+# -- the retired-repository registry -----------------------------------------
+
+def retired_registry_path(path=None) -> Path:
+    """The registry file: `path`, or the project's own by default."""
+    return (Path(path) if path is not None
+            else Path(__file__).resolve().parent.parent / RETIRED_REGISTRY)
+
+
+def read_retired_repositories(path=None) -> tuple:
+    """The retired repositories, sorted; () before any evaluation retires one.
+
+    A repository is retired by being *evaluated*: the registry only grows, so
+    a frozen split can never be rebuilt from a repository whose evidence is
+    already spent.
+    """
+    registry = retired_registry_path(path)
+    if not registry.exists():
+        return ()
+    payload, _ = read_json(registry)
+    repositories = payload.get("repositories")
+    if (not isinstance(repositories, list)
+            or not all(isinstance(repo, str) and repo.strip()
+                       for repo in repositories)):
+        raise EvidenceError(f"{registry.name}: 'repositories' must be a list "
+                            "of repository identities")
+    return tuple(sorted(set(repositories)))
+
+
+def retire_repositories(repositories: Iterable, path=None) -> tuple:
+    """Add every repository to the retired registry and return the registry."""
+    registry = retired_registry_path(path)
+    merged = sorted(set(read_retired_repositories(path))
+                    | {str(repo).strip() for repo in repositories
+                       if str(repo).strip()})
+    registry.parent.mkdir(parents=True, exist_ok=True)
+    registry.write_text(json.dumps({"repositories": merged}, indent=2) + "\n",
+                        encoding="utf-8")
+    return tuple(merged)
 
 
 # -- double-labeling inputs for blind annotation -----------------------------
