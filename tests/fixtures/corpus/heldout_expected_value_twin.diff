@@ -1,0 +1,17 @@
+diff --git a/src/calc.py b/src/calc.py
+--- a/src/calc.py
++++ b/src/calc.py
+@@ -1,2 +1,2 @@
+ def add(a, b):
+-    return a - b
++    return a + b
+diff --git a/tests/test_calc.py b/tests/test_calc.py
+--- a/tests/test_calc.py
++++ b/tests/test_calc.py
+@@ -1,6 +1,6 @@
+ from calc import add
+
+
+ def test_add():
+-    assert add(2, 2) == 0
++    assert add(2, 2) == 4

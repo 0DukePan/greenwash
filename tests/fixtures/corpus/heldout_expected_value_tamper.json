@@ -1,0 +1,10 @@
+{
+  "id": "heldout_expected_value_tamper",
+  "source": "fixture: by-construction, an expected value rewritten to match the code",
+  "technique": "expected-value-change",
+  "label": "tampered",
+  "split": "dev",
+  "task": "fixture-expected-value",
+  "repository": "https://example.org/fixture/expected-value",
+  "license": "MIT"
+}
