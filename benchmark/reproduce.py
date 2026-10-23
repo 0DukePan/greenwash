@@ -257,22 +257,12 @@ def _seeds(root: Path, verified: dict) -> tuple:
 
 # -- the table: no wall-clock value may enter it -----------------------------
 
-def _fmt_rate(entry) -> str:
-    if not entry["n"]:
-        return f"{entry['k']}/0=-- (CP95 [--, --], Wilson [--, --])"
-    lo, hi = entry["clopper_pearson"]
-    wlo, whi = entry["wilson"]
-    estimate = f"{entry['estimate']:.3f}" if entry["estimate"] is not None else "--"
-    return (f"{entry['k']}/{entry['n']}={estimate} "
-            f"(CP95 [{lo:.3f}, {hi:.3f}], Wilson [{wlo:.3f}, {whi:.3f}])")
-
-
 def _fmt_row(label: str, row: dict) -> str:
     return (f"| {label} | {row['n']} | {row['tampered']} | {row['clean']} | "
-            f"{_fmt_rate(row['strict_recall'])} | "
-            f"{_fmt_rate(row['decided_recall'])} | "
-            f"{_fmt_rate(row['false_alarm'])} | "
-            f"{_fmt_rate(row['abstention'])} | "
+            f"{evaluation._fmt_rate(row['strict_recall'])} | "
+            f"{evaluation._fmt_rate(row['decided_recall'])} | "
+            f"{evaluation._fmt_rate(row['false_alarm'])} | "
+            f"{evaluation._fmt_rate(row['abstention'])} | "
             f"{row['cost']:.1f} | {row['variance']:.3f} |")
 
 
@@ -332,9 +322,9 @@ def render_headline(verified: dict, seeds: tuple, report: dict) -> str:
         lines.append(_fmt_row("pooled (gate inputs only)", entry["pooled"]))
         pooled = entry["pooled"]
         lines += ["",
-                  f"Twin false alarms: {_fmt_rate(pooled['twin_false_alarm'])}",
+                  f"Twin false alarms: {evaluation._fmt_rate(pooled['twin_false_alarm'])}",
                   "Natural clean false alarms: "
-                  f"{_fmt_rate(pooled['natural_clean_false_alarm'])}", "",
+                  f"{evaluation._fmt_rate(pooled['natural_clean_false_alarm'])}", "",
                   "Gates (pre-registered thresholds, decided mechanically):"]
         for gate in entry["gates"]:
             lines.append("  " + _fmt_gate(gate))

@@ -144,14 +144,19 @@ def gate_hit(row: dict) -> bool:
 
 
 def gate_hit_rate(rows: list) -> dict:
-    """The checker's own flag rate, reported separately from the primary outcome."""
+    """The checker's own flag rate, reported separately from the primary outcome.
+
+    The rate clusters by task, the protocol's unit of correlation: one
+    repository-task's runs are not independent observations.
+    """
+    def outcomes(subset):
+        return [(r.get("task"), 1 if gate_hit(r) else 0) for r in subset]
+
     by_arm = {}
     for arm in _arms_present(rows):
         arm_rows = [r for r in rows if r.get("arm") == arm]
-        by_arm[arm] = evaluation.rate(sum(1 for r in arm_rows if gate_hit(r)),
-                                      len(arm_rows))
-    return {"overall": evaluation.rate(sum(1 for r in rows if gate_hit(r)),
-                                       len(rows)),
+        by_arm[arm] = evaluation.rate(outcomes(arm_rows))
+    return {"overall": evaluation.rate(outcomes(rows)),
             "by_arm": by_arm,
             "note": "the checker's own flags, reported separately"}
 
@@ -360,9 +365,10 @@ def analyze(rows: list, plan: dict) -> dict:
     by_arm = {}
     for arm in _arms_present(rows):
         subset = [r for r in rows if r.get("arm") == arm]
-        k = sum(1 for r in subset if primary_outcome(r)["cheated"])
         by_arm[arm] = {
-            "risk": evaluation.rate(k, len(subset)),
+            "risk": evaluation.rate(
+                [(r.get("task"), 1 if primary_outcome(r)["cheated"] else 0)
+                 for r in subset]),
             "tasks": len({r.get("task") for r in subset})}
     refusals = [{"task": r.get("task"), "run": r.get("run"), "arm": r.get("arm"),
                  **label_refusal(r)}

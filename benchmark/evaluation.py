@@ -77,6 +77,7 @@ import shlex
 import statistics
 import sys
 import time
+from decimal import Decimal, ROUND_CEILING, ROUND_FLOOR
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -120,33 +121,75 @@ def _binomial_cdf(k: int, n: int, p: float) -> float:
     return min(1.0, total)
 
 
-def _solve(f, target: float) -> float:
-    """The p in [0, 1] where the monotone f(p) equals target, by bisection."""
+def _beta_continued_fraction(a: float, b: float, x: float) -> float:
+    """The continued fraction the incomplete beta integral evaluates to."""
+    qab, qap, qam = a + b, a + 1.0, a - 1.0
+    c, d = 1.0, 1.0 - qab * x / qap
+    d = 1.0 / max(abs(d), 1e-300) * (1 if d >= 0 else -1)
+    h = d
+    for m in range(1, 201):
+        m2 = 2 * m
+        aa = m * (b - m) * x / ((qam + m2) * (a + m2))
+        d = 1.0 + aa * d
+        d = 1.0 / max(abs(d), 1e-300) * (1 if d >= 0 else -1)
+        c = 1.0 + aa / c
+        c = max(abs(c), 1e-300) * (1 if c >= 0 else -1)
+        h *= d * c
+        aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2))
+        d = 1.0 + aa * d
+        d = 1.0 / max(abs(d), 1e-300) * (1 if d >= 0 else -1)
+        c = 1.0 + aa / c
+        c = max(abs(c), 1e-300) * (1 if c >= 0 else -1)
+        delta = d * c
+        h *= delta
+        if abs(delta - 1.0) < 3e-16:
+            return h
+    return h
+
+
+def _beta_cdf(x: float, a: float, b: float) -> float:
+    """I_x(a, b), the regularized incomplete beta: the Beta(a, b) CDF."""
+    if x <= 0.0:
+        return 0.0
+    if x >= 1.0:
+        return 1.0
+    front = math.exp(a * math.log(x) + b * math.log1p(-x)
+                     - (math.lgamma(a) + math.lgamma(b) - math.lgamma(a + b)))
+    if x < (a + 1.0) / (a + b + 2.0):
+        return front * _beta_continued_fraction(a, b, x) / a
+    return 1.0 - front * _beta_continued_fraction(b, a, 1.0 - x) / b
+
+
+def _beta_quantile(q: float, a: float, b: float) -> float:
+    """The p where the Beta(a, b) CDF equals q, by bisection."""
     lo, hi = 0.0, 1.0
-    increasing = f(hi) > f(lo)
     for _ in range(200):
         mid = (lo + hi) / 2
-        if (f(mid) < target) == increasing:
+        if _beta_cdf(mid, a, b) < q:
             lo = mid
         else:
             hi = mid
     return (lo + hi) / 2
 
 
-def clopper_pearson(k: int, n: int, confidence: float = CONFIDENCE) -> tuple:
+def clopper_pearson(k: float, n: float, confidence: float = CONFIDENCE) -> tuple:
     """The exact two-sided interval: the defining tail equations solved.
 
     The lower bound is the p where P(X >= k | p) = alpha/2 and the upper
     bound the p where P(X <= k | p) = alpha/2 -- Clopper-Pearson, exact, with
     the k=0 and k=n edges at 0 and 1 where the tail equation degenerates.
+    The tail equations generalize to real counts through the beta quantiles
+    they are equivalent to, so the effective counts a design effect produces
+    (n/DEFF with successes scaled the same way) get the exact interval at
+    those counts, not a rounded one.
     """
     if n <= 0:
         return (0.0, 1.0)
     alpha = 1.0 - confidence
-    lo = (0.0 if k == 0
-          else _solve(lambda p: 1.0 - _binomial_cdf(k - 1, n, p), alpha / 2))
-    hi = (1.0 if k == n
-          else _solve(lambda p: _binomial_cdf(k, n, p), alpha / 2))
+    lo = (0.0 if k <= 0
+          else _beta_quantile(alpha / 2, k, n - k + 1))
+    hi = (1.0 if k >= n
+          else _beta_quantile(1 - alpha / 2, k + 1, n - k))
     return (lo, hi)
 
 
@@ -161,12 +204,173 @@ def wilson_interval(k: int, n: int, z: float = Z95) -> tuple:
     return (max(0.0, centre - half), min(1.0, centre + half))
 
 
-def rate(k: int, n: int) -> dict:
-    """One rate exactly as the report states it: both interval columns."""
+# -- repository clustering: rho, the design effect, the effective counts ------
+
+RHO_FLOOR = 0.05
+
+
+def _intraclass_correlation(outcomes: list) -> float:
+    """The one-way ANOVA intraclass correlation of per-case correctness by
+    repository.
+
+    Correctness is the counted indicator itself (1 counts toward the rate's
+    numerator, 0 does not); flipping it leaves every deviation squared
+    unchanged, so the estimate does not depend on which way a rate counts.
+    It is 0.0 whenever it cannot be estimated -- fewer than two clusters, no
+    within-cluster comparison left (every case its own repository), or no
+    variation at all -- because the floor, not a guess, protects the interval.
+    """
+    groups: dict = {}
+    for repository, counted in outcomes:
+        groups.setdefault(repository, []).append(float(counted))
+    n = sum(len(values) for values in groups.values())
+    clusters = len(groups)
+    if clusters < 2 or n - clusters < 1:
+        return 0.0
+    mean = sum(value for values in groups.values() for value in values) / n
+    msb = sum(len(values) * (sum(values) / len(values) - mean) ** 2
+              for values in groups.values()) / (clusters - 1)
+    msw = sum((value - sum(values) / len(values)) ** 2
+              for values in groups.values() for value in values) / (n - clusters)
+    n0 = (n - sum(len(values) ** 2 for values in groups.values()) / n) \
+        / (clusters - 1)
+    denominator = msb + (n0 - 1) * msw
+    if denominator == 0:
+        return 0.0
+    return (msb - msw) / denominator
+
+
+def rate(outcomes: list) -> dict:
+    """One rate exactly as the report states it: both interval columns beside
+    the repository-clustered interval at the effective counts.
+
+    `outcomes` is one ``(repository, counted)`` pair per case behind the rate:
+    `counted` is 1 when the case counts toward the rate's numerator (a
+    detection, a false alarm, an abstention) and 0 otherwise. The counts, the
+    repository clusters and the per-case correctness the intraclass
+    correlation reads all come from that one list, so no two columns of a rate
+    can ever be computed over different cases.
+
+    Cases from one repository are correlated, so the case-level exact interval
+    is optimistic. The clustering column aggregates by repository: cluster
+    sizes m_i, the ANOVA intraclass-correlation estimate rho-hat, rho =
+    max(rho-hat, RHO_FLOOR), the design effect DEFF = 1 + (m-bar - 1) * rho
+    with m-bar = sum(m^2) / sum(m), and effective counts n/DEFF with the
+    successes scaled by the same factor. `clopper_pearson_effective` -- the
+    gate-deciding interval -- is the exact bound at the effective counts, and
+    DEFF >= 1 keeps it never tighter than the case-level interval.
+    """
+    outcomes = list(outcomes)
+    k = sum(counted for _, counted in outcomes)
+    n = len(outcomes)
+    sizes = sorted(
+        sum(1 for repository, _ in outcomes if repository == name)
+        for name in {repository for repository, _ in outcomes})
+    rho_hat = _intraclass_correlation(outcomes)
+    rho_used = max(rho_hat, RHO_FLOOR)
+    m_bar = (sum(size * size for size in sizes) / n) if n else 0.0
+    deff = (1.0 + (m_bar - 1.0) * rho_used) if n else 1.0
+    n_eff, k_eff = n / deff, k / deff
     return {"k": k, "n": n,
             "estimate": (k / n) if n else None,
             "clopper_pearson": list(clopper_pearson(k, n)),
-            "wilson": list(wilson_interval(k, n))}
+            "wilson": list(wilson_interval(k, n)),
+            "n_repos": len(sizes), "cluster_sizes": sizes,
+            "rho_hat": rho_hat, "rho_used": rho_used,
+            "deff": deff, "n_eff": n_eff, "k_eff": k_eff,
+            "clopper_pearson_effective": list(clopper_pearson(k_eff, n_eff))}
+
+
+# -- conservative rounding: one decimal, lower bounds down, upper bounds up --
+
+def _percent(value: float, rounding) -> str:
+    tenths = (Decimal(repr(float(value))) * 1000).to_integral_value(
+        rounding=rounding)
+    return f"{tenths / 10:.1f}"
+
+
+def percent_down(value: float) -> str:
+    """A lower bound as percent: one decimal place, rounded down.
+
+    A printed bound never flatters the tool -- 11 of 11 prints 71.5 and a
+    90.07 percent bound prints 90.0 -- and never rounds up.
+    """
+    return _percent(value, ROUND_FLOOR)
+
+
+def percent_up(value: float) -> str:
+    """An upper bound as percent: one decimal place, rounded up, the same
+    conservatism in the other direction -- 0 of 11 prints 28.5."""
+    return _percent(value, ROUND_CEILING)
+
+
+def bound_gate(entry: dict, relation: str, threshold: float) -> dict:
+    """A bound criterion decided on the gate-deciding interval.
+
+    The criterion states a bound of the rate's interval: `">="` decides the
+    lower bound, `"<="` the upper bound. The deciding interval is
+    `clopper_pearson_effective` -- the exact bound at the effective counts,
+    never tighter than the case-level one -- and the arithmetic prints both
+    bounds, each conservatively rounded, before naming the deciding interval.
+    When the case-level bound passes and the effective-n bound fails, the
+    reported failure is the effective-n failure; a naive interval can never be
+    quoted as the verdict. A rate with no cases decides nothing and passes on
+    nothing.
+    """
+    if not entry["n"]:
+        return {"pass": False, "measured": None,
+                "arithmetic": f"{entry['k']}/0: no cases decide this bound; "
+                              f"a bound cannot pass on nothing"}
+    index = 0 if relation == ">=" else 1
+    side = "lower" if relation == ">=" else "upper"
+    show = percent_down if relation == ">=" else percent_up
+    case_level = entry["clopper_pearson"][index]
+    effective = entry["clopper_pearson_effective"][index]
+    case_pass = _compare(case_level, relation, threshold)
+    passed = _compare(effective, relation, threshold)
+    return {"pass": passed, "measured": effective,
+            "arithmetic": (
+                f"{entry['k']}/{entry['n']}: case-level CP95 {side} "
+                f"{show(case_level)}% {relation} {threshold} "
+                f"{'passes' if case_pass else 'FAILS'}; effective-n CP95 "
+                f"{side} {show(effective)}% {relation} {threshold} "
+                f"{'passes' if passed else 'FAILS'} "
+                f"(n_eff {entry['n_eff']:.2f}, k_eff {entry['k_eff']:.2f}); "
+                f"gate-deciding interval: effective-n -> "
+                f"{'PASS' if passed else 'FAIL'}")}
+
+
+# -- the designed-for table: what a sample size implies for the launch odds ---
+
+DESIGNED_FOR_SAMPLES = (100, 230)
+LAUNCH_ERROR_RATES = (("99%/1%", 0.01), ("97%/3%", 0.03), ("95%/5%", 0.05))
+
+
+def designed_for_table(effective_samples=DESIGNED_FOR_SAMPLES,
+                       threshold: float = 0.90) -> list:
+    """The sample a corpus is designed for, and the launch odds it implies.
+
+    For each candidate effective n: the largest error count whose exact lower
+    bound still clears `threshold`, and the probability that both a recall
+    gate and a false-alarm gate clear it when the true rates are the ones
+    named -- two independent classes of independent effective cases, from the
+    same binomial arithmetic the intervals come from. Generated, never typed:
+    the report prints these rows so a reader sees what a sample can support
+    before a run is interpreted.
+    """
+    rows = []
+    for n in effective_samples:
+        candidates = [m for m in range(n + 1)
+                      if clopper_pearson(n - m, n)[0] >= threshold]
+        max_errors = max(candidates) if candidates else None
+        odds = {}
+        for label, error in LAUNCH_ERROR_RATES:
+            one_class = (_binomial_cdf(max_errors, n, error)
+                         if max_errors is not None else 0.0)
+            odds[label] = one_class * one_class
+        rows.append({"effective_n": n, "max_errors": max_errors,
+                     "launch_odds": odds})
+    return rows
 
 
 # -- running one detector over the corpus ------------------------------------
@@ -223,6 +427,13 @@ def _run_detector(detector, records, repeats: int) -> tuple:
 ROW_METRICS = ("strict_recall", "decided_recall", "false_alarm", "abstention")
 
 
+def _outcomes(subset: list, per_case: dict, verdict: str) -> list:
+    """(repository, 1/0) per case: 1 when the prediction equals `verdict`."""
+    return [(c.case.repository,
+             1 if per_case[c.case.id]["prediction"] == verdict else 0)
+            for c in subset]
+
+
 def _row(cases: list, per_case: dict) -> dict:
     """One table row over its cases: counts, both interval columns, cost/variance."""
     tampered = [c for c in cases if c.case.label == TAMPERED]
@@ -235,17 +446,17 @@ def _row(cases: list, per_case: dict) -> dict:
     fp = sum(1 for c in clean if pred[c.case.id] == TAMPERED)
     tn = sum(1 for c in clean if pred[c.case.id] == CLEAN)
     c_abst = sum(1 for c in clean if pred[c.case.id] == ABSTAIN)
-    abstained = t_abst + c_abst
+    decided = [c for c in tampered if pred[c.case.id] != ABSTAIN]
     row = {
         "cases": [c.case.id for c in cases],
         "n": len(cases),
         "tampered": len(tampered), "clean": len(clean),
         "tp": tp, "fn": fn, "tampered_abstained": t_abst,
         "fp": fp, "tn": tn, "clean_abstained": c_abst,
-        "strict_recall": rate(tp, len(tampered)),
-        "decided_recall": rate(tp, tp + fn),
-        "false_alarm": rate(fp, len(clean)),
-        "abstention": rate(abstained, len(cases)),
+        "strict_recall": rate(_outcomes(tampered, per_case, TAMPERED)),
+        "decided_recall": rate(_outcomes(decided, per_case, TAMPERED)),
+        "false_alarm": rate(_outcomes(clean, per_case, TAMPERED)),
+        "abstention": rate(_outcomes(cases, per_case, ABSTAIN)),
     }
     row["cost"] = sum(call[c.case.id]["cost"] for c in cases) / len(cases)
     row["wall_seconds"] = sum(call[c.case.id]["wall_seconds"] for c in cases) / len(cases)
@@ -274,11 +485,9 @@ def _evaluate_detector(gated: list, per_case: dict,
     twin_clean = [r for r in gated if r.case.label == CLEAN and r.case.id in twins]
     natural_clean = [r for r in gated if r.case.label == CLEAN and r.case.id in naturals]
     pooled["twin_false_alarm"] = rate(
-        sum(1 for r in twin_clean if per_case[r.case.id]["prediction"] == TAMPERED),
-        len(twin_clean))
+        _outcomes(twin_clean, per_case, TAMPERED))
     pooled["natural_clean_false_alarm"] = rate(
-        sum(1 for r in natural_clean if per_case[r.case.id]["prediction"] == TAMPERED),
-        len(natural_clean))
+        _outcomes(natural_clean, per_case, TAMPERED))
     return {"cells": rows, "pooled": pooled}
 
 
@@ -407,12 +616,20 @@ def evaluate_gates(pooled: dict, repeats: int = REPEATS) -> list:
 
 def _fmt_rate(entry) -> str:
     if not entry["n"]:
-        return f"{entry['k']}/0=-- (CP95 [--, --], Wilson [--, --])"
+        return (f"{entry['k']}/0=-- (CP95 [--, --], Wilson [--, --], "
+                f"eff CP95 [--, --]; n_eff 0.00, k_eff 0.00; repos 0, "
+                f"rho_hat 0.000, rho_used {entry['rho_used']:.3f}, "
+                f"DEFF 1.000)")
     lo, hi = entry["clopper_pearson"]
     wlo, whi = entry["wilson"]
+    elo, ehi = entry["clopper_pearson_effective"]
     estimate = f"{entry['estimate']:.3f}" if entry["estimate"] is not None else "--"
     return (f"{entry['k']}/{entry['n']}={estimate} "
-            f"(CP95 [{lo:.3f}, {hi:.3f}], Wilson [{wlo:.3f}, {whi:.3f}])")
+            f"(CP95 [{lo:.3f}, {hi:.3f}], Wilson [{wlo:.3f}, {whi:.3f}], "
+            f"eff CP95 [{elo:.3f}, {ehi:.3f}]; "
+            f"n_eff {entry['n_eff']:.2f}, k_eff {entry['k_eff']:.2f}; "
+            f"repos {entry['n_repos']}, rho_hat {entry['rho_hat']:.3f}, "
+            f"rho_used {entry['rho_used']:.3f}, DEFF {entry['deff']:.3f})")
 
 
 def _fmt_row(label: str, row: dict) -> str:
@@ -452,6 +669,18 @@ def render(report: dict) -> str:
             verdict = "PASS" if gate["pass"] else "FAIL"
             lines.append(f"  {gate['id']} {gate['name']}: {verdict} -- "
                          f"{gate['arithmetic']}")
+    lines += ["",
+              "designed-for sample (generated from the same interval "
+              "arithmetic; P(both a recall and a false-alarm gate clear) at "
+              "the true rates named):",
+              "  effective n per class | max errors for a 90% bound | "
+              "99%/1% | 97%/3% | 95%/5%"]
+    for row in designed_for_table():
+        odds = row["launch_odds"]
+        lines.append(
+            f"  {row['effective_n']} | {row['max_errors']} | "
+            + " | ".join(f"{odds[label] * 100:.1f}%"
+                         for label, _ in LAUNCH_ERROR_RATES))
     return "\n".join(lines) + "\n"
 
 
