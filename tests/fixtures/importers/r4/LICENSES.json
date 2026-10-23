@@ -1,0 +1,14 @@
+{
+  "decisions": [
+    {
+      "license": "CC-BY-4.0",
+      "permits": true,
+      "checked": "2026-04-02: the operator read the CC-BY-4.0 terms and recorded that importing dataset entries with attribution is permitted"
+    },
+    {
+      "license": "CC-BY-ND-4.0",
+      "permits": false,
+      "checked": "2026-04-02: the no-derivatives term bars importing modified test material; recorded as not permitted"
+    }
+  ]
+}

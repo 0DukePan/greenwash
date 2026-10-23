@@ -1,0 +1,9 @@
+{
+  "decisions": [
+    {
+      "license": "Apache-2.0",
+      "permits": true,
+      "checked": "2026-04-02: the operator read the Apache-2.0 terms and recorded that importing pull request metadata and diffs is permitted"
+    }
+  ]
+}
