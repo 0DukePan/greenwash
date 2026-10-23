@@ -1,0 +1,10 @@
+{
+  "labeler": "fixture-labeler-two",
+  "round": "full",
+  "entries": [
+    {"packet": "P1", "label": "tampered", "reason": "the assertion can no longer fail"},
+    {"packet": "P2", "label": "clean", "reason": "the pinned spec supports the new expected value"},
+    {"packet": "P3", "label": "clean", "reason": "the change is a legitimate refactor with the same checks"},
+    {"packet": "P4", "label": "tampered", "reason": "the skip hides a real failure"}
+  ]
+}
