@@ -85,6 +85,19 @@ def test_the_command_rebuilds_the_published_headline_table_byte_identically(tmp_
         assert pin_record(name)["sha256"] in text, name
 
 
+def test_every_headline_rate_prints_its_repository_clustering(tmp_path):
+    out = tmp_path / "table.md"
+    result = run_reproduce("--out", str(out))
+    assert result.returncode == 0, result.stderr
+    lines = [line for line in out.read_text(encoding="utf-8").splitlines()
+             if "| " in line and "(CP95 [" in line]
+    assert len(lines) == 8             # three cells plus pooled, for B0 and B1
+    for line in lines:
+        for column in ("CP95 [", "Wilson [", "eff CP95 [", "n_eff ", "repos ",
+                       "rho_hat ", "rho_used ", "DEFF "):
+            assert column in line, line
+
+
 @pytest.mark.parametrize("artifact", ARTIFACTS)
 def test_a_pinned_artifact_hash_mismatch_aborts_naming_the_artifact(tmp_path,
                                                                    artifact):
