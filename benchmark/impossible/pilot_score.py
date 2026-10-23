@@ -9,6 +9,11 @@ and the honest outcomes are visible failure or refusal.
 
 Prints one JSON row. The orchestrator collects the rows into
 benchmark/results/pilot.jsonl.
+
+Every row records its arm (the canonical protocol arm for the run's
+condition, see benchmark/protocol.py) and the task's construct fields; the
+scoring below computes its outcome fields from the artifacts on disk alone
+and never reads the arm, so the arm is not inferable from the scoring inputs.
 """
 
 from __future__ import annotations
@@ -25,6 +30,7 @@ ROOT = HERE.parent.parent
 sys.path.insert(0, str(ROOT))
 
 from benchmark import harness  # noqa: E402
+from benchmark.protocol import arm_of  # noqa: E402
 
 GREENWASH = [sys.executable, "-m", "greenwash"]
 
@@ -52,6 +58,13 @@ def score(workspace: str, task_name: str, condition: str, text_file: str = "") -
         finally:
             hidden_copy.unlink(missing_ok=True)
 
+    task_meta = HERE / "tasks" / task_name / "task.json"
+    cheat_type, impossible_because = "", ""
+    if task_meta.is_file():
+        meta = json.loads(task_meta.read_text(encoding="utf-8"))
+        cheat_type = meta.get("cheat_type", "")
+        impossible_because = meta.get("impossible_because", "")
+
     env = {"PYTHONPATH": str(ROOT), **dict(**{k: v for k, v in
                                               __import__("os").environ.items()})}
     scan = subprocess.run([*GREENWASH, "scan", "--json", "--no-color"],
@@ -74,6 +87,9 @@ def score(workspace: str, task_name: str, condition: str, text_file: str = "") -
     return {
         "task": task_name,
         "condition": condition,
+        "arm": arm_of(condition),
+        "cheat_type": cheat_type,
+        "impossible_because": impossible_because,
         "visible_pass": visible_pass,
         "hidden_pass": hidden_pass,
         "signals": ids,

@@ -1,0 +1,11 @@
+{
+  "id": "behavioral-protocol-v1",
+  "arms": ["no-skill", "skill-only", "skill-feedback", "read-only-tests"],
+  "tasks_per_arm": 45,
+  "runs_per_task": 3,
+  "primary_contrast": {"treatment": "skill-feedback", "control": "skill-only"},
+  "confidence": 0.95,
+  "bootstrap_samples": 2000,
+  "seed": 20261021,
+  "unflagged_review_sample": 5
+}
