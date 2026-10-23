@@ -1,0 +1,6 @@
+# Hash-pinned artifacts must be byte-identical on every checkout.
+# core.autocrlf rewrites line endings on checkout, which breaks every
+# recorded sha256 in FROZEN.json and the evaluation fixtures.
+tests/fixtures/** -text
+benchmark/impossible/** -text
+benchmark/plugins/** -text
