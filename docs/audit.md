@@ -38,3 +38,16 @@ Result, verbatim from the run: `724 passed, 7 skipped in 740.13s (0:12:20)`. Zer
 11. **The README test-count pin is manual.** Every added test requires a manual repin, and a stale pin is a red suite.
 
 No claim is made here that any file or number is wrong beyond what is stated; each item above was read in the repository during this audit.
+
+## Step 3 statistics check
+
+Command run on this branch, using the repository's own interval code:
+
+```
+python -c "import sys; sys.path.insert(0,'benchmark'); import evaluation as e; lo,hi=e.clopper_pearson(11,11); print('11/11 CP', lo, hi); lo2,hi2=e.clopper_pearson(0,11); print('0/11 CP', lo2, hi2); print('wilson', e.wilson_interval(11,11), e.wilson_interval(0,11))"
+```
+
+Output, verbatim: `11/11 CP 0.7150858470818455 1.0`; `0/11 CP 0.0 0.28491415291815436`; Wilson `(0.7411599827511859, 1.0)` and `(2.7755575615628914e-17, 0.2588400172488141)`.
+
+Conclusion: the published bounds match exact two-sided 95% Clopper-Pearson. 11 of 11 rounds down to 71.5 percent and 0 of 11 rounds up to 28.5 percent, both conservative. Wilson gives 74.1 percent and 25.9 percent. The renderer already prints the raw numerator and denominator, the cluster columns (repository count, rho, design effect, effective n), and abstention separately; `tests/test_evaluation.py` pins the two published values.
+

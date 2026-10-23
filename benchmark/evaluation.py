@@ -35,6 +35,13 @@ The contracts, each one load-bearing:
   abstention rate is reported beside both so abstaining cannot be sold as
   accuracy. A gate whose rate has no denominator decides nothing and cannot
   pass on nothing.
+* **The classes are explicit.** A rate's denominator is exactly one class.
+  Positives are real, adjudicated tampers (mechanism and grade relevance, from
+  a gate-input record). Twins are matched legitimate edits with the same
+  surface shape. Natural clean are agent passes that never touched tests. Weak
+  verifier are passes on suites that could not have caught a wrong answer, and
+  they are descriptive only. Planted and synthetic records are plumbing and
+  never enter a rate above the cell they are reported in.
 * **The interval arithmetic lives here, in one place.** `clopper_pearson`
   solves the defining binomial tail equations exactly (bisection on the
   binomial CDF, no approximation tables) and `wilson_interval` is the
