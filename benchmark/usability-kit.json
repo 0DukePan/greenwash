@@ -1,0 +1,157 @@
+{
+  "schema_version": "1",
+  "about": "The scripted usability kit for the Stage 5 usability gate. Eight representative checker outputs, an answer key, and the record of the one wording-fix round. No user data, no responses, no telemetry: session rows are recorded outside this repository.",
+  "samples": [
+    {
+      "id": "T1-assertion-weakened",
+      "verdict": "TAMPERED",
+      "reason": "Tests weakened: the committed assertion no longer checks the value the grade depends on.",
+      "evidence": [
+        "Expected: the committed assertion checks total([1, 2]) == 3",
+        "Observed: the committed assertion checks total([1, 2]) >= 0",
+        "Source:   tests/test_total.py:14, changed in this diff",
+        "Command:  python -m pytest tests/test_total.py"
+      ],
+      "next_step": "Restore the committed assertion and rerun the suite before this change is trusted."
+    },
+    {
+      "id": "T2-test-file-deleted",
+      "verdict": "TAMPERED",
+      "reason": "Tests weakened: an entire test file vanished in this diff, so the pass rests on a smaller suite.",
+      "evidence": [
+        "Expected: tests/test_refund.py is part of the committed suite",
+        "Observed: the file is deleted in this diff",
+        "Source:   deleted path tests/test_refund.py"
+      ],
+      "next_step": "Restore the deleted test file, or say where its coverage moved, before merging."
+    },
+    {
+      "id": "T3-test-skipped",
+      "verdict": "TAMPERED",
+      "reason": "Tests weakened: a case that ran before is now skipped instead of fixed.",
+      "evidence": [
+        "Expected: tests/test_rounding.py ran 8 cases before this diff",
+        "Observed: 1 case is skipped with @pytest.mark.skip",
+        "Source:   tests/test_rounding.py:22, changed in this diff",
+        "Command:  python -m pytest tests/test_rounding.py -rs"
+      ],
+      "next_step": "Unskip the case and fix what it reports, or record why it must stay skipped."
+    },
+    {
+      "id": "T4-hardcoded-return",
+      "verdict": "TAMPERED",
+      "reason": "Tests weakened: a returned literal matches the value the test asserts, so the pass no longer exercises the code.",
+      "evidence": [
+        "Expected: src/total.py computes the sum it returns",
+        "Observed: src/total.py returns the literal 42",
+        "Source:   src/total.py:2, changed in this diff",
+        "Command:  python -m pytest tests/test_total.py"
+      ],
+      "next_step": "Replace the literal with the computation and rerun the suite before merging."
+    },
+    {
+      "id": "I1-no-check-run",
+      "verdict": "INCONCLUSIVE",
+      "reason": "No behavioral check ran, so this report is a diff review only.",
+      "evidence": [
+        "Expected: a test command to replay",
+        "Observed: the verification request carries no test command",
+        "Source:   greenwash verify, not requested"
+      ],
+      "next_step": "Supply the test command and rerun, so the report rests on evidence rather than the diff alone."
+    },
+    {
+      "id": "I2-pinned-evidence-missing",
+      "verdict": "INCONCLUSIVE",
+      "reason": "Not enough evidence to say either way: grade relevance is not established without evidence from before the run.",
+      "evidence": [
+        "Expected: pinned evidence from before the run",
+        "Observed: no evidence is recorded for the changed path",
+        "Source:   pinned-evidence resolver"
+      ],
+      "next_step": "Point at the spec or test that predates this run, so the verdict can rest on evidence."
+    },
+    {
+      "id": "C1-clean-flaky-note",
+      "verdict": "CLEAN",
+      "reason": "The findings resolve clean, and the checks that ran passed.",
+      "evidence": [
+        "Expected: the committed suite passes",
+        "Observed: 12/12 cases pass on the rerun",
+        "Source:   python -m pytest, run 2"
+      ],
+      "note": "one flaky case failed on the first run and passed on the rerun; the flag sits beside the verdict",
+      "next_step": "Nothing to do; the flaky rerun is recorded beside the verdict."
+    },
+    {
+      "id": "C2-clean-baseline-note",
+      "verdict": "CLEAN",
+      "reason": "The findings resolve clean, and the checks that ran passed.",
+      "evidence": [
+        "Expected: the committed suite passes",
+        "Observed: 27/27 cases pass",
+        "Source:   python -m pytest"
+      ],
+      "note": "no baseline comparison was requested, so regressions outside this run are not covered",
+      "next_step": "Nothing to do; ask for a baseline comparison if regressions outside this run matter."
+    }
+  ],
+  "answer_key": {
+    "T1-assertion-weakened": {
+      "interpretation": "restore-tests",
+      "what_happened": "The diff changed a committed assertion so the suite can pass on output it used to reject.",
+      "reader_action": "Restore the assertion and rerun the suite before trusting the run."
+    },
+    "T2-test-file-deleted": {
+      "interpretation": "restore-tests",
+      "what_happened": "The diff deleted an entire test file, so the run passes on a smaller suite.",
+      "reader_action": "Restore the file or record where its coverage moved, then rerun."
+    },
+    "T3-test-skipped": {
+      "interpretation": "restore-tests",
+      "what_happened": "The diff added a skip to a case that ran before.",
+      "reader_action": "Unskip the case and fix what it reports before merging."
+    },
+    "T4-hardcoded-return": {
+      "interpretation": "restore-tests",
+      "what_happened": "The diff hardcoded the value the test asserts, so the test no longer exercises the code.",
+      "reader_action": "Replace the literal with the computation and rerun the suite."
+    },
+    "I1-no-check-run": {
+      "interpretation": "supply-evidence",
+      "what_happened": "The checker reviewed the diff, but no behavioral check ran.",
+      "reader_action": "Supply the test command and rerun the check."
+    },
+    "I2-pinned-evidence-missing": {
+      "interpretation": "supply-evidence",
+      "what_happened": "The checker could not establish grade relevance without evidence from before the run.",
+      "reader_action": "Point at the pre-run spec or test the diff relies on."
+    },
+    "C1-clean-flaky-note": {
+      "interpretation": "proceed",
+      "what_happened": "Every check that ran passed; one flaky case is recorded beside the verdict.",
+      "reader_action": "Merge as is; read the flaky note if the suite looks unstable later."
+    },
+    "C2-clean-baseline-note": {
+      "interpretation": "proceed",
+      "what_happened": "Every check that ran passed; no baseline comparison was requested.",
+      "reader_action": "Merge as is; request a baseline comparison if regressions matter."
+    }
+  },
+  "wording_round": {
+    "applied_after_round": 1,
+    "changes": [
+      {
+        "sample": "T1-assertion-weakened",
+        "was": "This diff games the grade.",
+        "now": "Tests weakened: the committed assertion no longer checks the value the grade depends on."
+      },
+      {
+        "sample": "I1-no-check-run",
+        "was": "Nothing here to act on.",
+        "now": "No behavioral check ran, so this report is a diff review only."
+      }
+    ],
+    "note": "One wording-fix round: every message now claims only what the checker can see, and INCONCLUSIVE asks for evidence instead of declaring a result."
+  }
+}
