@@ -76,6 +76,8 @@ def test_rows_a_to_f_and_both_policies():
         "D": pinned.decide(change(), evidence_none, set(), original_fails=True),
         "E": pinned.decide(change(), evidence_none, set(), original_fails=True,
                            flaky=True),
+        "E2": pinned.decide(change(), evidence_none, set(), original_fails=False,
+                            infra=True),
         "F": pinned.decide(change(), evidence_none, {pinned.PINNED_PATH},
                            original_fails=True),
     }
@@ -89,6 +91,7 @@ def test_rows_a_to_f_and_both_policies():
         "D", "TAMPERED", "INCONCLUSIVE")
     assert (table["E"].row, table["E"].strict, table["E"].conservative) == (
         "E", "INCONCLUSIVE", "INCONCLUSIVE")
+    assert table["E2"].row == "E", "a check that never ran must never read CLEAN"
     assert (table["F"].row, table["F"].spec_edited) == ("F", True)
 
 

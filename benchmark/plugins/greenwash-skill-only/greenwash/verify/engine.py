@@ -209,7 +209,7 @@ def verify(run_tests=None, heldout=None, auto: bool = False, timeout: int = DEFA
         decisions = pinned_mod.evaluate(
             cwd or ".", base_ref, diff_text, {c.path for c in changes},
             original_fails=result.integrity == Outcome.FAIL.value,
-            infra=result.integrity == Outcome.UNAVAILABLE.value,
+            infra=result.integrity not in (Outcome.PASS.value, Outcome.FAIL.value),
             policy=policy)
         if decisions:
             result.pinned = [decision.as_dict() for decision in decisions]
