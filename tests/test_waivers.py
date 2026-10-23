@@ -16,6 +16,11 @@ from pathlib import Path
 
 import pytest
 
+
+def _future(days: int = 30) -> str:
+    """A valid expiry relative to the clock, so the fixtures cannot go stale."""
+    return (datetime.now(timezone.utc) + timedelta(days=days)).date().isoformat()
+
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 sys.path.insert(0, str(ROOT))
@@ -249,7 +254,7 @@ def cheat(tmp_path):
 def test_the_command_writes_a_waiver_for_the_finding_in_the_diff(cheat):
     result = cli(cheat, "waive", "--rule", "hardcoded-return", "--path", "src/calc.py",
                  "--reason", "the constant is the documented answer for this fixture",
-                 "--reviewer", "@maintainer", "--expires", "2026-10-20")
+                 "--reviewer", "@maintainer", "--expires", _future())
     assert result.returncode == 0, result.stderr
     written = json.loads((cheat / ".greenwash" / "waivers.json").read_text(encoding="utf-8"))
     entry = written["waivers"][0]
@@ -261,7 +266,7 @@ def test_the_command_writes_a_waiver_for_the_finding_in_the_diff(cheat):
 def test_the_command_refuses_a_rule_it_does_not_know(cheat):
     result = cli(cheat, "waive", "--rule", "GW-NOPE-001", "--path", "src/calc.py",
                  "--reason", "a long enough reason to be a sentence",
-                 "--reviewer", "@maintainer", "--expires", "2026-10-20")
+                 "--reviewer", "@maintainer", "--expires", _future())
     assert result.returncode == 3
     assert "unknown rule" in result.stderr
 
@@ -269,14 +274,14 @@ def test_the_command_refuses_a_rule_it_does_not_know(cheat):
 def test_the_command_refuses_when_there_is_nothing_to_waive(cheat):
     result = cli(cheat, "waive", "--rule", "GW-DIV-002", "--path", "src/calc.py",
                  "--reason", "a long enough reason to be a sentence",
-                 "--reviewer", "@maintainer", "--expires", "2026-10-20")
+                 "--reviewer", "@maintainer", "--expires", _future())
     assert result.returncode == 3
     assert "no GW-DIV-002 finding" in result.stderr
 
 
 def test_the_command_refuses_a_short_reason(cheat):
     result = cli(cheat, "waive", "--rule", "hardcoded-return", "--path", "src/calc.py",
-                 "--reason", "fine", "--reviewer", "@maintainer", "--expires", "2026-10-20")
+                 "--reason", "fine", "--reviewer", "@maintainer", "--expires", _future())
     assert result.returncode == 3
     assert "reason" in result.stderr
 
@@ -298,7 +303,7 @@ def test_the_command_takes_a_fingerprint_when_the_path_has_several_findings(chea
         "\n\ndef test_mul():\n    assert mul(2, 5) == 10\n", encoding="utf-8")
     result = cli(cheat, "waive", "--rule", "hardcoded-return", "--path", "src/calc.py",
                  "--reason", "the constants are the documented answers for this fixture",
-                 "--reviewer", "@maintainer", "--expires", "2026-10-20")
+                 "--reviewer", "@maintainer", "--expires", _future())
     assert result.returncode == 3
     assert "2 hardcoded-return findings" in result.stderr
     assert "sha256:" in result.stderr

@@ -14,12 +14,18 @@ import json
 import os
 import subprocess
 import sys
+from datetime import date, timedelta
 from pathlib import Path
 
 import pytest
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
+
+
+def _future(days: int = 30) -> str:
+    """A valid expiry relative to the clock, so the fixtures cannot go stale."""
+    return (date.today() + timedelta(days=days)).isoformat()
 sys.path.insert(0, str(ROOT))
 
 from greenwash import strict, waivers  # noqa: E402
@@ -97,12 +103,12 @@ def test_a_review_finding_blocks_until_it_is_decided():
 def test_a_waived_review_finding_is_allowed_and_still_visible():
     signal = review_signal()
     signal.waiver = {"id": "GW-2026-0001", "reviewer": "@maintainer",
-                     "expires_at": "2026-10-20", "status": waivers.ACTIVE}
+                     "expires_at": _future(), "status": waivers.ACTIVE}
     row = waivers.Row(waiver=waivers.Waiver(
         id="GW-2026-0001", rule_id="GW-DIV-002", path="src/loan.py",
         signal_fingerprint="sha256:" + "0" * 64,
         reason="the fallback is documented and an integration test covers it",
-        reviewer="@maintainer", created_at="2026-09-25", expires_at="2026-10-20"),
+        reviewer="@maintainer", created_at="2026-09-25", expires_at=_future()),
         status=waivers.ACTIVE, note="waived with review")
     report = TrustReport(verdict=Verdict.PARTIALLY_VERIFIED.value, signals=[signal],
                          verification=verification())
@@ -200,7 +206,7 @@ def test_strict_blocks_a_faked_pass_where_report_mode_does_not(cheat):
 def test_the_same_finding_passes_once_it_is_waived(cheat):
     waived = cli(cheat, "waive", "--rule", "hardcoded-return", "--path", "src/calc.py",
                  "--reason", "the constant is the documented answer for this fixture",
-                 "--reviewer", "@maintainer", "--expires", "2026-10-20")
+                 "--reviewer", "@maintainer", "--expires", _future())
     assert waived.returncode == 0, waived.stderr
 
     result = cli(cheat, "scan", "--strict", "--no-color")
@@ -212,7 +218,7 @@ def test_the_same_finding_passes_once_it_is_waived(cheat):
 def test_expiring_the_waiver_restores_the_block(cheat):
     cli(cheat, "waive", "--rule", "hardcoded-return", "--path", "src/calc.py",
         "--reason", "the constant is the documented answer for this fixture",
-        "--reviewer", "@maintainer", "--expires", "2026-10-20")
+        "--reviewer", "@maintainer", "--expires", _future())
     store = cheat / ".greenwash" / "waivers.json"
     data = json.loads(store.read_text(encoding="utf-8"))
     # a waiver that was valid when written and lapsed since -- the ordinary way
@@ -231,7 +237,7 @@ def test_a_waiver_that_lapsed_before_it_was_written_is_malformed(cheat):
     """Nonsense dates cannot be read as a lapsed decision -- they are not a decision."""
     cli(cheat, "waive", "--rule", "hardcoded-return", "--path", "src/calc.py",
         "--reason", "the constant is the documented answer for this fixture",
-        "--reviewer", "@maintainer", "--expires", "2026-10-20")
+        "--reviewer", "@maintainer", "--expires", _future())
     store = cheat / ".greenwash" / "waivers.json"
     data = json.loads(store.read_text(encoding="utf-8"))
     data["waivers"][0]["expires_at"] = "2026-09-01"
@@ -296,7 +302,7 @@ def test_doctor_describes_the_profile_it_is_actually_running(cheat):
         json.dumps({"mode": "strict"}), encoding="utf-8")
     cli(cheat, "waive", "--rule", "hardcoded-return", "--path", "src/calc.py",
         "--reason", "the constant is the documented answer for this fixture",
-        "--reviewer", "@maintainer", "--expires", "2026-10-20")
+        "--reviewer", "@maintainer", "--expires", _future())
 
     result = cli(cheat, "doctor")
     assert result.returncode == 0, result.stderr
@@ -349,7 +355,7 @@ def test_strict_hook_allows_a_clean_tree(cheat, hook):
 def test_strict_hook_allows_a_waived_finding_and_still_reports_it(cheat, hook):
     cli(cheat, "waive", "--rule", "hardcoded-return", "--path", "src/calc.py",
         "--reason", "the constant is the documented answer for this fixture",
-        "--reviewer", "@maintainer", "--expires", "2026-10-20")
+        "--reviewer", "@maintainer", "--expires", _future())
     result = stop(hook, cheat, env={"GREENWASH_STRICT": "1"})
     assert result.returncode == 0, (result.stdout, result.stderr)
     assert "waiv" in (result.stdout + result.stderr).lower()
