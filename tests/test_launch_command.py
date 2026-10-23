@@ -29,6 +29,7 @@ ROOT = HERE.parent
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "benchmark"))
 
+import claim_ledger  # noqa: E402
 import launch  # noqa: E402
 import preregistration  # noqa: E402
 from greenwash import baselines, corpus  # noqa: E402
@@ -979,6 +980,153 @@ def test_an_over_claim_in_the_announcement_draft_fails_l7(tmp_path, draft):
     record = read_record(out)
     assert record["failing_criteria"] == ["L7"]
     assert crit(record, "L7")["value"]["claims_outside_ledger"] >= 1
+
+
+# One registered paraphrase per ledger row: the phrasing that row's triggers
+# register, planted as a claim beyond the row's allowed wording. The keys are
+# checked against the ledger below, so a new row cannot ship without one.
+REGISTERED_PARAPHRASES = {
+    "detector-recall": "The scanner has 100% recall.",
+    "false-alarms": "It has 0% false positives.",
+    "behavioural-effect": "greenwash reduces reward hacking.",
+    "fp-survey": "The false-positive rate is 5.",
+    "first-party-corpus": "This is an independent corpus.",
+    "rate-claims": "Detection accuracy is 99.",
+    "strength-advisory": "greenwash detects weak tests.",
+    "verdict-vocabulary": "This proves the code is correct.",
+    "scope-exclusions": "It covers retrieval.",
+}
+
+
+def test_the_registered_paraphrases_cover_every_ledger_row():
+    assert set(REGISTERED_PARAPHRASES) == \
+        {row.claim for row in claim_ledger.rows()}
+
+
+@pytest.mark.parametrize("claim", sorted(REGISTERED_PARAPHRASES))
+def test_a_registered_paraphrase_beyond_the_allowed_wording_fails_l7(
+        tmp_path, claim):
+    root, thresholds = prepared(tmp_path)
+    out = tmp_path / "out"
+
+    outcome = run_launch(
+        root, thresholds, out,
+        **options(tmp_path, announcement=write_draft(
+            tmp_path, REGISTERED_PARAPHRASES[claim])))
+
+    assert outcome.exit_code == 1
+    record = read_record(out)
+    assert record["failing_criteria"] == ["L7"]
+    assert crit(record, "L7")["value"]["claims_outside_ledger"] >= 1
+
+
+# ---------------------------------------------------------------------------
+# Claim coverage: the announcement-wording section and the narrowed-scope
+# statement render from ledger data, not from prose.
+# ---------------------------------------------------------------------------
+
+def report_section(report, heading):
+    return report.split(heading, 1)[1].split("\n## ", 1)[0]
+
+
+def test_the_announcement_wording_section_renders_from_the_ledger(tmp_path):
+    root, thresholds = prepared(tmp_path)
+    out = tmp_path / "out"
+
+    outcome = run_launch(root, thresholds, out, **options(tmp_path))
+    report = outcome.report.decode("utf-8")
+    section = report_section(report, "## Claim wording")
+
+    assert "| claim | status | strongest wording allowed today " \
+           "| may not say |" in section
+    for row in claim_ledger.rows():
+        assert f"| {row.claim} | {row.status} | {row.allowed} |" in section
+        assert f"{'; '.join(row.forbidden) or '--'} |" in section
+
+
+def test_the_narrowed_scope_statement_renders_the_ledger_wording_and_names_its_failures(
+        tmp_path):
+    root, thresholds = prepared(tmp_path)
+    out = tmp_path / "out"
+    detectors = [Scripted(misses={f"pos-{i:03d}" for i in range(5)})]
+
+    outcome = run_launch(
+        root, thresholds, out, detectors=detectors,
+        **options(tmp_path, announcement=write_draft(tmp_path, OVERCLAIM_DRAFT)))
+
+    # publishable, not an error: NARROW writes both artifacts and exits 1
+    assert outcome.exit_code == 1
+    report = outcome.report.decode("utf-8")
+    assert b"Decision: NARROW" in outcome.report
+    assert "Failing criteria: L1, L7" in report
+    section = report_section(report, "## Narrowed scope")
+    for label in ("positives", "twins", "natural_clean"):
+        line = next(line for line in section.splitlines()
+                    if line.startswith(f"- coverage {label}:"))
+        assert "n_eff" in line
+    record = read_record(out)
+    for cid, label in (("L2", "measured twin false-alarm rate"),
+                       ("L3", "measured abstention rate")):
+        row = crit(record, cid)
+        line = next(line for line in section.splitlines() if label in line)
+        for field in ("value", "interval", "n_eff"):
+            expected = (f"{row[field]:.6f}" if isinstance(row[field], float)
+                        else json.dumps(row[field], sort_keys=True,
+                                        default=str))
+            assert expected in line, (
+                f"{cid} {field} {expected} is not in the narrowed-scope "
+                f"statement: {line!r}")
+    for row in claim_ledger.rows():
+        assert f"{row.claim}: {row.allowed}" in section, (
+            f"the narrowed-scope statement does not carry the ledger's "
+            f"allowed wording for {row.claim}")
+
+
+# ---------------------------------------------------------------------------
+# T20: the README launch status line, generated from the decision record:
+# UNMEASURED with no record, NARROWED naming the failing criteria, and
+# LAUNCH-READY otherwise. CI fails when the committed line differs.
+# ---------------------------------------------------------------------------
+
+def test_the_status_line_is_unmeasured_without_a_decision_record():
+    assert launch.status_line(None) == "Launch status: UNMEASURED"
+
+
+def test_the_status_line_is_narrowed_naming_the_failing_criteria(tmp_path):
+    root, thresholds = prepared(tmp_path)
+    out = tmp_path / "out"
+    detectors = [Scripted(misses={f"pos-{i:03d}" for i in range(5)})]
+
+    outcome = run_launch(
+        root, thresholds, out, detectors=detectors,
+        **options(tmp_path, announcement=write_draft(tmp_path, OVERCLAIM_DRAFT)))
+
+    assert outcome.decision["decision"] == "NARROW"
+    assert launch.status_line(read_record(out)) == \
+        "Launch status: NARROWED (failing criteria: L1, L7)"
+
+
+def test_the_status_line_is_launch_ready_after_a_launch_fixture(tmp_path):
+    root, thresholds = prepared(tmp_path)
+    out = tmp_path / "out"
+
+    outcome = run_launch(root, thresholds, out, **options(tmp_path))
+
+    assert outcome.decision["decision"] == "LAUNCH"
+    assert launch.status_line(read_record(out)) == "Launch status: LAUNCH-READY"
+
+
+def test_a_hand_edited_status_line_is_a_mismatch_the_check_reports():
+    record = {"decision": "NARROW", "failing_criteria": ["L1", "L7"]}
+    line = launch.status_line(record)
+
+    assert launch.readme_status_problems(f"intro\n{line}\n", record) == []
+    edited = launch.readme_status_problems(
+        "intro\nLaunch status: LAUNCH-READY\n", record)
+    assert edited and "LAUNCH-READY" in edited[0]
+    missing = launch.readme_status_problems("intro\n", record)
+    assert missing and "UNMEASURED" not in missing[0]
+    assert "Launch status: NARROWED" in missing[0]
 
 
 # ---------------------------------------------------------------------------

@@ -48,6 +48,11 @@ The contracts, each one load-bearing:
   pinned inputs a second time, offline, and requires byte-identical output
   (minus `generated_at`). CI runs `--check`, which rebuilds and compares
   against the committed artifacts and exits nonzero on any hand edit.
+* **The README status line is generated, never typed.** `status_line(record)`
+  turns the decision record into `UNMEASURED` (no record), `NARROWED` naming
+  the failing criteria, or `LAUNCH-READY`; `readme_status_problems` is the
+  comparison CI runs against the committed README, so a hand-edited line
+  fails the build.
 
 The seam (the command is this one surface and nothing else):
 
@@ -184,6 +189,59 @@ def without_generated_at(payload: dict) -> dict:
     name** so the comparison can never be steered by a pattern."""
     return {key: value for key, value in payload.items()
             if key != GENERATED_AT}
+
+
+# -- the README launch status line, generated from the decision record --------
+
+STATUS_PREFIX = "Launch status:"
+STATUS_LINE = re.compile(rf"^{re.escape(STATUS_PREFIX)} .+$", re.MULTILINE)
+
+
+def status_line(record) -> str:
+    """The README's launch status line, generated from the decision record.
+
+    `UNMEASURED` with no record, `NARROWED` naming the failing criteria after
+    a NARROW run, and `LAUNCH-READY` when a record exists and every criterion
+    held. The README carries this line verbatim; it is generated here and
+    never typed.
+    """
+    if not isinstance(record, dict):
+        return f"{STATUS_PREFIX} UNMEASURED"
+    failing = [str(cid) for cid in (record.get("failing_criteria") or [])]
+    if failing or record.get("decision") == criteria_engine.NARROW:
+        return (f"{STATUS_PREFIX} NARROWED (failing criteria: "
+                f"{', '.join(failing) or 'none'})")
+    return f"{STATUS_PREFIX} LAUNCH-READY"
+
+
+def read_decision_record(out_dir=None):
+    """The committed decision record, or None before the first measurement."""
+    path = Path(DEFAULT_OUT if out_dir is None else out_dir) / RECORD_NAME
+    if not path.is_file():
+        return None
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def readme_status_problems(readme_text, record) -> list:
+    """Every way the README's status line differs from the generated one.
+
+    Empty when the committed line is the generated line. CI runs this over
+    the committed README and the committed decision record, so a hand-edited
+    line -- or a record that moved on without the line following it -- fails
+    the build.
+    """
+    expected = status_line(record)
+    found = STATUS_LINE.findall(readme_text or "")
+    if found == [expected]:
+        return []
+    if not found:
+        return [f"README: no launch status line; the generated one is: "
+                f"{expected!r}"]
+    if len(found) > 1:
+        return [f"README: {len(found)} launch status lines where one belongs; "
+                f"the generated one is: {expected!r}"]
+    return [f"README: launch status line {found[0]!r} is not the generated "
+            f"{expected!r}"]
 
 
 # -- the three inputs the command assembles for the criteria engine ----------
@@ -450,14 +508,21 @@ def render_report(decision: dict, stats: dict, hashes: dict,
                      f"{'; '.join(row.forbidden) or '--'} |")
     if decision["decision"] != criteria_engine.LAUNCH:
         lines += ["", "## Narrowed scope (publishable)", "",
-                  "What the measurement supports, with the ledger's wording:",
-                  ""]
+                  "What the measurement supports. Every line is rendered "
+                  "from the computed table or the claim ledger; none of it "
+                  "is typed:", ""]
         for label in ("positives", "twins", "natural_clean"):
-            lines.append(f"- {label}: " + _fmt_class(label, stats.get(label, {})))
-        lines.append("- The measured rates carry their exact intervals in the "
-                     "criteria table above; the strongest wording allowed "
-                     "today is printed in the claim table, and no narrowed "
-                     "claim exceeds it.")
+            lines.append(f"- coverage {label}: "
+                         + _fmt_class(label, stats.get(label, {})))
+        for cid, label in (("L2", "measured twin false-alarm rate"),
+                           ("L3", "measured abstention rate")):
+            row = next(r for r in decision["criteria"] if r["id"] == cid)
+            lines.append(f"- {label}: value {_fmt_value(row['value'])}, "
+                         f"interval {_fmt_value(row['interval'])}, "
+                         f"n_eff {_fmt_value(row['n_eff'])}")
+        lines.append("- the ledger's strongest wording allowed today:")
+        for row in ledger_rows:
+            lines.append(f"    - {row.claim}: {row.allowed}")
     return "\n".join(lines) + "\n"
 
 
