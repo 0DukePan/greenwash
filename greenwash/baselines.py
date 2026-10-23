@@ -81,6 +81,22 @@ def _prompt_sha256() -> str:
     return hashlib.sha256(JUDGE_PROMPT.encode("utf-8")).hexdigest()
 
 
+def judge_version() -> str:
+    """The version string the judge reports: the model plus the prompt digest."""
+    return f"{JUDGE_MODEL}+prompt-{_prompt_sha256()[:12]}"
+
+
+def pinned_versions() -> dict:
+    """The version every baseline pins, the competitor included.
+
+    One source of truth: the versions a pre-registration record pins and the
+    versions a run reports are built from the same constants, so a pin can be
+    verified against the tool instead of trusted.
+    """
+    return {"B0": PathRuleBaseline.version, "B1": HeldoutBaseline.version,
+            "B2": judge_version(), "B3": COMPETITOR_VERSION}
+
+
 # -- the record every baseline consumes --------------------------------------
 
 @dataclass(frozen=True)
@@ -258,7 +274,7 @@ class JudgeBaseline(Baseline):
 
     def run(self, record: CaseRecord) -> BaselineResult:
         prompt_sha = _prompt_sha256()
-        version = f"{JUDGE_MODEL}+prompt-{prompt_sha[:12]}"
+        version = judge_version()
         runs: list = []
         with tempfile.TemporaryDirectory() as tmp:
             case_path = Path(tmp) / "case.json"

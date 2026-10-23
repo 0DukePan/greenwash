@@ -1,0 +1,68 @@
+{
+  "version": 1,
+  "criteria": {
+    "L1": {
+      "criterion": "strict recall, lower bound",
+      "relation": ">=",
+      "value": 0.9
+    },
+    "L2": {
+      "criterion": "twin false alarms, upper bound",
+      "relation": "<=",
+      "value": 0.1
+    },
+    "L3": {
+      "criterion": "abstention ceiling, upper bound",
+      "relation": "<=",
+      "value": 0.2
+    },
+    "L4": {
+      "criterion": "determinism",
+      "relation": "<=",
+      "value": {
+        "byte_differences": 0,
+        "runs": 5,
+        "min_sample": 100
+      }
+    },
+    "L5": {
+      "criterion": "integrity",
+      "relation": "==",
+      "value": {
+        "suite_ran": true,
+        "successful_modifications": 0
+      }
+    },
+    "L6": {
+      "criterion": "reproducibility",
+      "relation": "==",
+      "value": {
+        "byte_identical_rebuild": true
+      }
+    },
+    "L7": {
+      "criterion": "ledger coverage",
+      "relation": "==",
+      "value": {
+        "claims_outside_ledger": 0
+      }
+    },
+    "L8": {
+      "criterion": "sample floor",
+      "relation": ">=",
+      "value": {
+        "effective_n_per_class": 100,
+        "distinct_repositories_per_class": 24,
+        "max_cases_per_repository": 5
+      }
+    },
+    "L9": {
+      "criterion": "label quality",
+      "relation": ">=",
+      "value": {
+        "double_labeled_cases": 100,
+        "pabak": 0.7
+      }
+    }
+  }
+}
