@@ -229,6 +229,35 @@ def show_file(rev: str, path: str, cwd=None) -> str:
     return result.stdout if result.returncode == 0 else ""
 
 
+def show_bytes(rev: str, path: str, cwd=None) -> Optional[bytes]:
+    """A file's raw content at a revision, or None when it is not there.
+
+    Bytes, not text: the verifier integrity guard hashes exactly what git
+    stored, and a decode round-trip must never be able to move a digest.
+    """
+    try:
+        result = subprocess.run(["git", "show", f"{rev}:{path}"], cwd=cwd,
+                                capture_output=True, check=False)
+    except FileNotFoundError as exc:  # pragma: no cover - depends on the host
+        raise GitError("git not found on PATH") from exc
+    return result.stdout if result.returncode == 0 else None
+
+
+def tree_files(rev: str, prefixes=(), cwd=None) -> list:
+    """Paths tracked at `rev`, optionally scoped to directories.
+
+    The verifier integrity guard needs the pinned side of its inventory: a
+    checker file deleted from the working tree is still a modified checker,
+    and only the tree at the base ref can say so.
+    """
+    args = ["ls-tree", "-r", "--name-only", rev]
+    if prefixes:
+        args += ["--", *prefixes]
+    result = _git(args, cwd=cwd)
+    return [line for line in result.stdout.splitlines() if line] \
+        if result.returncode == 0 else []
+
+
 def require_repo(cwd=None) -> str:
     """The session diff needs a repository with history to anchor to.
 

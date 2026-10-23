@@ -22,6 +22,7 @@ from .. import gitutil
 from ..domain import Evidence, Outcome, VerificationResult
 from . import baseline as baseline_mod
 from . import discovery, heldout as heldout_mod, integrity as integrity_mod
+from . import pinned as pinned_mod
 from . import requirements as requirements_mod
 from . import results, signals
 from .results import runner_never_started
@@ -43,6 +44,7 @@ def verify(run_tests=None, heldout=None, auto: bool = False, timeout: int = DEFA
            changed_paths=None, changes=None, integrity: bool = True,
            integrity_max: int = integrity_mod.DEFAULT_LIMIT,
            base_ref: Optional[str] = None,
+           policy: str = "conservative",
            requirements=None) -> Verification:
     result = VerificationResult()
     raised: list = []
@@ -194,6 +196,24 @@ def verify(run_tests=None, heldout=None, auto: bool = False, timeout: int = DEFA
     finally:
         if worktree:
             gitutil.drop_worktree(worktree, cwd)
+
+    if changes:
+        # A changed expected value is judged only by evidence pinned before
+        # the agent ran; the integrity outcome says whether the pinned
+        # original assertion fails on the agent's code.
+        try:
+            diff_text = (gitutil.session_diff(base_ref, cwd=cwd) if base_ref
+                         else gitutil.diff(cwd=cwd))
+        except gitutil.GitError:
+            diff_text = ""
+        decisions = pinned_mod.evaluate(
+            cwd or ".", base_ref, diff_text, {c.path for c in changes},
+            original_fails=result.integrity == Outcome.FAIL.value,
+            infra=result.integrity == Outcome.UNAVAILABLE.value,
+            policy=policy)
+        if decisions:
+            result.pinned = [decision.as_dict() for decision in decisions]
+            result.pinned_verdict = pinned_mod.verdict_under(decisions, policy)
 
     if command and current.counts_available and not result.harness_error:
         # Nothing ran is not a pass, and running less than the baseline is its

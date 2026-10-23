@@ -345,6 +345,8 @@ class VerificationResult(_Model):
     evidence: list = field(default_factory=list)
     notes: list = field(default_factory=list)
     harness_error: str = ""
+    pinned: list = field(default_factory=list)
+    pinned_verdict: str = ""
 
     @classmethod
     def from_dict(cls, data: Any) -> "VerificationResult":
@@ -370,6 +372,8 @@ class VerificationResult(_Model):
             evidence=[Evidence.from_dict(e) for e in _as_list(data.get("evidence"))],
             notes=[_as_str(n) for n in _as_list(data.get("notes"))],
             harness_error=_as_str(data.get("harness_error")),
+            pinned=[_as_dict(p) for p in _as_list(data.get("pinned"))],
+            pinned_verdict=_as_str(data.get("pinned_verdict")),
         )
 
     @property

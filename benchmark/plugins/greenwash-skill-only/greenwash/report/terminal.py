@@ -32,6 +32,9 @@ VERDICT_COLOR = {
     Verdict.NOT_VERIFIED.value: RED,
     Verdict.VERIFICATION_FAILED.value: RED,
     Verdict.INCONCLUSIVE.value: DIM,
+    Verdict.CLEAN.value: GREEN,
+    Verdict.TAMPERED.value: RED,
+    Verdict.WEAK_VERIFIER.value: YELLOW,
 }
 
 VERDICT_BLURB = {
@@ -41,6 +44,10 @@ VERDICT_BLURB = {
     Verdict.NOT_VERIFIED.value: "a check the claim depends on does not pass",
     Verdict.VERIFICATION_FAILED.value: "the verification itself could not complete",
     Verdict.INCONCLUSIVE.value: "not enough evidence to say either way",
+    Verdict.CLEAN.value: "the findings resolve clean, and the checks that ran passed",
+    Verdict.TAMPERED.value: "a mechanism that changes the grade is established, "
+                            "with its grade relevance",
+    Verdict.WEAK_VERIFIER.value: "the verifier cannot tell a right answer from a wrong one",
 }
 
 

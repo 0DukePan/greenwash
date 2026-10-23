@@ -7,13 +7,26 @@ Exit codes are the whole safety story, so they are stated once, here:
                             greenwash never fails your build unless you ask
                             it to; the report is the product
     scan / verify           0 clean, 1 findings, 3 could not run
-    --enforce               0 verified, 1 not verified, 2 suspicious,
-                            3 could not check (VERIFICATION_FAILED)
+    --enforce               the verdict decides the code, one row per verdict:
+                            0  CLEAN, VERIFIED, PARTIALLY_VERIFIED,
+                               INCONCLUSIVE
+                            1  NOT_VERIFIED -- a check the claim depends on
+                               does not pass
+                            2  SUSPICIOUS, TAMPERED, WEAK_VERIFIER -- nothing
+                               was verified well enough to let it end green
+                            3  VERIFICATION_FAILED -- could not check at all
     --fail-on VERDICTS      the same codes, for exactly the verdicts named;
                             it implies --enforce and replaces the policy
     --strict                the same codes again, under a longer table: a
                             requires_review finding blocks until it is waived,
                             and ignore_rules is refused rather than honoured
+    any run                 4 when the checker's own code or its config does
+                            not match its pinned copy at the base ref. The run
+                            stops before any verdict: this is integrity
+                            failure, and it never reads as a verdict about the
+                            diff. An edited pinned original test is detected
+                            and judged as diff content instead -- the base
+                            copy is what counts as evidence
 
 `--enforce` is never implied. A tool that starts blocking work by default is a
 tool people uninstall. `--fail-on` is an explicit policy rather than a louder
@@ -28,7 +41,9 @@ import argparse
 import os
 import sys
 
-from . import __version__, config as config_mod, evidence as evidence_mod, gitutil, scan as scan_mod
+from . import (__version__, config as config_mod, evidence as evidence_mod, gitutil,
+               scan as scan_mod, taxonomy as taxonomy_mod)
+from . import guard as guard_mod
 from . import strict as strict_mod, waivers as waivers_mod
 from .doctor import doctor, initialize
 from .domain import Claim, Run, Signal, TrustReport, Verdict
@@ -36,11 +51,20 @@ from .report import render, terminal
 from .verify import engine as verify_engine
 
 EXIT_OK, EXIT_FINDINGS, EXIT_BLOCKED, EXIT_ERROR = 0, 1, 2, 3
+EXIT_INTEGRITY = 4
+
+BLOCKING_ON_NOTHING_VERIFIED = (Verdict.SUSPICIOUS.value, Verdict.TAMPERED.value,
+                                Verdict.WEAK_VERIFIER.value)
+"""Verdicts that always block in enforce mode: nothing was verified well
+enough to end the turn green, whatever `block_on` says."""
 
 EPILOG = """exit codes:
   report mode (default) 0 whenever a report is produced, 3 when it cannot be
-  --enforce returns 1 (not verified), 2 (suspicious), 3 (could not check)
+  --enforce returns 1 (not verified), 2 (suspicious, tampered or weak
+    verifier), 3 (could not check)
   --strict  does the same, and also blocks on a finding nobody has waived
+  4  verifier integrity failure: the checker's code or config did not match
+     its pinned copy at the base ref, and no verdict about the diff was made
 
 greenwash reads your diff, runs your tests, and reports what the claim is worth.
 It never modifies your code, never calls a model, and never leaves your machine.
@@ -91,6 +115,9 @@ def build_parser() -> argparse.ArgumentParser:
             target.add_argument("--heldout", default=None,
                                 help="path to (or command running) a suite the agent never saw")
             target.add_argument("--timeout", type=int, default=None)
+            target.add_argument("--policy", choices=("conservative", "strict"),
+                                default="conservative",
+                                help="expected-value policy when pinned evidence is silent")
             target.add_argument("--require", action="append", default=None,
                                 metavar="TEXT[ => TARGET]",
                                 help="something the claim says it did, optionally bound to a "
@@ -223,8 +250,6 @@ def _session_signals(session: dict) -> list:
 
 def collect(args) -> tuple:
     """(report, exit_code)."""
-    config = config_mod.load(".")
-
     fail_on = None
     raw_fail_on = getattr(args, "fail_on", None)
     if raw_fail_on:
@@ -235,18 +260,6 @@ def collect(args) -> tuple:
             print(f"greenwash: unknown verdict in --fail-on: {exc.args[0]!r} "
                   f"(known verdicts: {known})", file=sys.stderr)
             return None, EXIT_ERROR
-
-    strict = bool(getattr(args, "strict", False)) or config.strict
-    if strict:
-        mode = config_mod.STRICT_MODE
-    elif (getattr(args, "enforce", False) or fail_on is not None or config.enforcing):
-        mode = "enforce"
-    else:
-        mode = "report"
-
-    claimed = getattr(args, "cmd", None)
-    want_scan = claimed in (None, "report", "scan")
-    want_verify = claimed in (None, "report", "verify")
 
     session_base = None
     adopted_now = False
@@ -272,11 +285,49 @@ def collect(args) -> tuple:
         print(f"greenwash: {exc}", file=sys.stderr)
         return None, EXIT_ERROR
 
+    changes, _ = scan_mod.summarize(diff)
+
+    # Verifier integrity, before anything is read as evidence: the checker,
+    # its config and the pinned original tests are hash-verified against their
+    # copies at the base ref -- loaded outside the agent's writable sandbox. A
+    # checker or config that does not match its pin stops the run here, with
+    # its own exit code, and never as a verdict about the diff.
+    guard_report = guard_mod.check(
+        session_base["base"] if session_base
+        else (getattr(args, "base", None) or "HEAD"),
+        changes=changes)
+    for line in guard_report.notices():
+        print(f"greenwash: {line}", file=sys.stderr)
+    if guard_report.failures:
+        if getattr(args, "json", False):
+            import json
+            _emit(json.dumps(guard_mod.failure_payload(guard_report), indent=2) + "\n",
+                  machine=True)
+        print(guard_mod.describe_failure(guard_report), file=sys.stderr)
+        return None, EXIT_INTEGRITY
+    guard_notes = guard_report.notes()
+    if not guard_report.pinned:
+        guard_notes = ["verifier integrity: no usable base ref to pin the checker's inputs "
+                       "at; nothing was hash-verified for this run"] + guard_notes
+
+    config = config_mod.load(".")
+
+    strict = bool(getattr(args, "strict", False)) or config.strict
+    if strict:
+        mode = config_mod.STRICT_MODE
+    elif (getattr(args, "enforce", False) or fail_on is not None or config.enforcing):
+        mode = "enforce"
+    else:
+        mode = "report"
+
+    claimed = getattr(args, "cmd", None)
+    want_scan = claimed in (None, "report", "scan")
+    want_verify = claimed in (None, "report", "verify")
+
     signals = scan_mod.scan_diff(diff) if want_scan else []
     if session_base:
         signals += _session_signals(session_base)
-    changes, _ = scan_mod.summarize(diff)
-    notes = list(config.problems)
+    notes = list(config.problems) + guard_notes
     if session_base and adopted_now:
         notes.append("the session base was adopted at this run: anything changed "
                      "before it, earlier commits included, is outside the diff")
@@ -319,6 +370,7 @@ def collect(args) -> tuple:
                 changes=changes,
                 integrity=bool(config.get("test_integrity")),
                 integrity_max=int(config.get("test_integrity_max") or 3),
+                policy=getattr(args, "policy", None) or "conservative",
                 base_ref=session_base["base"] if session_base else None,
                 requirements=(getattr(args, "require", None)
                               or config.get("requirements")))
@@ -365,15 +417,16 @@ def _enforced_exit(report: TrustReport, config, fail_on=None) -> int:
     """The enforce-mode exit code, per the contract in the module docstring.
 
     Each kind of doubt keeps its own code: evidence that the claim does not
-    hold (1), a pattern with nothing verified (2), a check that could not run
-    at all (3). Collapsing any two of them would be the exact conflation this
-    tool exists to catch.
+    hold (1), an answer that nothing was verified well enough (2) -- a
+    pattern, an established tampering mechanism, or a verifier that cannot
+    discriminate -- and a check that could not run at all (3). Collapsing any
+    two of them would be the exact conflation this tool exists to catch.
     """
     if fail_on is None:
-        # The shipped policy: a pattern with nothing verified always blocks,
-        # and `block_on` adds the verdicts that also do. Stated in the module
+        # The shipped policy: nothing verified well enough always blocks, and
+        # `block_on` adds the verdicts that also do. Stated in the module
         # docstring, and unchanged by --fail-on's existence.
-        if report.verdict == Verdict.SUSPICIOUS.value:
+        if report.verdict in BLOCKING_ON_NOTHING_VERIFIED:
             return EXIT_BLOCKED
         blocking = config.get("block_on") or ["NOT_VERIFIED", "VERIFICATION_FAILED"]
     else:
@@ -384,10 +437,33 @@ def _enforced_exit(report: TrustReport, config, fail_on=None) -> int:
     if report.verdict in blocking:
         if report.verdict == Verdict.VERIFICATION_FAILED.value:
             return EXIT_ERROR
-        if report.verdict == Verdict.SUSPICIOUS.value:
+        if report.verdict in BLOCKING_ON_NOTHING_VERIFIED:
             return EXIT_BLOCKED
         return EXIT_FINDINGS
     return EXIT_OK
+
+
+def _coverage_matrix() -> str:
+    """The coverage matrix, generated from the technique taxonomy.
+
+    One wrapped paragraph per technique rather than a fixed-width grid: it
+    survives any terminal width the report does, and it cannot drift from the
+    table it is rendered from. The statuses are the taxonomy's, not prose.
+    """
+    lines = [f"Coverage matrix -- technique taxonomy v{taxonomy_mod.TAXONOMY_VERSION}",
+             terminal.wrap("every tampering technique, its status "
+                           "(covered / partial / not covered), whether catching "
+                           "it needs replay, and what catches it", 0),
+             ""]
+    for technique in taxonomy_mod.TECHNIQUES:
+        replay = "replay: needed" if technique.replay else "replay: not needed"
+        caught = ("caught by " + ", ".join(technique.mechanisms)
+                  if technique.mechanisms else "nothing catches this yet")
+        lines.append(terminal.wrap(
+            f"  {technique.id} [{technique.status}] ({replay}) -- "
+            f"{technique.name} -- {caught}.", 2))
+        lines.append("")
+    return "\n".join(lines).rstrip() + "\n"
 
 
 def _run_waive(args) -> int:
@@ -545,6 +621,7 @@ def main(argv=None) -> int:
                 review = "yes" if rule["requires_review"] else ""
                 _emit(f"{rule['code']:<12}{rule['id']:<24}{rule['severity']:<10}"
                       f"{review:<9}{rule['description']}\n")
+            _emit("\n" + _coverage_matrix())
         return EXIT_OK
 
     if command == "waive":

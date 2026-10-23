@@ -115,6 +115,9 @@ def build_parser() -> argparse.ArgumentParser:
             target.add_argument("--heldout", default=None,
                                 help="path to (or command running) a suite the agent never saw")
             target.add_argument("--timeout", type=int, default=None)
+            target.add_argument("--policy", choices=("conservative", "strict"),
+                                default="conservative",
+                                help="expected-value policy when pinned evidence is silent")
             target.add_argument("--require", action="append", default=None,
                                 metavar="TEXT[ => TARGET]",
                                 help="something the claim says it did, optionally bound to a "
@@ -367,6 +370,7 @@ def collect(args) -> tuple:
                 changes=changes,
                 integrity=bool(config.get("test_integrity")),
                 integrity_max=int(config.get("test_integrity_max") or 3),
+                policy=getattr(args, "policy", None) or "conservative",
                 base_ref=session_base["base"] if session_base else None,
                 requirements=(getattr(args, "require", None)
                               or config.get("requirements")))

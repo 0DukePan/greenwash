@@ -23,13 +23,35 @@ from typing import Any, Optional
 
 SCHEMA_VERSION = "1"
 
+SECONDARY_FLAGS = ("spec_edited", "strength_low", "edits_listed",
+                   "flaky_original", "replay_infra_error")
+"""Secondary flags: beside the verdict in the report, never folded into it."""
+
+
+def _flags_from(value: Any) -> dict:
+    """The flag block, with every known key present exactly once.
+
+    A stored report with missing or unknown keys degrades to this shape
+    rather than raising, so a consumer can rely on the five names.
+    """
+    data = _as_dict(value)
+    return {name: bool(data.get(name, False)) for name in SECONDARY_FLAGS}
+
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
 class Verdict(str, Enum):
-    """What the evidence supports. Deliberately not a percentage."""
+    """What the evidence supports. Deliberately not a percentage.
+
+    Three families. The claim verdicts (`VERIFIED`, `PARTIALLY_VERIFIED`,
+    `SUSPICIOUS`) answer "what is this claim worth". The check verdicts
+    (`NOT_VERIFIED`, `VERIFICATION_FAILED`) say a check spoke. The evidence
+    verdicts (`TAMPERED`, `INCONCLUSIVE`, `WEAK_VERIFIER`, `CLEAN`) say what
+    the findings establish, in that precedence order, and `INCONCLUSIVE`
+    serves both families because abstention means the same thing in either.
+    """
 
     VERIFIED = "VERIFIED"
     PARTIALLY_VERIFIED = "PARTIALLY_VERIFIED"
@@ -37,6 +59,9 @@ class Verdict(str, Enum):
     NOT_VERIFIED = "NOT_VERIFIED"
     VERIFICATION_FAILED = "VERIFICATION_FAILED"
     INCONCLUSIVE = "INCONCLUSIVE"
+    CLEAN = "CLEAN"
+    TAMPERED = "TAMPERED"
+    WEAK_VERIFIER = "WEAK_VERIFIER"
 
     @classmethod
     def parse(cls, value: Any) -> "Verdict":
@@ -253,6 +278,9 @@ class Signal(_Model):
     files: list = field(default_factory=list)
     line: Optional[int] = None
     evidence: dict = field(default_factory=dict)
+    mechanism: str = ""                   # how the verdict could be steered
+    grade_relevance: str = ""             # why the mechanism matters to the grade
+    evidence_verdict: str = ""            # the finding's resolved evidence verdict
     remediation: str = ""
     requires_review: bool = False
     waiver: dict = field(default_factory=dict)   # the decision covering this finding
@@ -271,6 +299,9 @@ class Signal(_Model):
             files=[_as_str(f) for f in _as_list(data.get("files"))],
             line=_as_int(data.get("line")),
             evidence=_as_dict(data.get("evidence")),
+            mechanism=_as_str(data.get("mechanism")),
+            grade_relevance=_as_str(data.get("grade_relevance")),
+            evidence_verdict=_as_str(data.get("evidence_verdict")),
             remediation=_as_str(data.get("remediation")),
             requires_review=bool(data.get("requires_review", False)),
             waiver=_as_dict(data.get("waiver")),
@@ -314,6 +345,8 @@ class VerificationResult(_Model):
     evidence: list = field(default_factory=list)
     notes: list = field(default_factory=list)
     harness_error: str = ""
+    pinned: list = field(default_factory=list)
+    pinned_verdict: str = ""
 
     @classmethod
     def from_dict(cls, data: Any) -> "VerificationResult":
@@ -339,6 +372,8 @@ class VerificationResult(_Model):
             evidence=[Evidence.from_dict(e) for e in _as_list(data.get("evidence"))],
             notes=[_as_str(n) for n in _as_list(data.get("notes"))],
             harness_error=_as_str(data.get("harness_error")),
+            pinned=[_as_dict(p) for p in _as_list(data.get("pinned"))],
+            pinned_verdict=_as_str(data.get("pinned_verdict")),
         )
 
     @property
@@ -429,6 +464,7 @@ class TrustReport(_Model):
     generated_at: str = field(default_factory=utc_now)
     run: Optional[Run] = None
     verdict: str = Verdict.INCONCLUSIVE.value
+    flags: dict = field(default_factory=dict)      # SECONDARY_FLAGS, beside the verdict
     confidence: Optional[Confidence] = None
     verification: Optional[VerificationResult] = None
     signals: list = field(default_factory=list)
@@ -436,6 +472,9 @@ class TrustReport(_Model):
     notes: list = field(default_factory=list)
     waivers: list = field(default_factory=list)   # the ledger, as this diff fates it
     gate: dict = field(default_factory=dict)      # the strict decision, when strict ran
+
+    def __post_init__(self) -> None:
+        self.flags = _flags_from(self.flags)
 
     # ---- construction helpers -------------------------------------------------
 
@@ -446,7 +485,8 @@ class TrustReport(_Model):
               notes: Optional[list] = None,
               requirements: Optional[list] = None,
               waivers: Optional[list] = None,
-              gate: Optional[dict] = None) -> "TrustReport":
+              gate: Optional[dict] = None,
+              flags: Optional[dict] = None) -> "TrustReport":
         from .confidence import score_signals  # local import: no import cycle
 
         report = cls(
@@ -457,6 +497,7 @@ class TrustReport(_Model):
             notes=list(notes or []),
             waivers=list(waivers or []),
             gate=dict(gate or {}),
+            flags=dict(flags or {}),
         )
         report.confidence, report.verdict = score_signals(report)
         return report
@@ -469,6 +510,7 @@ class TrustReport(_Model):
             generated_at=_as_str(data.get("generated_at"), utc_now()) or utc_now(),
             run=Run.from_dict(data["run"]) if data.get("run") else Run(),
             verdict=Verdict.parse(data.get("verdict")).value,
+            flags=_as_dict(data.get("flags")),
             confidence=(Confidence.from_dict(data["confidence"])
                         if data.get("confidence") else None),
             verification=(VerificationResult.from_dict(data["verification"])
