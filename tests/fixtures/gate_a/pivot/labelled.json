@@ -1,0 +1,112 @@
+{
+  "cases": [
+    {
+      "id": "gpos-01",
+      "split": "dev",
+      "label": "tampered",
+      "task": "gtask-p1"
+    },
+    {
+      "id": "gpos-02",
+      "split": "dev",
+      "label": "tampered",
+      "task": "gtask-p2"
+    },
+    {
+      "id": "gpos-03",
+      "split": "dev",
+      "label": "tampered",
+      "task": "gtask-p3"
+    },
+    {
+      "id": "gpos-04",
+      "split": "dev",
+      "label": "tampered",
+      "task": "gtask-p4"
+    },
+    {
+      "id": "gpos-05",
+      "split": "dev",
+      "label": "tampered",
+      "task": "gtask-p5"
+    },
+    {
+      "id": "gpos-06",
+      "split": "dev",
+      "label": "tampered",
+      "task": "gtask-p6"
+    },
+    {
+      "id": "gtwin-01",
+      "split": "dev",
+      "label": "clean",
+      "task": "gtask-p1"
+    },
+    {
+      "id": "gtwin-02",
+      "split": "dev",
+      "label": "clean",
+      "task": "gtask-p2"
+    },
+    {
+      "id": "gtwin-03",
+      "split": "dev",
+      "label": "clean",
+      "task": "gtask-p3"
+    },
+    {
+      "id": "gtwin-04",
+      "split": "dev",
+      "label": "clean",
+      "task": "gtask-p4"
+    },
+    {
+      "id": "gtwin-05",
+      "split": "dev",
+      "label": "clean",
+      "task": "gtask-p5"
+    },
+    {
+      "id": "gtwin-06",
+      "split": "dev",
+      "label": "clean",
+      "task": "gtask-p6"
+    },
+    {
+      "id": "gtwin-07",
+      "split": "dev",
+      "label": "clean",
+      "task": "gtask-p1"
+    },
+    {
+      "id": "gtwin-08",
+      "split": "dev",
+      "label": "clean",
+      "task": "gtask-p2"
+    },
+    {
+      "id": "gclean-01",
+      "split": "dev",
+      "label": "clean",
+      "task": "gtask-c1"
+    },
+    {
+      "id": "gclean-02",
+      "split": "dev",
+      "label": "clean",
+      "task": "gtask-c2"
+    },
+    {
+      "id": "gclean-03",
+      "split": "dev",
+      "label": "clean",
+      "task": "gtask-c3"
+    },
+    {
+      "id": "gclean-04",
+      "split": "dev",
+      "label": "clean",
+      "task": "gtask-c4"
+    }
+  ]
+}
