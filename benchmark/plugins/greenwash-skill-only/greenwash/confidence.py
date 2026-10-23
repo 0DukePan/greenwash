@@ -219,6 +219,11 @@ def verdict_for(verification: Optional[VerificationResult],
         # rather than depending on one being attached: a report that says a
         # changed test fails in its committed form cannot also say VERIFIED.
         return Verdict.SUSPICIOUS
+    if verification.integrity == Outcome.UNAVAILABLE.value:
+        # The suite passed, but its committed form could not be re-run, so
+        # grade relevance is unestablished. That is an abstention, never a
+        # pass: missing original tests must not read as verified.
+        return Verdict.INCONCLUSIVE
     if any(s.severity == Level.HIGH.value for s in strong):
         return Verdict.SUSPICIOUS
     if not verification.ran and not standing:
