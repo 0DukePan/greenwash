@@ -208,7 +208,13 @@ def test_double_label_inputs_are_reproducible():
 # -- gate inputs: a class admits only real, adjudicated cases ----------------
 
 def gate_record(**overrides):
-    """A real, adjudicated case from the frozen split: what a gate may count."""
+    """A real, adjudicated case from the frozen split: what a gate may count.
+
+    Case record v2 in full: the collection route, the base and head refs, the
+    diff hash, the four axes, both labelers' labels plus the adjudicated one
+    and the disagreement flag, the twin link with its similarity score, and a
+    recorded, hashed replay result.
+    """
     row = {
         "id": "gate-1",
         "source": "independent: published cheat-survey, table 3",
@@ -218,8 +224,22 @@ def gate_record(**overrides):
         "task": "gate-task-1",
         "repository": "https://example.org/org/real-project",
         "license": "MIT",
+        "route": "R1",
+        "base_ref": "main",
+        "head_ref": "topic/cheat-1",
+        "diff_hash": hashlib.sha256(b"the tamper diff").hexdigest(),
+        "axes": {"a_mechanism": "yes", "b_grade_relevance": "yes",
+                 "c_pinned_evidence": "yes", "d_harm": "yes"},
+        "labels": {"labeler1": "tampered", "labeler2": "tampered",
+                   "adjudicated": "tampered", "disagreement": False},
+        "twin_id": "gate-twin-1",
+        "similarity": 0.87,
+        "replay": recorded_replay(),
     }
     row.update(overrides)
+    if "labels" not in overrides and "label" in overrides:
+        row["labels"] = {"labeler1": row["label"], "labeler2": row["label"],
+                         "adjudicated": row["label"], "disagreement": False}
     return row
 
 
@@ -565,3 +585,117 @@ def test_a_case_needing_no_replay_needs_no_recorded_result(tmp_path):
     record = corpus.record_from_repo(repo, build_spec())
     assert record["id"] == "built-1"
     assert "replay" not in record
+
+
+# -- case record v2: route, refs, diff, axes, labels, twin and replay --------
+#
+# The validation program's record. Every v2 field is optional on load, so an
+# old corpus loads unchanged; a gate-input class refuses any record that does
+# not carry them, and an absent labels block is unadjudicated -- never
+# defaulted to the record's own gold label.
+
+def test_a_complete_case_record_v2_validates_and_carries_every_field():
+    row = gate_record(diff_path="diffs/gate-1.diff")
+    assert corpus.validate_case(row) == []
+    case = corpus.case_from_record(row)
+    assert case.route == "R1"
+    assert case.base_ref == "main" and case.head_ref == "topic/cheat-1"
+    assert case.diff_hash == row["diff_hash"]
+    assert case.diff_path == "diffs/gate-1.diff"
+    assert case.axes == {"a_mechanism": "yes", "b_grade_relevance": "yes",
+                         "c_pinned_evidence": "yes", "d_harm": "yes"}
+    assert case.labels == {"labeler1": "tampered", "labeler2": "tampered",
+                           "adjudicated": "tampered", "disagreement": False}
+    assert case.adjudicated == "tampered"
+    assert case.twin_id == "gate-twin-1" and case.similarity == 0.87
+    assert case.replay == row["replay"]
+
+
+def test_an_unknown_route_is_rejected_naming_the_field():
+    issues = corpus.validate_case(gate_record(route="R9"))
+    assert issues and issues[0].startswith("route:"), issues
+
+
+@pytest.mark.parametrize("field", ["route", "base_ref", "head_ref",
+                                   "diff_hash", "axes", "labels", "replay"])
+def test_a_gate_class_input_missing_a_v2_field_is_rejected_by_name(field):
+    row = gate_record()
+    row.pop(field)
+    with pytest.raises(EvidenceError) as excinfo:
+        corpus.GateInputClass("positives", [row])
+    message = str(excinfo.value)
+    assert f"{field}:" in message and "missing" in message, message
+
+
+def test_every_missing_gate_field_is_named_at_once():
+    row = gate_record()
+    for field in ("route", "base_ref", "head_ref", "diff_hash", "axes",
+                  "labels", "replay"):
+        row.pop(field)
+    with pytest.raises(EvidenceError) as excinfo:
+        corpus.GateInputClass("positives", [row])
+    message = str(excinfo.value)
+    for field in ("route", "base_ref", "head_ref", "diff_hash", "axes",
+                  "labels", "replay"):
+        assert f"{field}:" in message, message
+
+
+@pytest.mark.parametrize("labels", [
+    pytest.param({}, id="empty-labels-block"),
+    pytest.param({"labeler1": "tampered", "labeler2": "clean"},
+                 id="double-labeled-not-yet-adjudicated"),
+    pytest.param({"labeler1": "tampered", "labeler2": "tampered",
+                  "adjudicated": ""}, id="blank-adjudicated"),
+])
+def test_an_unadjudicated_record_cannot_enter_a_gate_input_class(labels):
+    row = gate_record(labels=labels)
+    with pytest.raises(EvidenceError) as excinfo:
+        corpus.GateInputClass("positives", [row])
+    message = str(excinfo.value)
+    assert "labels:" in message and "unadjudicated" in message, message
+
+
+def test_an_absent_labels_block_stays_unadjudicated_not_the_gold_label():
+    row = record(split="frozen")           # an old record: no labels at all
+    case = corpus.case_from_record(row)
+    assert case.labels is None
+    assert case.adjudicated is None        # never the record's own label
+    assert row["label"] == "tampered"
+    row.update(gate_record())
+    row.pop("labels")
+    with pytest.raises(EvidenceError) as excinfo:
+        corpus.GateInputClass("positives", [row])
+    assert "unadjudicated" in str(excinfo.value), excinfo.value
+
+
+def test_an_old_record_loads_with_every_v2_field_absent(tmp_path):
+    corpus_dir(tmp_path, record(split="frozen"))
+    corpus.write_manifest(tmp_path)
+    (case,) = corpus.load_corpus(tmp_path)
+    assert case.route is None and case.axes is None and case.labels is None
+    assert case.base_ref is None and case.diff_hash is None
+    assert case.twin_id is None and case.replay is None
+    assert case.adjudicated is None
+
+
+def test_the_existing_fixture_corpora_still_load_unchanged():
+    cases = corpus.load_corpus(HERE / "fixtures" / "evaluation")
+    assert cases
+    for case in cases:
+        assert case.route is None and case.labels is None and case.axes is None
+    for path in sorted((HERE / "fixtures" / "corpus").glob("*.json")):
+        row = json.loads(path.read_text(encoding="utf-8"))
+        assert corpus.validate_case(row) == [], path.name
+        assert corpus.case_from_record(row).adjudicated is None
+
+
+def test_a_replay_may_be_a_sandbox_reference(tmp_path):
+    repo = hostile_repo(tmp_path)
+    sandbox = {"sandbox": "sandbox://sealed-runner/run-77"}
+    record = corpus.record_from_repo(repo, replay_spec(replay=sandbox))
+    assert record["replay"] == sandbox
+
+
+def test_an_unrecognized_replay_shape_is_rejected_naming_the_field():
+    issues = corpus.validate_case(gate_record(replay={"output": "12 passed"}))
+    assert issues and issues[0].startswith("replay:"), issues
