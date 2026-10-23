@@ -1,0 +1,24 @@
+[
+  {
+    "pr": "alpha#1",
+    "repository": "alpha",
+    "touched_tests": true,
+    "checker_flagged": true,
+    "human_judgment": "illegitimate",
+    "flagged_at": "2024-03-01T09:00:00Z",
+    "resolved_at": "2024-03-01T11:00:00Z",
+    "override": false,
+    "removal_or_optout": false
+  },
+  {
+    "pr": "rogue#2",
+    "repository": "rogue",
+    "touched_tests": true,
+    "checker_flagged": true,
+    "human_judgment": null,
+    "flagged_at": null,
+    "resolved_at": null,
+    "override": false,
+    "removal_or_optout": false
+  }
+]
