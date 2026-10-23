@@ -46,6 +46,21 @@ def test_readme_test_count_matches_the_suite():
         f"README claims {sorted(claimed)} tests; the suite collects {actual}")
 
 
+def test_readme_launch_status_matches_the_decision_record():
+    """The README's launch status line is generated, never typed.
+
+    `benchmark/launch.py` generates it from the decision record under the
+    results tree: `UNMEASURED` with no record, `NARROWED` naming the failing
+    criteria, or `LAUNCH-READY`. CI runs this test, so a hand-edited line --
+    or a record that moved on without the line following -- fails the build.
+    """
+    sys.path.insert(0, str(ROOT / "benchmark"))
+    import launch
+    problems = launch.readme_status_problems(
+        readme(), launch.read_decision_record())
+    assert not problems, "; ".join(problems)
+
+
 def test_readme_headline_matches_the_detection_results():
     summary = json.loads(
         (ROOT / "benchmark" / "results" / "detection.json").read_text(encoding="utf-8")
