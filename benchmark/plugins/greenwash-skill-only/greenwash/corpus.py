@@ -31,8 +31,20 @@ The contracts, each one load-bearing:
 * **Gate inputs are admitted by class.** `GateInputClass` admits only real,
   adjudicated cases: a planted, synthetic or dev-split record is refused with
   the field named, source, repository identity, license, technique and split
-  must all be present, and a class holds at most `GATE_MAX_PER_REPOSITORY`
-  cases per repository (rejection, never silent capping).
+  must all be present, `gate_admission_issues` refuses every case-record-v2
+  gap (an unadjudicated record, a missing route, ref, diff hash, axis or
+  replay) with each field named, and a class holds at most
+  `GATE_MAX_PER_REPOSITORY` cases per repository (rejection, never silent
+  capping).
+* **Case record v2.** A record may also carry the validation program's
+  fields: `route` (R1 to R5), `base_ref` and `head_ref`, `diff_hash` and
+  optional `diff_path`, `axes` (a mechanism, b grade relevance, c pinned
+  evidence, d harm), `labels` (labeler one, labeler two, adjudicated,
+  disagreement), `twin_id` and similarity, and `replay` (a recorded, hashed
+  result or a sandbox reference). They are optional on load -- an old corpus
+  loads unchanged -- and `Case.adjudicated` is the adjudicated label or None:
+  an absent labels block is unadjudicated, never defaulted to the record's
+  own gold label.
 * **The builder treats repository content as untrusted.** `read_repo_files`
   and `record_from_repo` read file bytes and hash them and do nothing else:
   no repository code, hook or filter runs, no repository-supplied git
@@ -89,6 +101,17 @@ NON_GATE_SOURCES = (PLANTED, SYNTHETIC)
 GATE_REQUIRED = ("source", "repository", "license", "technique", "split")
 GATE_MAX_PER_REPOSITORY = 5
 
+# Case record v2 (the validation program's record): optional on load -- an old
+# corpus loads unchanged -- and required, adjudicated, of every gate-input
+# class admission.
+ROUTES = ("R1", "R2", "R3", "R4", "R5")
+AXES = ("a_mechanism", "b_grade_relevance", "c_pinned_evidence", "d_harm")
+LABEL_FIELDS = ("labeler1", "labeler2", "adjudicated", "disagreement")
+LABELER_FIELDS = ("labeler1", "labeler2", "adjudicated")
+GATE_ADMISSION_REQUIRED = ("route", "base_ref", "head_ref", "diff_hash")
+EXTENDED = ("route", "base_ref", "head_ref", "diff_hash", "diff_path",
+            "axes", "labels", "twin_id", "similarity", "replay")
+
 MAX_FILE_BYTES = 1_048_576          # one MiB per case file
 MAX_FILES = 100                     # case files per record
 
@@ -128,10 +151,31 @@ class Case:
     repository: str
     license: str
     origin: str = NATURAL
+    # Case record v2, every field optional so an old record loads unchanged.
+    route: str | None = None
+    base_ref: str | None = None
+    head_ref: str | None = None
+    diff_hash: str | None = None
+    diff_path: str | None = None
+    axes: Mapping | None = None
+    labels: Mapping | None = None
+    twin_id: str | None = None
+    similarity: float | None = None
+    replay: Mapping | None = None
 
     @property
     def gated(self) -> bool:
         return True
+
+    @property
+    def adjudicated(self) -> str | None:
+        """The adjudicated label, or None for an unadjudicated record.
+
+        There is no default: a record without `labels.adjudicated` is
+        unadjudicated and is never handed the record's own gold label.
+        """
+        labels = self.labels
+        return labels.get("adjudicated") if isinstance(labels, Mapping) else None
 
 
 @dataclass(frozen=True)
@@ -165,6 +209,53 @@ def _choice(record: Mapping, field: str, allowed: tuple, issues: list) -> None:
                       f"{', '.join(allowed)}")
 
 
+def _is_sha256(value: str) -> bool:
+    return (len(value) == 64
+            and all(ch in "0123456789abcdef" for ch in value))
+
+
+def _axes_issues(axes) -> list:
+    """The axes block, when a record carries one: all four, each named."""
+    if axes is None:
+        return []
+    if not isinstance(axes, Mapping):
+        return [f"axes: must be a mapping of the four axes ({', '.join(AXES)})"]
+    issues: list = []
+    for name in AXES:
+        if name not in axes or not str(axes.get(name) or "").strip():
+            issues.append(f"axes: missing {name}; a case record carries all "
+                          f"four axes ({', '.join(AXES)})")
+    for name in axes:
+        if name not in AXES:
+            issues.append(f"axes: unknown axis {name!r}; must be one of "
+                          f"{', '.join(AXES)}")
+    return issues
+
+
+def _labels_issues(labels) -> list:
+    """The labels block, when a record carries one: known fields, known votes."""
+    if labels is None:
+        return []
+    if not isinstance(labels, Mapping):
+        return ["labels: must be a mapping of labeler1, labeler2, "
+                "adjudicated, disagreement"]
+    issues: list = []
+    for name in labels:
+        if name not in LABEL_FIELDS:
+            issues.append(f"labels: unknown field {name!r}; must be one of "
+                          f"{', '.join(LABEL_FIELDS)}")
+    for name in LABELER_FIELDS:
+        value = labels.get(name)
+        if value is not None and str(value).strip() and value not in LABELS:
+            issues.append(f"labels: {name} has unknown value {value!r}; must "
+                          f"be one of {', '.join(LABELS)}")
+    disagreement = labels.get("disagreement")
+    if disagreement is not None and not isinstance(disagreement, bool):
+        issues.append(f"labels: disagreement must be true or false, not "
+                      f"{disagreement!r}")
+    return issues
+
+
 def validate_case(record: Mapping) -> list:
     """Every way one case record is wrong, each naming the offending field.
 
@@ -182,6 +273,28 @@ def validate_case(record: Mapping) -> list:
     if origin not in ORIGINS:
         issues.append(f"origin: unknown value {origin!r}; must be one of "
                       f"{', '.join(ORIGINS)}")
+    # Case record v2, validated only where a record carries the field, so an
+    # old corpus record validates unchanged.
+    if record.get("route") is not None:
+        _choice(record, "route", ROUTES, issues)
+    for field in ("base_ref", "head_ref", "diff_path", "twin_id"):
+        if record.get(field) is not None and not str(record[field]).strip():
+            issues.append(f"{field}: empty; a case record's {field} is text")
+    if record.get("diff_hash") is not None \
+            and not _is_sha256(str(record["diff_hash"])):
+        issues.append(f"diff_hash: not a lowercase sha256 digest: "
+                      f"{record['diff_hash']!r}")
+    issues.extend(_axes_issues(record.get("axes")))
+    issues.extend(_labels_issues(record.get("labels")))
+    similarity = record.get("similarity")
+    if similarity is not None:
+        if isinstance(similarity, bool) \
+                or not isinstance(similarity, (int, float)) \
+                or not 0 <= similarity <= 1:
+            issues.append(f"similarity: {similarity!r} is not a similarity "
+                          "score between 0 and 1")
+    if record.get("replay") is not None:
+        issues.extend(_replay_record_issues(record.get("replay")))
     return issues
 
 
@@ -222,14 +335,20 @@ def validate_cases(records: Iterable[Mapping]) -> list:
 
 
 def case_from_record(record: Mapping) -> Case:
-    """A validated record as a Case (or SyntheticCase, by its origin)."""
+    """A validated record as a Case (or SyntheticCase, by its origin).
+
+    Case record v2 fields travel onto the case where the record carries them;
+    an old record leaves them all None.
+    """
     issues = validate_case(record)
     if issues:
         raise EvidenceError("; ".join(issues))
     data = dict(record)
     data.setdefault("origin", NATURAL)
     case_type = SyntheticCase if data["origin"] == SYNTHETIC else Case
-    return case_type(**{field: data[field] for field in FIELDS})
+    fields = {field: data[field] for field in FIELDS}
+    fields.update({field: data.get(field) for field in EXTENDED})
+    return case_type(**fields)
 
 
 def gate_cases(cases: Iterable[Case], split: str | None = None) -> tuple:
@@ -260,7 +379,7 @@ def _as_record(entry) -> dict:
     """One entry as a record mapping, whether it arrives as a record or a Case."""
     if isinstance(entry, Mapping):
         return dict(entry)
-    return {field: getattr(entry, field, None) for field in FIELDS}
+    return {field: getattr(entry, field, None) for field in FIELDS + EXTENDED}
 
 
 def source_category(entry) -> str:
@@ -305,13 +424,52 @@ def gate_input_issues(entry) -> list:
     return issues
 
 
+def gate_admission_issues(entry) -> list:
+    """Every way one record is not an admitted, adjudicated gate input.
+
+    Case record v2, fail closed: a gate-input class admits only an adjudicated
+    record carrying the validation program's fields -- the collection route,
+    the base and head refs, the diff hash, the four axes, both labelers'
+    labels and the adjudicated one -- and, where catching the technique needs
+    replay, a recorded, hashed replay result or a sandbox reference. Every
+    missing field is named, never defaulted: an absent `labels` block is
+    *unadjudicated*, never the record's own gold label.
+    """
+    issues: list = []
+    for field in GATE_ADMISSION_REQUIRED:
+        if not str(_field(entry, field) or "").strip():
+            issues.append(f"{field}: missing; a gate input must carry {field}")
+    axes = _field(entry, "axes")
+    if axes is None:
+        issues.append("axes: missing; a gate input must carry the four axes "
+                      f"({', '.join(AXES)})")
+    else:
+        issues.extend(_axes_issues(axes))
+    labels = _field(entry, "labels")
+    labels = labels if isinstance(labels, Mapping) else {}
+    for name in LABELER_FIELDS:
+        if not str(labels.get(name) or "").strip():
+            issues.append(f"labels: missing {name}; a gate input must carry "
+                          "both labelers' labels and the adjudicated one")
+    if not str(labels.get("adjudicated") or "").strip():
+        issues.append("labels: unadjudicated; labels.adjudicated is absent, "
+                      "so the record is unadjudicated -- a gate input is "
+                      "adjudicated, never defaulted to the record's own label")
+    issues.extend(_replay_issues(entry))
+    return issues
+
+
 class GateInputClass:
     """One gate-input class: the cases whose results decide one gate's number.
 
     This is the admission point refusal 5 enforces. It admits only real,
     adjudicated cases: a record that is planted, synthetic, from the dev
     split, or missing source, repository identity, license, technique or
-    split is refused with the offending field named.
+    split is refused with the offending field named, `gate_admission_issues`
+    refuses every case-record-v2 gap -- an unadjudicated record, or a missing
+    route, ref, diff hash, axis or replay -- with each field named, and old
+    unadjudicated records are refused the same way: absent labels are
+    unadjudicated, never defaulted to the record's own gold label.
 
     The per-repository cap rule is **rejection**, never silent capping: a
     class that would hold more than `GATE_MAX_PER_REPOSITORY` (5) cases from
@@ -326,7 +484,8 @@ class GateInputClass:
         issues: list = []
         for entry in records:
             record = _as_record(entry)
-            problems = validate_case(record) + gate_input_issues(record)
+            problems = (validate_case(record) + gate_input_issues(record)
+                        + gate_admission_issues(record))
             if problems:
                 case_id = str(_field(record, "id") or "?")
                 issues.append(f"{case_id}: " + "; ".join(problems))
@@ -445,24 +604,23 @@ def read_repo_files(work_tree: str | Path, rel_paths: Iterable[str]) -> dict:
     return out
 
 
-def _replay_issues(record) -> list:
-    """The replay contract: recorded and hashed, or refused.
+def _replay_record_issues(replay) -> list:
+    """The shape of one replay record: recorded and hashed, or a sandbox ref.
 
-    Catching some techniques needs the pinned original tests replayed. The
-    builder never runs them -- repository content is untrusted, and live
-    replay is the integrity-checked sandbox's job (no network, no secrets,
-    resource limits) -- so a case whose technique needs replay must carry the
-    replay outcome as a recorded, hashed result: `replay` with `result` and
-    `sha256` over the result's UTF-8 bytes. A missing result or a hash that
-    does not match it is refused naming the field.
+    A replay record is either a recorded, hashed result -- `result` with
+    `sha256` over the result's UTF-8 bytes -- or a `sandbox` reference to the
+    integrity-checked sandboxed run that produced it. A missing result or a
+    hash that does not match it is refused naming the field.
     """
-    technique = BY_ID.get(str(record.get("technique") or ""))
-    if technique is None or not technique.replay:
-        return []
-    replay = record.get("replay")
     if not isinstance(replay, Mapping):
-        return ["replay: missing; catching this technique needs replay, so "
-                "the record must carry a recorded, hashed replay result"]
+        return ["replay: must be a recorded, hashed result or a sandbox "
+                "reference"]
+    sandbox = replay.get("sandbox")
+    if sandbox is not None:
+        if not str(sandbox).strip():
+            return ["replay: empty sandbox reference; a sandbox reference "
+                    "names the sandboxed replay run"]
+        return []
     result = replay.get("result")
     digest = replay.get("sha256")
     if not isinstance(result, str) or not result.strip():
@@ -473,6 +631,34 @@ def _replay_issues(record) -> list:
         return [f"replay: sha256 {digest!r} does not hash the recorded result; "
                 f"expected {expected}"]
     return []
+
+
+def _replay_presence_issues(record) -> list:
+    """Presence only: a replay-needing technique carries a replay record."""
+    if _field(record, "replay") is not None:
+        return []
+    technique = BY_ID.get(str(_field(record, "technique") or ""))
+    if technique is None or not technique.replay:
+        return []
+    return ["replay: missing; catching this technique needs replay, so the "
+            "record must carry a recorded, hashed replay result or a sandbox "
+            "reference"]
+
+
+def _replay_issues(record) -> list:
+    """The replay contract: recorded and hashed (or a sandbox ref), or refused.
+
+    Catching some techniques needs the pinned original tests replayed. The
+    builder never runs them -- repository content is untrusted, and live
+    replay is the integrity-checked sandbox's job (no network, no secrets,
+    resource limits) -- so a case whose technique needs replay must carry the
+    replay outcome as a recorded, hashed result or a sandbox reference. A
+    missing replay for a replay-needing technique, or a malformed one, is
+    refused naming the field.
+    """
+    return _replay_presence_issues(record) + (
+        _replay_record_issues(_field(record, "replay"))
+        if _field(record, "replay") is not None else [])
 
 
 def record_from_repo(work_tree: str | Path, spec: Mapping) -> dict:
@@ -486,15 +672,16 @@ def record_from_repo(work_tree: str | Path, spec: Mapping) -> dict:
     hashed replay result (see `_replay_issues`); replaying live belongs to
     the integrity-checked sandbox, never to this builder.
     """
-    issues = validate_case(spec) + _replay_issues(spec)
+    issues = validate_case(spec) + _replay_presence_issues(spec)
     if issues:
         raise EvidenceError("; ".join(issues))
     data = dict(spec)
     data.setdefault("origin", NATURAL)
     record = {field: data[field] for field in FIELDS}
     record["files"] = read_repo_files(work_tree, spec.get("files") or [])
-    if "replay" in spec:
-        record["replay"] = spec["replay"]
+    for field in EXTENDED:
+        if data.get(field) is not None:
+            record[field] = data[field]
     return record
 
 
