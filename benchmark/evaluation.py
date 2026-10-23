@@ -488,6 +488,13 @@ def _evaluate_detector(gated: list, per_case: dict,
         _outcomes(twin_clean, per_case, TAMPERED))
     pooled["natural_clean_false_alarm"] = rate(
         _outcomes(natural_clean, per_case, TAMPERED))
+    # Abstention split the same way as the false alarms: the launch gate
+    # holds twins and natural clean passes under separate ceilings (L3), and
+    # a rate no case can decide fails closed downstream.
+    pooled["twin_abstention"] = rate(
+        _outcomes(twin_clean, per_case, ABSTAIN))
+    pooled["natural_clean_abstention"] = rate(
+        _outcomes(natural_clean, per_case, ABSTAIN))
     return {"cells": rows, "pooled": pooled}
 
 
