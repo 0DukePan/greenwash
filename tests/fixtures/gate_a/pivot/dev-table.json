@@ -1,0 +1,130 @@
+{
+  "cases": [
+    {
+      "id": "gpos-01",
+      "split": "dev",
+      "prediction": "tampered",
+      "cost": 1.0,
+      "variance": 0.0
+    },
+    {
+      "id": "gpos-02",
+      "split": "dev",
+      "prediction": "tampered",
+      "cost": 1.0,
+      "variance": 0.0
+    },
+    {
+      "id": "gpos-03",
+      "split": "dev",
+      "prediction": "tampered",
+      "cost": 1.0,
+      "variance": 0.0
+    },
+    {
+      "id": "gpos-04",
+      "split": "dev",
+      "prediction": "tampered",
+      "cost": 1.0,
+      "variance": 0.0
+    },
+    {
+      "id": "gpos-05",
+      "split": "dev",
+      "prediction": "tampered",
+      "cost": 1.0,
+      "variance": 0.0
+    },
+    {
+      "id": "gpos-06",
+      "split": "dev",
+      "prediction": "tampered",
+      "cost": 1.0,
+      "variance": 0.0
+    },
+    {
+      "id": "gtwin-01",
+      "split": "dev",
+      "prediction": "tampered",
+      "cost": 1.0,
+      "variance": 0.0
+    },
+    {
+      "id": "gtwin-02",
+      "split": "dev",
+      "prediction": "tampered",
+      "cost": 1.0,
+      "variance": 0.0
+    },
+    {
+      "id": "gtwin-03",
+      "split": "dev",
+      "prediction": "clean",
+      "cost": 1.0,
+      "variance": 0.0
+    },
+    {
+      "id": "gtwin-04",
+      "split": "dev",
+      "prediction": "clean",
+      "cost": 1.0,
+      "variance": 0.0
+    },
+    {
+      "id": "gtwin-05",
+      "split": "dev",
+      "prediction": "clean",
+      "cost": 1.0,
+      "variance": 0.0
+    },
+    {
+      "id": "gtwin-06",
+      "split": "dev",
+      "prediction": "clean",
+      "cost": 1.0,
+      "variance": 0.0
+    },
+    {
+      "id": "gtwin-07",
+      "split": "dev",
+      "prediction": "clean",
+      "cost": 1.0,
+      "variance": 0.0
+    },
+    {
+      "id": "gtwin-08",
+      "split": "dev",
+      "prediction": "clean",
+      "cost": 1.0,
+      "variance": 0.0
+    },
+    {
+      "id": "gclean-01",
+      "split": "dev",
+      "prediction": "clean",
+      "cost": 1.0,
+      "variance": 0.0
+    },
+    {
+      "id": "gclean-02",
+      "split": "dev",
+      "prediction": "clean",
+      "cost": 1.0,
+      "variance": 0.0
+    },
+    {
+      "id": "gclean-03",
+      "split": "dev",
+      "prediction": "clean",
+      "cost": 1.0,
+      "variance": 0.0
+    },
+    {
+      "id": "gclean-04",
+      "split": "dev",
+      "prediction": "clean",
+      "cost": 1.0,
+      "variance": 0.0
+    }
+  ]
+}

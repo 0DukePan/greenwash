@@ -1,0 +1,580 @@
+{
+  "results": [
+    {
+      "case": "gpos-01",
+      "split": "dev",
+      "baseline": "B0",
+      "prediction": "clean",
+      "cost": 1.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gpos-01",
+      "split": "dev",
+      "baseline": "B1",
+      "prediction": "tampered",
+      "cost": 2.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gpos-01",
+      "split": "dev",
+      "baseline": "B2",
+      "prediction": "tampered",
+      "cost": 30.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gpos-01",
+      "split": "dev",
+      "baseline": "B3",
+      "prediction": "tampered",
+      "cost": 5.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gpos-02",
+      "split": "dev",
+      "baseline": "B0",
+      "prediction": "clean",
+      "cost": 1.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gpos-02",
+      "split": "dev",
+      "baseline": "B1",
+      "prediction": "tampered",
+      "cost": 2.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gpos-02",
+      "split": "dev",
+      "baseline": "B2",
+      "prediction": "tampered",
+      "cost": 30.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gpos-02",
+      "split": "dev",
+      "baseline": "B3",
+      "prediction": "tampered",
+      "cost": 5.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gpos-03",
+      "split": "dev",
+      "baseline": "B0",
+      "prediction": "clean",
+      "cost": 1.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gpos-03",
+      "split": "dev",
+      "baseline": "B1",
+      "prediction": "tampered",
+      "cost": 2.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gpos-03",
+      "split": "dev",
+      "baseline": "B2",
+      "prediction": "tampered",
+      "cost": 30.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gpos-03",
+      "split": "dev",
+      "baseline": "B3",
+      "prediction": "tampered",
+      "cost": 5.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gpos-04",
+      "split": "dev",
+      "baseline": "B0",
+      "prediction": "clean",
+      "cost": 1.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gpos-04",
+      "split": "dev",
+      "baseline": "B1",
+      "prediction": "tampered",
+      "cost": 2.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gpos-04",
+      "split": "dev",
+      "baseline": "B2",
+      "prediction": "tampered",
+      "cost": 30.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gpos-04",
+      "split": "dev",
+      "baseline": "B3",
+      "prediction": "tampered",
+      "cost": 5.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gpos-05",
+      "split": "dev",
+      "baseline": "B0",
+      "prediction": "clean",
+      "cost": 1.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gpos-05",
+      "split": "dev",
+      "baseline": "B1",
+      "prediction": "tampered",
+      "cost": 2.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gpos-05",
+      "split": "dev",
+      "baseline": "B2",
+      "prediction": "tampered",
+      "cost": 30.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gpos-05",
+      "split": "dev",
+      "baseline": "B3",
+      "prediction": "tampered",
+      "cost": 5.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gpos-06",
+      "split": "dev",
+      "baseline": "B0",
+      "prediction": "clean",
+      "cost": 1.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gpos-06",
+      "split": "dev",
+      "baseline": "B1",
+      "prediction": "tampered",
+      "cost": 2.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gpos-06",
+      "split": "dev",
+      "baseline": "B2",
+      "prediction": "tampered",
+      "cost": 30.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gpos-06",
+      "split": "dev",
+      "baseline": "B3",
+      "prediction": "tampered",
+      "cost": 5.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gtwin-01",
+      "split": "dev",
+      "baseline": "B0",
+      "prediction": "tampered",
+      "cost": 1.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gtwin-01",
+      "split": "dev",
+      "baseline": "B1",
+      "prediction": "tampered",
+      "cost": 2.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gtwin-01",
+      "split": "dev",
+      "baseline": "B2",
+      "prediction": "clean",
+      "cost": 30.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gtwin-01",
+      "split": "dev",
+      "baseline": "B3",
+      "prediction": "tampered",
+      "cost": 5.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gtwin-02",
+      "split": "dev",
+      "baseline": "B0",
+      "prediction": "tampered",
+      "cost": 1.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gtwin-02",
+      "split": "dev",
+      "baseline": "B1",
+      "prediction": "tampered",
+      "cost": 2.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gtwin-02",
+      "split": "dev",
+      "baseline": "B2",
+      "prediction": "clean",
+      "cost": 30.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gtwin-02",
+      "split": "dev",
+      "baseline": "B3",
+      "prediction": "tampered",
+      "cost": 5.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gtwin-03",
+      "split": "dev",
+      "baseline": "B0",
+      "prediction": "tampered",
+      "cost": 1.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gtwin-03",
+      "split": "dev",
+      "baseline": "B1",
+      "prediction": "tampered",
+      "cost": 2.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gtwin-03",
+      "split": "dev",
+      "baseline": "B2",
+      "prediction": "clean",
+      "cost": 30.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gtwin-03",
+      "split": "dev",
+      "baseline": "B3",
+      "prediction": "clean",
+      "cost": 5.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gtwin-04",
+      "split": "dev",
+      "baseline": "B0",
+      "prediction": "tampered",
+      "cost": 1.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gtwin-04",
+      "split": "dev",
+      "baseline": "B1",
+      "prediction": "tampered",
+      "cost": 2.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gtwin-04",
+      "split": "dev",
+      "baseline": "B2",
+      "prediction": "clean",
+      "cost": 30.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gtwin-04",
+      "split": "dev",
+      "baseline": "B3",
+      "prediction": "clean",
+      "cost": 5.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gtwin-05",
+      "split": "dev",
+      "baseline": "B0",
+      "prediction": "tampered",
+      "cost": 1.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gtwin-05",
+      "split": "dev",
+      "baseline": "B1",
+      "prediction": "clean",
+      "cost": 2.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gtwin-05",
+      "split": "dev",
+      "baseline": "B2",
+      "prediction": "clean",
+      "cost": 30.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gtwin-05",
+      "split": "dev",
+      "baseline": "B3",
+      "prediction": "clean",
+      "cost": 5.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gtwin-06",
+      "split": "dev",
+      "baseline": "B0",
+      "prediction": "tampered",
+      "cost": 1.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gtwin-06",
+      "split": "dev",
+      "baseline": "B1",
+      "prediction": "clean",
+      "cost": 2.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gtwin-06",
+      "split": "dev",
+      "baseline": "B2",
+      "prediction": "clean",
+      "cost": 30.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gtwin-06",
+      "split": "dev",
+      "baseline": "B3",
+      "prediction": "clean",
+      "cost": 5.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gtwin-07",
+      "split": "dev",
+      "baseline": "B0",
+      "prediction": "tampered",
+      "cost": 1.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gtwin-07",
+      "split": "dev",
+      "baseline": "B1",
+      "prediction": "clean",
+      "cost": 2.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gtwin-07",
+      "split": "dev",
+      "baseline": "B2",
+      "prediction": "clean",
+      "cost": 30.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gtwin-07",
+      "split": "dev",
+      "baseline": "B3",
+      "prediction": "clean",
+      "cost": 5.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gtwin-08",
+      "split": "dev",
+      "baseline": "B0",
+      "prediction": "tampered",
+      "cost": 1.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gtwin-08",
+      "split": "dev",
+      "baseline": "B1",
+      "prediction": "clean",
+      "cost": 2.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gtwin-08",
+      "split": "dev",
+      "baseline": "B2",
+      "prediction": "clean",
+      "cost": 30.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gtwin-08",
+      "split": "dev",
+      "baseline": "B3",
+      "prediction": "clean",
+      "cost": 5.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gclean-01",
+      "split": "dev",
+      "baseline": "B0",
+      "prediction": "clean",
+      "cost": 1.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gclean-01",
+      "split": "dev",
+      "baseline": "B1",
+      "prediction": "clean",
+      "cost": 2.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gclean-01",
+      "split": "dev",
+      "baseline": "B2",
+      "prediction": "clean",
+      "cost": 30.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gclean-01",
+      "split": "dev",
+      "baseline": "B3",
+      "prediction": "clean",
+      "cost": 5.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gclean-02",
+      "split": "dev",
+      "baseline": "B0",
+      "prediction": "clean",
+      "cost": 1.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gclean-02",
+      "split": "dev",
+      "baseline": "B1",
+      "prediction": "clean",
+      "cost": 2.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gclean-02",
+      "split": "dev",
+      "baseline": "B2",
+      "prediction": "clean",
+      "cost": 30.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gclean-02",
+      "split": "dev",
+      "baseline": "B3",
+      "prediction": "clean",
+      "cost": 5.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gclean-03",
+      "split": "dev",
+      "baseline": "B0",
+      "prediction": "clean",
+      "cost": 1.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gclean-03",
+      "split": "dev",
+      "baseline": "B1",
+      "prediction": "clean",
+      "cost": 2.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gclean-03",
+      "split": "dev",
+      "baseline": "B2",
+      "prediction": "clean",
+      "cost": 30.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gclean-03",
+      "split": "dev",
+      "baseline": "B3",
+      "prediction": "clean",
+      "cost": 5.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gclean-04",
+      "split": "dev",
+      "baseline": "B0",
+      "prediction": "clean",
+      "cost": 1.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gclean-04",
+      "split": "dev",
+      "baseline": "B1",
+      "prediction": "clean",
+      "cost": 2.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gclean-04",
+      "split": "dev",
+      "baseline": "B2",
+      "prediction": "clean",
+      "cost": 30.0,
+      "variance": 0.0
+    },
+    {
+      "case": "gclean-04",
+      "split": "dev",
+      "baseline": "B3",
+      "prediction": "clean",
+      "cost": 5.0,
+      "variance": 0.0
+    }
+  ]
+}

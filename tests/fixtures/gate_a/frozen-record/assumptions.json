@@ -1,0 +1,25 @@
+{
+  "assumptions": [
+    {
+      "id": "labeling-time-per-case",
+      "number": "15 minutes per case",
+      "status": "verified",
+      "owner": "fixture-operator",
+      "check": "fixture register: verified in the calibration round"
+    },
+    {
+      "id": "speed-slos",
+      "number": "static p95 milliseconds, replay overhead multiple, cold start",
+      "status": "verified",
+      "owner": "fixture-operator",
+      "check": "fixture register: verified on five repository sizes"
+    },
+    {
+      "id": "competitor-overhead-figures",
+      "number": "the pinned competitor's overhead figures",
+      "status": "verified",
+      "owner": "fixture-operator",
+      "check": "fixture register: verified when the competitor was pinned"
+    }
+  ]
+}
