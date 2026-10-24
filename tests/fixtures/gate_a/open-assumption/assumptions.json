@@ -5,7 +5,8 @@
       "number": "15 minutes per case",
       "status": "verified",
       "owner": "fixture-operator",
-      "check": "fixture register: verified in the calibration round"
+      "check": "fixture register: verified in the calibration round",
+      "evidence": "tests/fixtures/gate_a/open-assumption/calibration.json"
     },
     {
       "id": "speed-slos",
@@ -19,7 +20,8 @@
       "number": "the pinned competitor's overhead figures",
       "status": "verified",
       "owner": "fixture-operator",
-      "check": "fixture register: verified when the competitor was pinned"
+      "check": "fixture register: verified when the competitor was pinned",
+      "evidence": "tests/fixtures/gate_a/open-assumption/baselines.json"
     }
   ]
 }

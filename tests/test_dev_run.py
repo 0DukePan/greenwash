@@ -31,6 +31,7 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "benchmark"))
 
 import dev_run  # noqa: E402
+import gate_a  # noqa: E402
 
 
 def candidate(case_id="R1-0001", **overrides):
@@ -224,16 +225,18 @@ def test_a_record_carrying_labels_or_adjudication_is_refused_by_name(
     assert "R1-0001.json" in err
 
 
-def test_in_order_stage_beyond_assemble_is_the_skeleton_refused_by_name(
+def test_in_order_stage_beyond_calibrate_is_the_skeleton_refused_by_name(
         tmp_path, capsys):
-    candidates = write_candidates(tmp_path / "candidates", [candidate("R1-0001")])
-    run = tmp_path / "dev-run"
-    assert dev_run.dev_run(["assemble", str(candidates),
-                            "--run-dir", str(run)]) == 0
+    run = assembled(tmp_path)
+    calibration = write_calibration(tmp_path / "calibration-input.json",
+                                    readings(30.0))
+    assert dev_run.dev_run(["calibrate", str(calibration),
+                            "--run-dir", str(run),
+                            "--register", str(register_copy(tmp_path))]) == 0
     capsys.readouterr()
-    assert dev_run.dev_run(["calibrate", "--run-dir", str(run)]) == 2
+    assert dev_run.dev_run(["label", "--run-dir", str(run)]) == 2
     err = capsys.readouterr().err
-    assert "calibrate" in err
+    assert "label" in err
     assert "not built" in err
 
 
@@ -277,3 +280,155 @@ def test_a_class_under_the_dev_minimum_is_warned_about_not_silently_accepted(
     assert any("under the dev minimum of 60" in warning
                for warning in manifest["warnings"])
     assert manifest["counts_by_class"] == {"tampered": 2}
+
+
+# -- the calibrate stage: measurement, artifact, closed assumption -----------
+
+CASE_IDS = [f"R1-{index:04d}" for index in range(1, 21)]
+
+
+def assembled(tmp_path):
+    """A twenty-case dev manifest, assembled through the command itself."""
+    run = tmp_path / "dev-run"
+    candidates = write_candidates(tmp_path / "candidates", [
+        candidate(case_id, repository=f"example/repo-{index // 5}")
+        for index, case_id in enumerate(CASE_IDS)])
+    assert dev_run.dev_run(["assemble", str(candidates),
+                            "--run-dir", str(run)]) == 0
+    return run
+
+
+def readings(seconds=30.0):
+    """One measured time per case, the calibration file's readings."""
+    return [{"case": case_id, "seconds": seconds} for case_id in CASE_IDS]
+
+
+def write_calibration(path, measured, labeler="fixture-labeler"):
+    path.write_text(json.dumps({"labeler": labeler, "readings": measured},
+                               indent=2) + "\n", encoding="utf-8")
+    return path
+
+
+def register_copy(tmp_path):
+    """The shipped assumptions register, copied somewhere a test may write."""
+    register = tmp_path / "assumptions.json"
+    register.write_text(
+        (ROOT / "benchmark" / "assumptions.json").read_text(encoding="utf-8"),
+        encoding="utf-8")
+    return register
+
+
+def calibrate_refusal(tmp_path, register=None):
+    """Run the calibrate stage and return the refusal, by name."""
+    run = assembled(tmp_path)
+    calibration = write_calibration(tmp_path / "calibration-input.json",
+                                    readings(30.0))
+    if register is not None:
+        payload = json.loads(register.read_text(encoding="utf-8"))
+        for entry in payload["assumptions"]:
+            if entry["id"] == "competitor-overhead-figures":
+                entry["status"] = "verified"
+        register.write_text(json.dumps(payload, indent=2) + "\n",
+                            encoding="utf-8")
+    assert dev_run.dev_run(["calibrate", str(calibration),
+                            "--run-dir", str(run),
+                            "--register",
+                            str(register or register_copy(tmp_path))]) == 2
+    return run
+
+
+def test_calibrate_writes_a_measurement_artifact_carrying_its_input_hashes(
+        tmp_path, capsys):
+    run = assembled(tmp_path)
+    measured = readings(30.0)
+    measured[0]["seconds"] = 60.0
+    calibration = write_calibration(tmp_path / "calibration-input.json", measured)
+    assert dev_run.dev_run(["calibrate", str(calibration),
+                            "--run-dir", str(run),
+                            "--register", str(register_copy(tmp_path))]) == 0
+    artifact = json.loads((run / "calibration.json").read_text(encoding="utf-8"))
+    assert artifact["inputs"] == {
+        "calibration-input.json": sha256_of(calibration),
+        "dev-manifest.json": sha256_of(run / "dev-manifest.json")}
+    assert artifact["cases"] == 20
+    assert artifact["total_seconds"] == 630.0
+    assert artifact["seconds_per_case"] == 31.5
+
+
+def test_calibrate_closes_the_labeling_time_assumption_with_the_measurement_and_the_artifact_path(
+        tmp_path, capsys):
+    run = assembled(tmp_path)
+    calibration = write_calibration(tmp_path / "calibration-input.json",
+                                    readings(30.0))
+    register = register_copy(tmp_path)
+    assert dev_run.dev_run(["calibrate", str(calibration),
+                            "--run-dir", str(run),
+                            "--register", str(register)]) == 0
+    out = capsys.readouterr().out
+    entry = {row["id"]: row for row in json.loads(
+        register.read_text(encoding="utf-8"))["assumptions"]}
+    closed = entry["labeling-time-per-case"]
+    assert closed["status"] == "verified"
+    assert closed["number"] == "30 seconds per case"
+    assert closed["evidence"] == str(run / "calibration.json")
+    assert "labeling-time-per-case" in out
+    assert "verified" in out
+
+
+def test_a_case_id_outside_the_dev_manifest_is_refused_by_name(tmp_path, capsys):
+    run = assembled(tmp_path)
+    measured = readings(30.0)
+    measured[7]["case"] = "R9-9999"
+    calibration = write_calibration(tmp_path / "calibration-input.json", measured)
+    assert dev_run.dev_run(["calibrate", str(calibration),
+                            "--run-dir", str(run),
+                            "--register", str(register_copy(tmp_path))]) == 2
+    err = capsys.readouterr().err
+    assert "R9-9999" in err
+    assert not (run / "calibration.json").exists()
+
+
+def test_the_calibrate_write_path_refuses_a_verified_assumption_without_an_evidence_path_by_name(
+        tmp_path, capsys):
+    register = register_copy(tmp_path)
+    run = calibrate_refusal(tmp_path, register)
+    err = capsys.readouterr().err
+    assert "competitor-overhead-figures" in err
+    assert not (run / "calibration.json").exists()
+
+
+def test_calibrate_refuses_without_the_assembly_manifest_naming_it(tmp_path):
+    run = tmp_path / "dev-run"
+    run.mkdir()
+    calibration = write_calibration(tmp_path / "calibration-input.json",
+                                    readings(30.0))
+    with pytest.raises(dev_run.DevRunError) as excinfo:
+        dev_run.calibrate(calibration, run, register=register_copy(tmp_path))
+    message = str(excinfo.value)
+    assert "assemble" in message
+    assert "dev-manifest.json" in message
+
+
+def test_gate_a_consumes_the_closed_register_without_a_hand_edit(tmp_path):
+    run = assembled(tmp_path)
+    calibration = write_calibration(tmp_path / "calibration-input.json",
+                                    readings(30.0))
+    register = register_copy(tmp_path)
+    payload = json.loads(register.read_text(encoding="utf-8"))
+    for entry in payload["assumptions"]:
+        if entry["id"] == "competitor-overhead-figures":
+            entry["status"] = "verified"
+            entry["evidence"] = "dev-run/baselines.json"
+    register.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    assert dev_run.dev_run(["calibrate", str(calibration),
+                            "--run-dir", str(run),
+                            "--register", str(register)]) == 0
+    fixture = ROOT / "tests" / "fixtures" / "gate_a" / "go"
+
+    def read(name):
+        return json.loads((fixture / name).read_text(encoding="utf-8"))
+
+    record = gate_a.gate_a(read("dev-table.json"), read("labelled.json"),
+                           read("baselines.json"),
+                           json.loads(register.read_text(encoding="utf-8")))
+    assert record["decision"] == "go"

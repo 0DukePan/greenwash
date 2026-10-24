@@ -119,6 +119,12 @@ KNOWN_ASSUMPTIONS = ("labeling-time-per-case", "speed-slos",
 ASSUMPTION_FIELDS = ("id", "number", "status", "owner", "check")
 ASSUMPTION_STATUSES = ("open", "verified")
 
+#: A verified assumption carries its `evidence` field: the path of the
+#: artifact that measured it. A hand edit that marks an assumption verified
+#: without one is refused by name -- a gate may not depend on a verification
+#: nobody can trace to a measurement.
+ASSUMPTION_EVIDENCE = "evidence"
+
 DECIDING = {
     "stop-recall": "recall gap below the ten-point margin",
     "stop-abstention": "abstention above the 0.20 ceiling",
@@ -280,6 +286,14 @@ def _check_assumptions(assumptions) -> list:
         if row["status"] not in ASSUMPTION_STATUSES:
             _fail(f"{where}: status {row['status']!r} is not one of "
                   f"{ASSUMPTION_STATUSES}; refusing")
+        evidence = entry.get(ASSUMPTION_EVIDENCE)
+        if evidence is not None:
+            row[ASSUMPTION_EVIDENCE] = _string(evidence, ASSUMPTION_EVIDENCE,
+                                               where)
+        if row["status"] == "verified" and ASSUMPTION_EVIDENCE not in row:
+            _fail(f"{where}: status 'verified' without an evidence path; a "
+                  "verified assumption names the artifact that measured it "
+                  "(the 'evidence' field); refusing")
         rows.append(row)
     by_id = {row["id"]: row for row in rows}
     for known in KNOWN_ASSUMPTIONS:
