@@ -1,0 +1,62 @@
+[
+  {
+    "pr": "alpha#1",
+    "repository": "alpha",
+    "touched_tests": true,
+    "checker_flagged": true,
+    "human_judgment": null,
+    "merged_at": "2024-03-01T10:00:00Z",
+    "flagged_at": "2024-03-01T09:00:00Z",
+    "resolved_at": "2024-03-01T11:00:00Z",
+    "override": true,
+    "removal_or_optout": false
+  },
+  {
+    "pr": "alpha#2",
+    "repository": "alpha",
+    "touched_tests": true,
+    "checker_flagged": true,
+    "human_judgment": null,
+    "merged_at": "2024-03-02T10:00:00Z",
+    "flagged_at": "2024-03-02T09:00:00Z",
+    "resolved_at": "2024-03-02T13:00:00Z",
+    "override": false,
+    "removal_or_optout": false
+  },
+  {
+    "pr": "alpha#3",
+    "repository": "alpha",
+    "touched_tests": true,
+    "checker_flagged": true,
+    "human_judgment": null,
+    "merged_at": "2024-03-03T10:00:00Z",
+    "flagged_at": null,
+    "resolved_at": null,
+    "override": false,
+    "removal_or_optout": false
+  },
+  {
+    "pr": "alpha#4",
+    "repository": "alpha",
+    "touched_tests": true,
+    "checker_flagged": false,
+    "human_judgment": null,
+    "merged_at": "2024-03-04T10:00:00Z",
+    "flagged_at": null,
+    "resolved_at": null,
+    "override": false,
+    "removal_or_optout": false
+  },
+  {
+    "pr": "alpha#5",
+    "repository": "alpha",
+    "touched_tests": false,
+    "checker_flagged": false,
+    "human_judgment": null,
+    "merged_at": "2024-03-05T10:00:00Z",
+    "flagged_at": null,
+    "resolved_at": null,
+    "override": false,
+    "removal_or_optout": false
+  }
+]
