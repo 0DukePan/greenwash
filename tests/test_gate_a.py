@@ -165,6 +165,18 @@ def test_a_missing_field_is_a_refusal_naming_the_field():
     assert "cost" in str(excinfo.value)
 
 
+def test_a_verified_assumption_without_an_evidence_path_is_refused_by_name():
+    dev_table, labelled, baselines, assumptions = load("go")
+    for entry in assumptions["assumptions"]:
+        if entry["id"] == "labeling-time-per-case":
+            entry.pop("evidence", None)
+    with pytest.raises(gate_a.GateAError) as excinfo:
+        gate_a.gate_a(dev_table, labelled, baselines, assumptions)
+    message = str(excinfo.value)
+    assert "labeling-time-per-case" in message
+    assert "evidence" in message
+
+
 # -- the report and the machine summary -------------------------------------
 
 def test_report_prints_each_hypothesis_with_its_numbers_and_threshold():

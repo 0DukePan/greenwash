@@ -10,8 +10,8 @@ bare invocation prints the current state and the next required stage, so
 the sequence is never held in anyone's head; re-running the command resumes
 the run.
 
-This module builds the first stage and the state machinery around it. The
-`assemble` stage:
+This module builds the first two stages and the state machinery around
+them. The `assemble` stage:
 
 * reads candidate records from a directory -- miner and importer records
   interchangeably, one JSON case file each (case record v2);
@@ -32,6 +32,20 @@ This module builds the first stage and the state machinery around it. The
   the counts by route and class. The dev split is mutable by design: a
   rerun on changed inputs replaces the manifest and records the new hashes.
 
+The `calibrate` stage:
+
+* measures labeling time per case on a supplied calibration file (the
+  label workflow's calibration round measures it, one reading per case),
+  refusing a case id the dev manifest does not carry -- by name, never
+  averaged over;
+* writes its measurement artifact under the dev-run directory with the
+  hashes of its inputs: the calibration file and the dev manifest;
+* closes the labeling-time assumption in the assumptions register with
+  status `verified`, the measured number and the artifact path as its
+  evidence. The register loader in the Gate A path refuses an assumption
+  marked verified without an evidence path by name -- and so does the
+  calibrate write path, before anything is written.
+
 Fail closed, naming the field, everywhere: a missing field, a duplicate
 diff hash, an over-cap repository, a synthetic record, a record carrying
 labels and an out-of-order stage are refusals naming the cause.
@@ -39,6 +53,7 @@ labels and an out-of-order stage are refusals naming the cause.
 The seam (a library call plus this module's `main`):
 
     manifest = assemble(candidates_dir, run_dir)   # the stage itself
+    artifact = calibrate(calibration_file, run_dir)  # the stage itself
     state = stage_state(run_dir)                   # current and next stage
     exit_code = dev_run(argv)                      # the command
 
@@ -54,10 +69,15 @@ import json
 import sys
 from pathlib import Path
 
-from greenwash.corpus import (GATE_MAX_PER_REPOSITORY, NON_GATE_SOURCES,
-                              SYNTHETIC, source_category, validate_case,
-                              validate_cases)
-from greenwash.evidence import read_json
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+
+import gate_a  # noqa: E402
+from greenwash.corpus import (GATE_MAX_PER_REPOSITORY,  # noqa: E402
+                              NON_GATE_SOURCES, SYNTHETIC, source_category,
+                              validate_case, validate_cases)
+from greenwash.evidence import read_json  # noqa: E402
+from label_workflow import LabelError, calibration_round  # noqa: E402
 
 #: The ordered checkpoints. A stage runs only after its predecessors.
 STAGES = ("assemble", "calibrate", "label", "adjudicate", "twins",
@@ -79,6 +99,15 @@ ARTIFACTS = {
 
 DEV_MANIFEST = "dev-manifest.json"
 MANIFEST_VERSION = 1
+
+#: The assumptions register: the program's honest record of what has been
+#: measured and what is still assumed. The calibrate stage closes the
+#: labeling-time assumption in it -- status `verified`, the measured number
+#: and the artifact path as its evidence. The register loader in the Gate A
+#: path (benchmark/gate_a.py) refuses a verified assumption without one.
+DEFAULT_REGISTER = HERE / "assumptions.json"
+LABELING_TIME_ASSUMPTION = "labeling-time-per-case"
+CALIBRATION_VERSION = 1
 
 #: The dev minimum per class (the halved recommendation: sixty per class).
 #: A class under it is warned about, never silently accepted.
@@ -163,24 +192,28 @@ def dev_run(argv=None) -> int:
     parser.add_argument("stage", nargs="?",
                         help="the checkpoint to run (see the ordered stages)")
     parser.add_argument("candidates", nargs="?",
-                        help="the directory of candidate records (assemble)")
+                        help="the stage's input (assemble: the candidates "
+                             "directory; calibrate: the calibration file)")
     parser.add_argument("--run-dir", default="dev-run",
                         help="the dev-run directory (default: ./dev-run)")
+    parser.add_argument("--register", default=str(DEFAULT_REGISTER),
+                        help="the assumptions register (data file)")
     args = parser.parse_args(argv)
     if args.stage is None:
         print(render_state(stage_state(args.run_dir)))
         return EXIT_OK
     try:
         _check_order(args.stage, args.run_dir)
-        _run(args.stage, args.candidates, Path(args.run_dir))
+        _run(args.stage, args.candidates, Path(args.run_dir), args.register)
     except DevRunError as exc:
         print(str(exc), file=sys.stderr)
         return EXIT_REFUSED
     return EXIT_OK
 
 
-def _run(stage: str, candidates, run_dir: Path) -> None:
-    """One stage, after the ordering check. Only assemble is built so far."""
+def _run(stage: str, candidates, run_dir: Path,
+         register=DEFAULT_REGISTER) -> None:
+    """One stage, after the ordering check. Assemble and calibrate build."""
     if stage == "assemble":
         if not candidates:
             _fail("assemble: missing candidates directory; assemble reads "
@@ -188,8 +221,16 @@ def _run(stage: str, candidates, run_dir: Path) -> None:
         manifest = assemble(candidates, run_dir)
         _report(manifest, run_dir)
         return
+    if stage == "calibrate":
+        if not candidates:
+            _fail("calibrate: missing calibration file; the calibrate stage "
+                  "measures time per case on a supplied calibration file")
+        artifact = calibrate(candidates, run_dir, register=register)
+        _report_calibration(artifact, run_dir)
+        return
     _fail(f"refused stage {stage}: named in the ordered skeleton but not "
-          f"built; this dev run builds the assemble stage only")
+          f"built; this dev run builds the assemble and calibrate stages "
+          f"only")
 
 
 def _report(manifest: dict, run_dir: Path) -> None:
@@ -343,6 +384,111 @@ def _counts(records, field) -> dict:
         key = str(record.get(field) or "")
         counts[key] = counts.get(key, 0) + 1
     return dict(sorted(counts.items()))
+
+
+# -- the calibrate stage: measurement, then a closed assumption --------------
+
+def _check_register(data) -> None:
+    """The register loader's rule, applied at the calibrate write path.
+
+    The Gate A path owns the one register loader (the `_check_assumptions`
+    seam of `benchmark/gate_a.py`): it refuses an assumption marked
+    verified without an evidence path, by name. The calibrate write path
+    runs the same loader before it writes anything, so a register the
+    loader refuses is never written further and never closed over.
+    """
+    try:
+        gate_a._check_assumptions(data)
+    except gate_a.GateAError as exc:
+        message = str(exc)
+        _fail(message[len("gate-a: "):] if message.startswith("gate-a: ")
+              else message)
+
+
+def _read_register(register) -> dict:
+    """The assumptions register as data -- unreadable or refused, by name."""
+    try:
+        data = json.loads(Path(register).read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        _fail(f"assumptions register: cannot read {register}: {exc}; refusing")
+    _check_register(data)
+    return data
+
+
+def calibrate(calibration_file, run_dir, register=DEFAULT_REGISTER) -> dict:
+    """The calibrate stage: a calibration file in, a closed assumption out.
+
+    The calibration file carries one measured time per case -- the label
+    workflow's calibration round measures it -- and the measurement lands
+    twice: in the measurement artifact under the dev-run directory, with
+    the hashes of its inputs (the calibration file and the dev manifest),
+    and in the assumptions register, where labeling time becomes
+    `verified` with the measured number and the artifact path as its
+    evidence.
+
+    Every refusal is by name: a case id the dev manifest does not carry,
+    a stage run before assembly produced its manifest, and a register
+    holding an assumption marked verified without an evidence path (the
+    register loader refuses it in the Gate A path; the write path refuses
+    the same one the same way) all name their cause before anything is
+    written.
+    """
+    run_dir = Path(run_dir)
+    manifest_path = run_dir / DEV_MANIFEST
+    if not manifest_path.exists():
+        _fail(f"calibrate: out of order; its prerequisite assemble is not "
+              f"complete: {DEV_MANIFEST} is missing under {run_dir}; refusing")
+    try:
+        measurement = calibration_round(calibration_file)
+        payload, calibration_digest = read_json(calibration_file)
+        manifest, manifest_digest = read_json(manifest_path)
+    except Exception as exc:  # noqa: BLE001 - named, then refused
+        _fail(f"calibration: {exc}")
+    known = {str(record.get("id") or "")
+             for record in manifest.get("records", [])}
+    readings = payload.get("readings") if isinstance(payload, dict) else None
+    unknown = sorted({str(reading.get("case") or "").strip()
+                      for reading in readings or []} - known)
+    if unknown:
+        _fail("calibration: case id "
+              + ", ".join(repr(case_id) for case_id in unknown)
+              + " is not in the dev manifest; refusing")
+    data = _read_register(register)
+    seconds_per_case = measurement["seconds_per_case"]
+    artifact_path = run_dir / ARTIFACTS["calibrate"]
+    artifact = {
+        "measurement_version": CALIBRATION_VERSION,
+        "assumption": LABELING_TIME_ASSUMPTION,
+        "inputs": {
+            Path(calibration_file).name: calibration_digest.split(":", 1)[1],
+            DEV_MANIFEST: manifest_digest.split(":", 1)[1]},
+        "cases": measurement["cases"],
+        "total_seconds": measurement["total_seconds"],
+        "seconds_per_case": seconds_per_case,
+    }
+    run_dir.mkdir(parents=True, exist_ok=True)
+    artifact_path.write_text(
+        json.dumps(artifact, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8")
+    for entry in data["assumptions"]:
+        if entry.get("id") == LABELING_TIME_ASSUMPTION:
+            entry["status"] = "verified"
+            entry["number"] = f"{seconds_per_case:g} seconds per case"
+            entry[gate_a.ASSUMPTION_EVIDENCE] = str(artifact_path)
+            break
+    _check_register(data)
+    Path(register).write_text(json.dumps(data, indent=2) + "\n",
+                              encoding="utf-8")
+    return artifact
+
+
+def _report_calibration(artifact: dict, run_dir: Path) -> None:
+    """What ran: the measurement, and the assumption it closed."""
+    print(f"dev-run: calibrate: wrote {ARTIFACTS['calibrate']} "
+          f"({artifact['cases']} cases, "
+          f"{artifact['seconds_per_case']:g} seconds per case)")
+    print(f"dev-run: calibrate: closed {LABELING_TIME_ASSUMPTION} "
+          f"(verified, evidence {run_dir / ARTIFACTS['calibrate']})")
 
 
 def main(argv=None) -> int:

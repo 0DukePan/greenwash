@@ -5,21 +5,24 @@
       "number": "15 minutes per case",
       "status": "verified",
       "owner": "fixture-operator",
-      "check": "fixture register: verified in the calibration round"
+      "check": "fixture register: verified in the calibration round",
+      "evidence": "tests/fixtures/gate_a/stop-recall/calibration.json"
     },
     {
       "id": "speed-slos",
       "number": "static p95 milliseconds, replay overhead multiple, cold start",
       "status": "verified",
       "owner": "fixture-operator",
-      "check": "fixture register: verified on five repository sizes"
+      "check": "fixture register: verified on five repository sizes",
+      "evidence": "tests/fixtures/gate_a/stop-recall/stage-5-report.json"
     },
     {
       "id": "competitor-overhead-figures",
       "number": "the pinned competitor's overhead figures",
       "status": "verified",
       "owner": "fixture-operator",
-      "check": "fixture register: verified when the competitor was pinned"
+      "check": "fixture register: verified when the competitor was pinned",
+      "evidence": "tests/fixtures/gate_a/stop-recall/baselines.json"
     }
   ]
 }
