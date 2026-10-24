@@ -67,6 +67,30 @@ The cost of a report-only check at these sizes is Python startup plus one diff,
 not test execution. Replay mode adds the project's own test time; that was not
 measured here and is not claimed.
 
+## Join the trial
+
+The report-only beta trial runs on consented repositories only, and its
+tooling posts nothing anywhere. Three steps:
+
+1. **Consent.** You record a consent entry naming your repository, a contact,
+   the date, and the scope: history replay, report-only, no comments. Every
+   trial command reads that entry and refuses a repository whose consent is
+   not recorded.
+2. **The export.** You export your merged pull request list once (the metadata
+   your hosting API can produce as JSON) and keep a local clone containing
+   each pull request's merge base and head commits. The collector replays the
+   checker against those commits offline: no network calls, no repository code
+   runs, and no comments or check runs are created on your pull requests.
+3. **What you receive.** You receive the trial's report for your repository:
+   the friction measures with their denominators, the static overhead
+   measurement, and the checker version and configuration used. The report is
+   a local artifact; anything public stays inside the claim ledger's allowed
+   wording.
+
+Alerts are reviewed in a separate judgment file (one entry per reviewed alert,
+legitimate or illegitimate about the change). An alert you never review is
+never counted as unnecessary.
+
 ## What this beta does not do
 
 - It does not claim detection quality. The only licensed sentences are in the
