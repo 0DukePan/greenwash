@@ -1,0 +1,5 @@
+{
+  "repository": "alpha",
+  "measurement": "static scan (scan --json, no test execution), wall milliseconds",
+  "runs_ms": [402.0, 386.0, 394.0]
+}

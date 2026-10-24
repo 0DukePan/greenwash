@@ -1,0 +1,8 @@
+{
+  "version": "greenwash report-only beta (skill-only snapshot)",
+  "configuration": {
+    "mode": "report-only",
+    "run_tests": false,
+    "strict": false
+  }
+}
