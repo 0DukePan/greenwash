@@ -1,0 +1,14 @@
+[
+  {
+    "pr": "alpha#1",
+    "judgment": "legitimate",
+    "reviewer": "dana",
+    "date": "2024-03-05"
+  },
+  {
+    "pr": "alpha#2",
+    "judgment": "illegitimate",
+    "reviewer": "kai",
+    "date": "2024-03-06"
+  }
+]
