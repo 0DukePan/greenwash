@@ -436,6 +436,43 @@ One trap worth knowing: a gateway with a zero balance rejects every model with
 `402 reject_no_credit`, which looks like "no model available" and is actually
 "no credit".
 
+## Evidence and validation
+
+The repository carries the machinery that decides whether a public claim may be
+made, not just the detector. Everything below is offline and reproducible from
+pinned artifacts.
+
+- **The claim matrix** ([docs/claim-matrix.md](docs/claim-matrix.md)) lists every
+  public claim with its source type -- unit test, maintainer-authored,
+  independent, frozen or beta -- its limitation, and the strongest wording the
+  evidence licenses. The numbers above are maintainer-authored and preliminary;
+  the matrix says exactly what they may and may not support.
+- **The launch benchmark** decides LAUNCH, NARROW or REFUSED from a
+  pre-registered frozen corpus: strict recall and twin false alarms on
+  repository-clustered intervals, abstention, determinism, integrity,
+  reproducibility, claim-ledger coverage, a sample floor and label quality.
+  Today's status is `UNMEASURED`: the gate refuses to decide until a corpus this
+  project did not author exists. See
+  [docs/specs/launch-benchmark.md](docs/specs/launch-benchmark.md).
+- **The validation program** ([docs/specs/validation-program.md](docs/specs/validation-program.md))
+  defines the five stages and three gates. Its tooling is merged: history miners
+  and importers for real cases, the v2 case record with gate admission, the
+  blind labeling workflow with adjudication and agreement statistics, twin
+  matching, hard-case cards, the Gate A report, a shadow-replay friction harness
+  and a usability kit.
+- **Phase 1 hardening** ([docs/phase1-report.md](docs/phase1-report.md)) closed
+  the fail-safe paths: a timeout, a missing dependency, unparseable output, an
+  empty diff, missing original tests and an internal failure yield INCONCLUSIVE
+  or an explicit error, never a passing verdict. Missing original tests used to
+  read as VERIFIED; that is fixed and tested.
+- **The report-only beta** ([docs/beta.md](docs/beta.md),
+  [demo/twin-pair](demo/twin-pair/README.md)) is the smallest way to try it: an
+  offline workflow that never fails a job, plus a twin pair with captured output
+  where one assertion removed is flagged and one assertion added is clean.
+- **Trust boundaries and open risks** are in
+  [docs/threat-model.md](docs/threat-model.md), with the audit in
+  [docs/audit.md](docs/audit.md).
+
 ## Install
 
 | Where | How |
@@ -646,8 +683,9 @@ becomes a test -- that is the policy, not a promise.
 | `greenwash/strict.py`, `waivers.py` | the strict gate and the auditable decisions it honours |
 | `greenwash/cli.py`, `doctor.py`, `config.py` | the entry point, diagnostics, `.greenwash/config.json` |
 | `codex/` | the Codex plugin: strict by default, manifests in both spellings, its own hook |
-| `docs/` | [confidence.md](docs/confidence.md), [false-positives.md](docs/false-positives.md), [ADOPTION_GUIDE.md](docs/ADOPTION_GUIDE.md), [WAIVER_POLICY.md](docs/WAIVER_POLICY.md), the benchmark one-pager and the launch material |
-| `benchmark/` | 28 tasks across six languages (each with its own runner), harness, detection measurement, FP survey, Wilson-CI report |
+| `docs/` | [confidence.md](docs/confidence.md), [false-positives.md](docs/false-positives.md), [claim-matrix.md](docs/claim-matrix.md), [audit.md](docs/audit.md), [phase1-report.md](docs/phase1-report.md), [threat-model.md](docs/threat-model.md), [beta.md](docs/beta.md), the benchmark one-pager and the launch material |
+| `docs/specs/` | the evidence-verdicts, launch-benchmark, validation-program and dev-corpus-run specifications |
+| `benchmark/` | 28 tasks across six languages (each with its own runner), harness, detection measurement, FP survey, Wilson-CI report, the evaluation runner, the launch command and criteria engine, the corpus kit, miners, importers, the label workflow, twin matching and hard-case cards, Gate A, the friction harness and the usability kit |
 | `benchmark/polyglot/` | 15 static cases across Go, Rust, Ruby, Java and JavaScript -- one negative per language |
 | `npm/` | the `npx greenwash` shim, which runs the Python implementation rather than reimplementing it |
 | `skills/`, `hooks/`, `adapters/` | the skill the agent reads, the Claude Stop hook, and the generated rule files for other hosts |
