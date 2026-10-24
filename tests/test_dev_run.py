@@ -1,8 +1,9 @@
-"""The dev-run command: the assemble stage and the checkpoint state.
+"""The dev-run command: the assemble and calibrate stages, the checkpoint
+state, and the labeling and adjudication checkpoints.
 
 One seam, `benchmark/dev_run.py`, driven at its public command. The
-acceptance criteria of .scratch/dev-corpus-run/issues/01, each one literal
-here:
+acceptance criteria of .scratch/dev-corpus-run/issues/01 and 03, each one
+literal here:
 
 * assembling a fixture candidate set yields a manifest, counts by route and
   class, and no adjudicated record;
@@ -11,11 +12,17 @@ here:
 * re-running assemble on changed inputs replaces the manifest and records
   the new input hashes;
 * a bare invocation names the next stage; an out-of-order stage is refused
-  by name.
+  by name;
+* blind packets are generated only after the calibration artifact exists,
+  and carry no detector output or other labeler's answer;
+* a label file naming a case outside the split is refused by name;
+* adjudication is recorded once; a second record for a case is refused;
+* the L9 output is refused while unadjudicated cases remain, and names them.
 
 The candidate fixtures are miner- and importer-shaped unadjudicated records
 (case record v2): route, base and head refs, diff hash, a taxonomy
-technique, and no `labels` block.
+technique, and no `labels` block. Every labeler name below starts with
+`fixture-`: these votes are invented fixtures, never real people.
 """
 
 import hashlib
@@ -225,18 +232,18 @@ def test_a_record_carrying_labels_or_adjudication_is_refused_by_name(
     assert "R1-0001.json" in err
 
 
-def test_in_order_stage_beyond_calibrate_is_the_skeleton_refused_by_name(
+def test_in_order_stage_beyond_adjudicate_is_the_skeleton_refused_by_name(
         tmp_path, capsys):
-    run = assembled(tmp_path)
-    calibration = write_calibration(tmp_path / "calibration-input.json",
-                                    readings(30.0))
-    assert dev_run.dev_run(["calibrate", str(calibration),
-                            "--run-dir", str(run),
-                            "--register", str(register_copy(tmp_path))]) == 0
+    run = labelled(tmp_path)
+    supplied = write_supplied(tmp_path, first_labeler_entries(),
+                              second_labeler_entries(),
+                              adjudications_for(CASE_IDS))
+    assert dev_run.dev_run(["adjudicate", str(supplied),
+                            "--run-dir", str(run)]) == 0
     capsys.readouterr()
-    assert dev_run.dev_run(["label", "--run-dir", str(run)]) == 2
+    assert dev_run.dev_run(["twins", "--run-dir", str(run)]) == 2
     err = capsys.readouterr().err
-    assert "label" in err
+    assert "twins" in err
     assert "not built" in err
 
 
@@ -432,3 +439,279 @@ def test_gate_a_consumes_the_closed_register_without_a_hand_edit(tmp_path):
                            read("baselines.json"),
                            json.loads(register.read_text(encoding="utf-8")))
     assert record["decision"] == "go"
+
+
+# -- the label stage: blind packets, only after calibration ------------------
+
+def labelled(tmp_path):
+    """A run assembled, calibrated and labelled through the command itself."""
+    run = assembled(tmp_path)
+    calibration = write_calibration(tmp_path / "calibration-input.json",
+                                    readings(30.0))
+    assert dev_run.dev_run(["calibrate", str(calibration),
+                            "--run-dir", str(run),
+                            "--register", str(register_copy(tmp_path))]) == 0
+    assert dev_run.dev_run(["label", "--run-dir", str(run)]) == 0
+    return run
+
+
+def first_labeler_entries():
+    """Every case voted by case id -- the operator's collated label file."""
+    return [{"case": case_id, "label": "tampered",
+             "reason": f"fixture: the assertion cannot fail for {case_id}"}
+            for case_id in CASE_IDS]
+
+
+def second_labeler_entries(disagree=()):
+    """Votes by blind packet id; the `disagree` cases are voted clean."""
+    entries = []
+    for index, case_id in enumerate(CASE_IDS, start=1):
+        label = "clean" if case_id in disagree else "tampered"
+        entries.append({"packet": f"P{index}", "label": label,
+                        "reason": f"fixture: the pinned evidence for "
+                                  f"{case_id} says {label}"})
+    return entries
+
+
+def adjudications_for(case_ids, label="tampered"):
+    return [{"case": case_id, "label": label,
+             "reason": f"fixture adjudication for {case_id}"}
+            for case_id in case_ids]
+
+
+def write_supplied(tmp_path, first, second, records, name="supplied"):
+    """The human files the adjudicate stage reads: two label files and the
+    adjudication records, one directory."""
+    root = tmp_path / name
+    root.mkdir(parents=True, exist_ok=True)
+    for file_name, labeler, entries in (
+            ("labeler-one.json", "fixture-labeler-one", first),
+            ("labeler-two.json", "fixture-labeler-two", second)):
+        (root / file_name).write_text(
+            json.dumps({"labeler": labeler, "entries": entries}, indent=2)
+            + "\n", encoding="utf-8")
+    (root / "adjudications.json").write_text(
+        json.dumps(records, indent=2) + "\n", encoding="utf-8")
+    return root
+
+
+def test_label_before_the_calibration_artifact_is_a_refusal_naming_it(
+        tmp_path, capsys):
+    run = assembled(tmp_path)
+    assert dev_run.dev_run(["label", "--run-dir", str(run)]) == 2
+    err = capsys.readouterr().err
+    assert "label" in err
+    assert "calibrate" in err
+    assert not (run / "labels.json").exists()
+
+
+def test_label_refuses_without_the_calibration_artifact_naming_it(tmp_path):
+    run = assembled(tmp_path)
+    with pytest.raises(dev_run.DevRunError) as excinfo:
+        dev_run.label(run)
+    message = str(excinfo.value)
+    assert "calibration.json" in message
+    assert not (run / "labels.json").exists()
+
+
+def test_label_generates_blind_packets_with_no_detector_output_or_answer(
+        tmp_path, capsys):
+    records = [candidate(case_id, repository=f"example/repo-{index // 5}",
+                         detector_output={"verdict": "tampered",
+                                          "confidence": 0.97},
+                         verdict="tampered",
+                         twin_id=f"twin-of-{case_id}")
+               for index, case_id in enumerate(CASE_IDS)]
+    candidates = write_candidates(tmp_path / "candidates", records)
+    run = tmp_path / "dev-run"
+    assert dev_run.dev_run(["assemble", str(candidates),
+                            "--run-dir", str(run)]) == 0
+    calibration = write_calibration(tmp_path / "calibration-input.json",
+                                    readings(30.0))
+    assert dev_run.dev_run(["calibrate", str(calibration),
+                            "--run-dir", str(run),
+                            "--register", str(register_copy(tmp_path))]) == 0
+    assert dev_run.dev_run(["label", "--run-dir", str(run)]) == 0
+    artifact = json.loads((run / "labels.json").read_text(encoding="utf-8"))
+    assert artifact["label_version"] == 1
+    assert artifact["inputs"] == {
+        "dev-manifest.json": sha256_of(run / "dev-manifest.json"),
+        "calibration.json": sha256_of(run / "calibration.json")}
+    allowed = {"packet", "base_ref", "head_ref", "diff_hash", "diff_path",
+               "files", "replay"}
+    for packet in artifact["packets"]:
+        assert set(packet) <= allowed
+    hidden = json.dumps(artifact["packets"])
+    for leaked in ("detector_output", "verdict", "tampered", "clean",
+                   "labeler1", "labeler2", "technique", "twin", "R1-"):
+        assert leaked not in hidden
+    # the reveal stays with the orchestrator, in the key
+    assert artifact["key"]["P2"]["id"] == "R1-0002"
+    assert artifact["key"]["P2"]["detector_output"]["confidence"] == 0.97
+
+
+def test_label_stops_at_the_checkpoint_and_waits_for_two_label_files(
+        tmp_path, capsys):
+    labelled(tmp_path)
+    out = capsys.readouterr().out
+    assert "labels.json" in out
+    assert "two label files" in out
+    assert "adjudicate" in out
+
+
+# -- the adjudicate stage: the split check, one record per case, the L9 result
+
+@pytest.mark.parametrize("field", ["case", "packet"])
+def test_a_label_file_naming_a_case_outside_the_split_is_refused_by_name(
+        tmp_path, capsys, field):
+    run = labelled(tmp_path)
+    first = first_labeler_entries()
+    stale = {"label": "clean", "reason": "fixture: a stale file's vote"}
+    stale[field] = "R9-9999"
+    second = [stale] + second_labeler_entries()[1:]
+    supplied = write_supplied(tmp_path, first, second,
+                              adjudications_for(CASE_IDS))
+    assert dev_run.dev_run(["adjudicate", str(supplied),
+                            "--run-dir", str(run)]) == 2
+    err = capsys.readouterr().err
+    assert "R9-9999" in err
+    assert "not in the dev manifest" in err
+    assert not (run / "adjudication.json").exists()
+    assert not (run / "adjudications.json").exists()
+
+
+def test_an_adjudication_record_for_a_case_outside_the_split_is_refused_by_name(
+        tmp_path, capsys):
+    run = labelled(tmp_path)
+    records = adjudications_for(CASE_IDS) + [
+        {"case": "R9-9999", "label": "clean", "reason": "fixture: stale"}]
+    supplied = write_supplied(tmp_path, first_labeler_entries(),
+                              second_labeler_entries(), records)
+    assert dev_run.dev_run(["adjudicate", str(supplied),
+                            "--run-dir", str(run)]) == 2
+    err = capsys.readouterr().err
+    assert "R9-9999" in err
+    assert "not in the dev manifest" in err
+    assert not (run / "adjudications.json").exists()
+
+
+def test_adjudication_is_recorded_once_and_a_second_record_for_a_case_is_refused(
+        tmp_path, capsys):
+    run = labelled(tmp_path)
+    first = first_labeler_entries()
+    second = second_labeler_entries(disagree=set(CASE_IDS[15:20]))
+    batch1 = adjudications_for(CASE_IDS[:-1])
+    supplied = write_supplied(tmp_path, first, second, batch1)
+    # the L9 output is refused while the last case lacks adjudication ...
+    assert dev_run.dev_run(["adjudicate", str(supplied),
+                            "--run-dir", str(run)]) == 2
+    capsys.readouterr()
+    store = json.loads((run / "adjudications.json").read_text(
+        encoding="utf-8"))
+    assert set(store) == set(CASE_IDS[:-1])
+    # ... and a second record for an adjudicated case is refused by name
+    batch2 = [{"case": CASE_IDS[0], "label": "clean",
+               "reason": "changed my mind"}]
+    batch2 += adjudications_for([CASE_IDS[-1]])
+    second_run = write_supplied(tmp_path, first, second, batch2,
+                                name="supplied-again")
+    assert dev_run.dev_run(["adjudicate", str(second_run),
+                            "--run-dir", str(run)]) == 2
+    err = capsys.readouterr().err
+    assert CASE_IDS[0] in err
+    assert "adjudicated" in err
+    # the first decision stands, untouched, and the last case stays out
+    store = json.loads((run / "adjudications.json").read_text(
+        encoding="utf-8"))
+    assert store[CASE_IDS[0]]["label"] == "tampered"
+    assert CASE_IDS[-1] not in store
+
+
+def test_the_l9_output_is_refused_while_a_case_lacks_adjudication_naming_it(
+        tmp_path, capsys):
+    run = labelled(tmp_path)
+    gap = CASE_IDS[7]
+    records = adjudications_for([case_id for case_id in CASE_IDS
+                                 if case_id != gap])
+    supplied = write_supplied(tmp_path, first_labeler_entries(),
+                              second_labeler_entries(), records)
+    assert dev_run.dev_run(["adjudicate", str(supplied),
+                            "--run-dir", str(run)]) == 2
+    err = capsys.readouterr().err
+    assert gap in err
+    assert "adjudication" in err
+    assert not (run / "adjudication.json").exists()
+
+
+def test_the_adjudicate_stage_writes_the_l9_result_for_the_criteria_engine(
+        tmp_path, capsys):
+    run = labelled(tmp_path)
+    first = first_labeler_entries()
+    second = second_labeler_entries(disagree=set(CASE_IDS[15:20]))
+    supplied = write_supplied(tmp_path, first, second,
+                              adjudications_for(CASE_IDS))
+    assert dev_run.dev_run(["adjudicate", str(supplied),
+                            "--run-dir", str(run)]) == 0
+    artifact = json.loads((run / "adjudication.json").read_text(
+        encoding="utf-8"))
+    assert artifact["adjudication_version"] == 1
+    assert artifact["inputs"] == {
+        "dev-manifest.json": sha256_of(run / "dev-manifest.json"),
+        "labels.json": sha256_of(run / "labels.json"),
+        "labeler-one.json": sha256_of(supplied / "labeler-one.json"),
+        "labeler-two.json": sha256_of(supplied / "labeler-two.json"),
+        "adjudications.json": sha256_of(supplied / "adjudications.json")}
+    # 15 of 20 paired votes agree: raw agreement 0.75, PABAK 0.5, and with
+    # labeler one voting tampered throughout, chance agreement is 0.75, so
+    # kappa is 0 -- the shape the launch criteria engine reads, literal.
+    assert artifact["labels"] == {"double_labeled_cases": 20,
+                                  "pabak": 0.5, "kappa": 0.0,
+                                  "raw_agreement": 0.75}
+    assert set(artifact["adjudications"]) == set(CASE_IDS)
+    assert len(artifact["disagreements"]) == 5
+    for row in artifact["disagreements"]:
+        assert row["labeler1"]["reason"]
+        assert row["labeler2"]["reason"]
+
+
+# -- the evaluate stage: refused while any case lacks adjudication -----------
+
+def placeholder_stages(run, stages):
+    """Stand in for the stages later tickets build (twins, baselines): their
+    artifacts exist so the ordering check reaches the evaluate guard. This
+    ticket reads neither artifact."""
+    for stage in stages:
+        (run / dev_run.ARTIFACTS[stage]).write_text("{}\n", encoding="utf-8")
+
+
+def test_the_evaluate_stage_refuses_while_a_case_lacks_an_adjudicated_label_naming_the_cases(
+        tmp_path, capsys):
+    run = labelled(tmp_path)
+    gap = CASE_IDS[7]
+    records = adjudications_for([case_id for case_id in CASE_IDS
+                                 if case_id != gap])
+    supplied = write_supplied(tmp_path, first_labeler_entries(),
+                              second_labeler_entries(), records)
+    assert dev_run.dev_run(["adjudicate", str(supplied),
+                            "--run-dir", str(run)]) == 2
+    capsys.readouterr()
+    assert dev_run.dev_run(["evaluate", "--run-dir", str(run)]) == 2
+    err = capsys.readouterr().err
+    assert "evaluate" in err
+    assert gap in err
+    assert "adjudicated" in err
+
+
+def test_the_evaluate_stage_is_reached_once_every_case_is_adjudicated(
+        tmp_path, capsys):
+    run = labelled(tmp_path)
+    supplied = write_supplied(tmp_path, first_labeler_entries(),
+                              second_labeler_entries(),
+                              adjudications_for(CASE_IDS))
+    assert dev_run.dev_run(["adjudicate", str(supplied),
+                            "--run-dir", str(run)]) == 0
+    capsys.readouterr()
+    placeholder_stages(run, ["twins", "baselines"])
+    assert dev_run.dev_run(["evaluate", "--run-dir", str(run)]) == 2
+    err = capsys.readouterr().err
+    assert "not built" in err

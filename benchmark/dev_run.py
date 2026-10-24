@@ -10,8 +10,8 @@ bare invocation prints the current state and the next required stage, so
 the sequence is never held in anyone's head; re-running the command resumes
 the run.
 
-This module builds the first two stages and the state machinery around
-them. The `assemble` stage:
+This module builds the assemble, calibrate, label and adjudicate stages and
+the state machinery around them. The `assemble` stage:
 
 * reads candidate records from a directory -- miner and importer records
   interchangeably, one JSON case file each (case record v2);
@@ -46,6 +46,24 @@ The `calibrate` stage:
   marked verified without an evidence path by name -- and so does the
   calibrate write path, before anything is written.
 
+The `label` and `adjudicate` stages are the human checkpoints (the
+pipeline stops and waits; automation never pretends to label):
+
+* `label` generates the blind packets through the label workflow's
+  `blind_packets` -- only after the calibration artifact exists, so the
+  guide is fixed before the expensive work -- and writes them with the
+  orchestrator's key and the hashes of its inputs. A packet carries only
+  the evidence a labeler judges: no detector output, no gold field and no
+  other labeler's answer can leak into it.
+* `adjudicate` reads the supplied human files -- exactly two label files
+  and the adjudication records -- validates every case id they name
+  against the dev manifest (outside the split is refused by name), records
+  each adjudication exactly once (a second record for a case is refused,
+  with no overwrite path), and writes the L9 result in the shape the
+  launch criteria engine reads, with the hashes of its inputs. The L9
+  output is refused while any case lacks an adjudicated label, naming the
+  cases, and the evaluate stage refuses the same way.
+
 Fail closed, naming the field, everywhere: a missing field, a duplicate
 diff hash, an over-cap repository, a synthetic record, a record carrying
 labels and an out-of-order stage are refusals naming the cause.
@@ -54,6 +72,8 @@ The seam (a library call plus this module's `main`):
 
     manifest = assemble(candidates_dir, run_dir)   # the stage itself
     artifact = calibrate(calibration_file, run_dir)  # the stage itself
+    packets = label(run_dir)                       # the blind packets
+    result = adjudicate(supplied_dir, run_dir)      # labels in, L9 out
     state = stage_state(run_dir)                   # current and next stage
     exit_code = dev_run(argv)                      # the command
 
@@ -65,8 +85,10 @@ five-per-repository cap come from `greenwash.corpus`.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
+import tempfile
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -77,7 +99,9 @@ from greenwash.corpus import (GATE_MAX_PER_REPOSITORY,  # noqa: E402
                               NON_GATE_SOURCES, SYNTHETIC, source_category,
                               validate_case, validate_cases)
 from greenwash.evidence import read_json  # noqa: E402
-from label_workflow import LabelError, calibration_round  # noqa: E402
+from label_workflow import (LabelError, blind_packets,  # noqa: E402
+                            calibration_round, ingest_labels, l9_result,
+                            read_adjudications, record_adjudication)
 
 #: The ordered checkpoints. A stage runs only after its predecessors.
 STAGES = ("assemble", "calibrate", "label", "adjudicate", "twins",
@@ -99,6 +123,13 @@ ARTIFACTS = {
 
 DEV_MANIFEST = "dev-manifest.json"
 MANIFEST_VERSION = 1
+
+#: The adjudication store: one decision per case, recorded once (the label
+#: workflow's `record_adjudication` owns the once-only rule and its refusal).
+#: It is run state, not the stage artifact -- `adjudication.json` is.
+ADJUDICATIONS = "adjudications.json"
+LABEL_VERSION = 1
+ADJUDICATION_VERSION = 1
 
 #: The assumptions register: the program's honest record of what has been
 #: measured and what is still assumed. The calibrate stage closes the
@@ -193,7 +224,8 @@ def dev_run(argv=None) -> int:
                         help="the checkpoint to run (see the ordered stages)")
     parser.add_argument("candidates", nargs="?",
                         help="the stage's input (assemble: the candidates "
-                             "directory; calibrate: the calibration file)")
+                             "directory; calibrate: the calibration file; "
+                             "adjudicate: the supplied files directory)")
     parser.add_argument("--run-dir", default="dev-run",
                         help="the dev-run directory (default: ./dev-run)")
     parser.add_argument("--register", default=str(DEFAULT_REGISTER),
@@ -203,6 +235,15 @@ def dev_run(argv=None) -> int:
         print(render_state(stage_state(args.run_dir)))
         return EXIT_OK
     try:
+        if args.stage == "evaluate":
+            # The adjudication checkpoint refuses the evaluate stage first:
+            # labels can never be defaulted into an evaluation, and the
+            # refusal names exactly the cases that would have been.
+            missing = unadjudicated_cases(args.run_dir)
+            if missing:
+                _fail("evaluate: " + ", ".join(missing) + ": lack an "
+                      "adjudicated label; the evaluate stage refuses while "
+                      "any case lacks an adjudicated label, naming the cases")
         _check_order(args.stage, args.run_dir)
         _run(args.stage, args.candidates, Path(args.run_dir), args.register)
     except DevRunError as exc:
@@ -213,7 +254,8 @@ def dev_run(argv=None) -> int:
 
 def _run(stage: str, candidates, run_dir: Path,
          register=DEFAULT_REGISTER) -> None:
-    """One stage, after the ordering check. Assemble and calibrate build."""
+    """One stage, after the ordering check. Assemble, calibrate, label and
+    adjudicate build."""
     if stage == "assemble":
         if not candidates:
             _fail("assemble: missing candidates directory; assemble reads "
@@ -228,9 +270,25 @@ def _run(stage: str, candidates, run_dir: Path,
         artifact = calibrate(candidates, run_dir, register=register)
         _report_calibration(artifact, run_dir)
         return
+    if stage == "label":
+        if candidates:
+            _fail(f"label: unexpected input {candidates!r}; the label stage "
+                  f"generates its blind packets from the run directory's "
+                  f"{DEV_MANIFEST} and {ARTIFACTS['calibrate']}")
+        artifact = label(run_dir)
+        _report_label(artifact, run_dir)
+        return
+    if stage == "adjudicate":
+        if not candidates:
+            _fail("adjudicate: missing supplied files directory; the "
+                  "adjudicate stage reads two label files and the "
+                  f"{ADJUDICATIONS} records from a directory")
+        artifact = adjudicate(candidates, run_dir)
+        _report_adjudication(artifact, run_dir)
+        return
     _fail(f"refused stage {stage}: named in the ordered skeleton but not "
-          f"built; this dev run builds the assemble and calibrate stages "
-          f"only")
+          f"built; this dev run builds the assemble, calibrate, label and "
+          f"adjudicate stages only")
 
 
 def _report(manifest: dict, run_dir: Path) -> None:
@@ -489,6 +547,290 @@ def _report_calibration(artifact: dict, run_dir: Path) -> None:
           f"{artifact['seconds_per_case']:g} seconds per case)")
     print(f"dev-run: calibrate: closed {LABELING_TIME_ASSUMPTION} "
           f"(verified, evidence {run_dir / ARTIFACTS['calibrate']})")
+
+
+# -- the label stage: blind packets, then the wait for human files ------------
+
+def label(run_dir) -> dict:
+    """The label stage: the dev split in, blind packets out.
+
+    Packets are generated only when the calibration artifact exists -- the
+    guide is fixed before the expensive work -- and only from the assembled
+    records. The packets are the label workflow's `blind_packets` output:
+    the evidence a labeler judges and nothing else, so no detector output,
+    no gold field and no other labeler's answer can leak into one however a
+    record spells it. The reveal stays with the orchestrator, in the key
+    written beside the packets, and the artifact carries the hashes of the
+    inputs it consumed: the dev manifest and the calibration artifact.
+    """
+    run_dir = Path(run_dir)
+    manifest_path = run_dir / DEV_MANIFEST
+    calibration_path = run_dir / ARTIFACTS["calibrate"]
+    if not manifest_path.exists():
+        _fail(f"label: out of order; its prerequisite assemble is not "
+              f"complete: {DEV_MANIFEST} is missing under {run_dir}; refusing")
+    if not calibration_path.exists():
+        _fail(f"label: the calibration artifact {ARTIFACTS['calibrate']} is "
+              f"missing under {run_dir}; blind packets are generated only "
+              f"after calibration has closed; refusing")
+    try:
+        manifest, manifest_digest = read_json(manifest_path)
+        _payload, calibration_digest = read_json(calibration_path)
+        packets, key = blind_packets(manifest.get("records", []))
+    except Exception as exc:  # noqa: BLE001 - named, then refused
+        _fail(f"label: {exc}")
+    artifact = {
+        "label_version": LABEL_VERSION,
+        "inputs": {
+            DEV_MANIFEST: manifest_digest.split(":", 1)[1],
+            ARTIFACTS["calibrate"]: calibration_digest.split(":", 1)[1]},
+        "packets": packets,
+        "key": key,
+    }
+    run_dir.mkdir(parents=True, exist_ok=True)
+    (run_dir / ARTIFACTS["label"]).write_text(
+        json.dumps(artifact, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8")
+    return artifact
+
+
+def _report_label(artifact: dict, run_dir: Path) -> None:
+    """What ran: the packets written, and the human work the run waits for."""
+    print(f"dev-run: label: wrote {ARTIFACTS['label']} "
+          f"({len(artifact['packets'])} blind packets)")
+    print(f"dev-run: label: waiting for two label files; supply them with "
+          f"the {ADJUDICATIONS} records to the adjudicate stage")
+
+
+# -- the adjudicate stage: the split check, one record per case, the L9 result
+
+def _read_supplied_file(path):
+    """One supplied file as data -- object or list -- hashed as input.
+
+    `greenwash.evidence.read_json` reads the artifacts this pipeline writes
+    (one JSON object each); the adjudication records are a list, so the
+    supplied files use the same reading and hashing rules without the
+    object-only rule.
+    """
+    source = Path(path)
+    try:
+        raw = source.read_bytes()
+    except OSError as exc:
+        _fail(f"supplied: could not read {source}: {exc}")
+    try:
+        payload = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, ValueError) as exc:
+        _fail(f"supplied: {source} is not UTF-8 JSON: {exc}")
+    return payload, "sha256:" + hashlib.sha256(raw).hexdigest()
+
+
+def _read_supplied(supplied_dir) -> tuple:
+    """The human files the adjudicate stage consumes, each hashed as input.
+
+    The directory holds exactly two label files (a labeler and its `entries`
+    votes) and the adjudication records (`adjudications.json`, one record of
+    case, label and reason per decision). Anything else is refused by name:
+    a supplied file nobody can read is never guessed at.
+    """
+    root = Path(supplied_dir)
+    if not root.is_dir():
+        _fail(f"adjudicate: {root} is not a directory of supplied label "
+              f"files and {ADJUDICATIONS} records")
+    label_files: list = []
+    records_path = None
+    others: list = []
+    digests: dict = {}
+    for path in sorted(root.glob("*.json")):
+        payload, digest = _read_supplied_file(path)
+        digests[path.name] = digest.split(":", 1)[1]
+        if path.name == ADJUDICATIONS:
+            records_path = (path, payload)
+        elif isinstance(payload, dict) and payload.get("entries") is not None:
+            label_files.append((path.name, payload))
+        else:
+            others.append(path.name)
+    if others:
+        _fail("supplied: " + ", ".join(repr(name) for name in others)
+              + ": is neither a label file (labeler and entries) nor "
+              f"{ADJUDICATIONS}; refusing")
+    if records_path is None:
+        _fail(f"supplied: {ADJUDICATIONS} is missing; the adjudicate stage "
+              f"records the adjudicator's decisions from it")
+    if len(label_files) != 2:
+        names = ", ".join(name for name, _payload in label_files) or "none"
+        _fail(f"supplied: {len(label_files)} label files ({names}); the "
+              f"adjudicate stage waits for exactly two label files")
+    return label_files, records_path, digests
+
+
+def _resolve_vote(where: str, entry, key, packets_for, known) -> tuple:
+    """One vote's target -- its blind packet id or its case id -- resolved.
+
+    A vote names its packet (what the labeler saw) or its case (the
+    operator's collated form); either way the case behind it must be in the
+    dev manifest. A case id outside the split is refused by name, so a
+    stale file cannot contaminate a run.
+    """
+    named = [str(entry.get(field) or "").strip()
+             for field in ("packet", "case")]
+    target = next((value for value in named if value), "")
+    if not target:
+        _fail(f"{where}: packet: missing; a vote names its packet or case")
+    if target in key:
+        packet, case_id = target, str((key.get(target) or {}).get("id") or "")
+    elif target in packets_for:
+        case_id, packet = target, packets_for[target]
+    elif target in known:
+        _fail(f"{where}: case id {target!r} has no blind packet in "
+              f"{ARTIFACTS['label']}; rerun the label stage on the current "
+              f"split; refusing")
+    else:
+        _fail(f"{where}: case id {target!r} is not in the dev manifest; "
+              f"refusing")
+    if case_id not in known:
+        _fail(f"{where}: case id {case_id!r} is not in the dev manifest; "
+              f"refusing")
+    other = next((value for value in named if value and value not in
+                  (target, case_id, packet)), None)
+    if other is not None:
+        _fail(f"{where}: case id {other!r} is not the case for {target!r}; "
+              f"refusing a stale or mismatched label file")
+    return packet
+
+
+def adjudicate(supplied_dir, run_dir) -> dict:
+    """The adjudicate stage: two label files and the decisions in, L9 out.
+
+    Every case id the supplied files name is validated against the dev
+    manifest first -- outside the split is refused by name, before anything
+    is written. Each adjudication is then recorded exactly once through the
+    label workflow's `record_adjudication`: a second record for a case is
+    refused naming the case, with no overwrite path. The two label files are
+    ingested as the double-labeled round (both labelers cover every packet;
+    votes name their blind packet or their case), and the L9 result is
+    refused -- naming the cases -- while any case lacks an adjudicated
+    label. When the round is complete the artifact lands with the hashes of
+    its inputs, the disagreements with both reasons, and the L9 result in
+    the shape the launch criteria engine reads.
+    """
+    run_dir = Path(run_dir)
+    manifest_path = run_dir / DEV_MANIFEST
+    labels_path = run_dir / ARTIFACTS["label"]
+    if not manifest_path.exists():
+        _fail(f"adjudicate: out of order; its prerequisite assemble is not "
+              f"complete: {DEV_MANIFEST} is missing under {run_dir}; refusing")
+    if not labels_path.exists():
+        _fail(f"adjudicate: out of order; its prerequisite label is not "
+              f"complete: {ARTIFACTS['label']} is missing under {run_dir}; "
+              f"refusing")
+    label_files, (_records_path, records), digests = \
+        _read_supplied(supplied_dir)
+    try:
+        manifest, manifest_digest = read_json(manifest_path)
+        labels_artifact, labels_digest = read_json(labels_path)
+    except Exception as exc:  # noqa: BLE001 - named, then refused
+        _fail(f"adjudicate: {exc}")
+    key = dict(labels_artifact.get("key") or {})
+    known = {str(record.get("id") or "")
+             for record in manifest.get("records", [])}
+    packets_for = {str(hidden.get("id") or ""): packet_id
+                   for packet_id, hidden in key.items()}
+    normalized = []
+    for name, payload in label_files:
+        entries = payload.get("entries")
+        if not isinstance(entries, list) or not entries:
+            _fail(f"label file {name}: entries: missing; a label file "
+                  f"carries its votes")
+        votes = []
+        for index, entry in enumerate(entries):
+            if not isinstance(entry, dict):
+                _fail(f"label file {name}: entries[{index}]: must be a vote "
+                      f"of packet or case, label, reason")
+            where = f"label file {name}: entries[{index}]"
+            packet = _resolve_vote(where, entry, key, packets_for, known)
+            votes.append({"packet": packet, "label": entry.get("label"),
+                          "reason": entry.get("reason")})
+        if not str(payload.get("labeler") or "").strip():
+            _fail(f"label file {name}: labeler: missing; a label file names "
+                  f"its labeler")
+        normalized.append({"labeler": payload["labeler"], "entries": votes})
+    store = run_dir / ADJUDICATIONS
+    for index, record in enumerate(records or []):
+        where = f"{ADJUDICATIONS}: records[{index}]"
+        if not isinstance(record, dict):
+            _fail(f"{where}: must be a record of case, label, reason")
+        case_id = str(record.get("case") or "").strip()
+        if not case_id:
+            _fail(f"{where}: case: missing; an adjudication names its case")
+        if case_id not in known:
+            _fail(f"{where}: case id {case_id!r} is not in the dev manifest; "
+                  f"refusing")
+    for record in records or []:
+        case_id = str(record.get("case") or "").strip()
+        try:
+            record_adjudication(store, case_id, record.get("label"),
+                                record.get("reason"))
+        except LabelError as exc:
+            _fail(f"{ADJUDICATIONS}: {exc}")
+    with tempfile.TemporaryDirectory(prefix="dev-run-label-") as tmp:
+        paths = []
+        for index, payload in enumerate(normalized):
+            path = Path(tmp) / f"labeler-{index + 1}.json"
+            path.write_text(json.dumps(payload, indent=2) + "\n",
+                            encoding="utf-8")
+            paths.append(path)
+        try:
+            session = ingest_labels(key, paths[0], paths[1])
+            result = l9_result(session, read_adjudications(store))
+        except LabelError as exc:
+            _fail(str(exc))
+    artifact = {
+        "adjudication_version": ADJUDICATION_VERSION,
+        "inputs": {
+            DEV_MANIFEST: manifest_digest.split(":", 1)[1],
+            ARTIFACTS["label"]: labels_digest.split(":", 1)[1],
+            **digests},
+        "adjudications": read_adjudications(store),
+        "disagreements": session["disagreements"],
+        "labels": result,
+    }
+    run_dir.mkdir(parents=True, exist_ok=True)
+    (run_dir / ARTIFACTS["adjudicate"]).write_text(
+        json.dumps(artifact, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8")
+    return artifact
+
+
+def unadjudicated_cases(run_dir) -> list:
+    """The dev split's cases with no adjudicated label, by name.
+
+    An empty list is a complete label set (or a run nothing was assembled
+    from yet -- the ordering refusal names that cause instead).
+    """
+    run_dir = Path(run_dir)
+    manifest_path = run_dir / DEV_MANIFEST
+    if not manifest_path.exists():
+        return []
+    try:
+        manifest, _digest = read_json(manifest_path)
+        adjudications = read_adjudications(run_dir / ADJUDICATIONS)
+    except Exception as exc:  # noqa: BLE001 - named, then refused
+        _fail(f"evaluate: {exc}")
+    return sorted({str(record.get("id") or "")
+                   for record in manifest.get("records", [])}
+                  - set(adjudications))
+
+
+def _report_adjudication(artifact: dict, run_dir: Path) -> None:
+    """What ran: the adjudications recorded, and the L9 result written."""
+    result = artifact["labels"]
+    print(f"dev-run: adjudicate: wrote {ARTIFACTS['adjudicate']} "
+          f"({len(artifact['adjudications'])} adjudications, "
+          f"{len(artifact['disagreements'])} disagreements)")
+    print(f"dev-run: adjudicate: L9: double-labeled "
+          f"{result['double_labeled_cases']} cases, raw agreement "
+          f"{result['raw_agreement']:g}, kappa {result['kappa']:g}, "
+          f"pabak {result['pabak']:g}")
 
 
 def main(argv=None) -> int:
