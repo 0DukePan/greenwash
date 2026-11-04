@@ -216,8 +216,9 @@ def render(data: dict) -> str:
             f"{survey['repos']} repositories. Every flag is listed for inspection in "
             "`benchmark/results/fp-survey.json`; the classes are written up in "
             "`docs/false-positives.md`. The survey publishes its findings, not a "
-            "rate: classifying 29 flags by hand gives a number, not a population "
-            "estimate, and calling it a rate would overstate what was measured.",
+            f"rate: classifying {survey['flags']} flags by hand gives a number, "
+            "not a population estimate, and calling it a rate would overstate "
+            "what was measured.",
             "",
         ]
 

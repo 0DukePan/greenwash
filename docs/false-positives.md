@@ -6,18 +6,28 @@ class of false positive that has been **measured**, not guessed.
 
 ## Measured on real history
 
-`benchmark/fp_survey.py` re-runs the scanner over recent commits of three
-unrelated repositories — this one, a React/TypeScript app, and a Python tool —
-59 commits touching 1,225 file changes. It produced **29 flags**:
+`benchmark/fp_survey.py` re-runs the scanner over recent commits of ten
+unrelated repositories -- Python and JavaScript/TypeScript, 250 commits
+touching 1,029 file changes. It produced **109 flags**:
 
 | Class | Count | What to do |
 |---|---|---|
-| Rules that always ask for an explanation (`mock-in-test`, `swallowed-exception`, `test-skipped`, `assertion-weakened`, `conftest-changed`) | 20 | Look, decide, move on. These are questions, not accusations. |
+| `verifier-config-changed` on `.github/workflows/*`, `.pre-commit-config.yaml`, `pyproject.toml`, `package.json`, `tox.ini` | 104 | This is the gate's noise floor, not a finding: dependency bumps and action-version updates. Narrow the rule before turning strict mode on. |
+| `conftest-changed` | 3 | Look, decide, move on. Fixture changes are normal; the flag is a question. |
+| `assertion-weakened` where a narrowed `pytest.raises(...)` implies the removed type assertion | 1 | Read the removed lines. Two assertions removed and one added can be a stricter test. |
+| `swallowed-exception` on a deliberate empty `catch {}` in a test | 1 | Check whether the assertions after the catch are the point; if they are, the catch is not hiding a result. |
+
+Full list, flag by flag: [`benchmark/results/fp-survey.json`](../benchmark/results/fp-survey.json);
+the write-up is [false-positive-survey.md](./false-positive-survey.md).
+
+An earlier survey over three repositories (59 commits, 1,225 file changes, 29
+flags) found 9 false positives in two classes that are still worth knowing
+about, and each fixable one became a regression test:
+
+| Class | Count | What to do |
+|---|---|---|
 | `hardcoded-return` on a function that legitimately returns a constant a test asserts | 6 | Ask whether the function has any reason to return that value. A month name or a `'0.00'` default usually does. |
 | `known-exploit-pattern` for `exit(0)` in ordinary CLI or hook code | 3 | It matters when the tests import that file. An exit at the end of `main()` is normal. |
-
-Full list, flag by flag: [`benchmark/results/fp-survey.json`](../benchmark/results/fp-survey.json).
-The classes above are the ones a user is most likely to meet.
 
 ## Known limitations, stated plainly
 

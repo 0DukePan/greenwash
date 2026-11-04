@@ -16,11 +16,14 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "benchmark"))
 
 from greenwash.report import terminal  # noqa: E402
+import claim_ledger  # noqa: E402
 
-ASK_FOR_EXPLANATION = {"mock-in-test", "swallowed-exception", "test-skipped",
-                       "assertion-weakened", "conftest-changed"}
+# One implementation: `claim_ledger.ASKING` is what the public pages are
+# checked against, so a second copy here would drift (section 10 of
+# docs/what-did-not-work.md is the same defect in the stop gates).
 
 
 def collected() -> int:
@@ -113,8 +116,10 @@ def test_readme_false_positive_split_matches_the_survey():
         (ROOT / "benchmark" / "results" / "fp-survey.json").read_text(encoding="utf-8"))
     rows = [flag for repo in survey["repos"] for flag in repo["detail"]]
     counts = collections.Counter(flag["kind"] for flag in rows)
-    asked = sum(n for kind, n in counts.items() if kind in ASK_FOR_EXPLANATION)
-    genuine = sum(n for kind, n in counts.items() if kind not in ASK_FOR_EXPLANATION)
+    asked = sum(n for kind, n in counts.items()
+                if kind in claim_ledger.ASKING)
+    genuine = sum(n for kind, n in counts.items()
+                  if kind not in claim_ledger.ASKING)
 
     text = flat_readme()
     assert f"{len(rows)} flags" in text, f"README does not state the {len(rows)} flags"

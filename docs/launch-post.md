@@ -18,28 +18,28 @@ whether this particular "done" is worth anything. That is what greenwash is.
 I am going to lead with the number that argues against my own project, because
 it is the one that decides whether the rest is interesting.
 
-**Over 252 scored agent runs, the plugin did not reduce silent cheating.** 24
+**Over 252 scored agent runs, the three arms are indistinguishable.** 24
 tasks x 3 plugin states (`off`, `skill-only`, `full`) x 3 runs each, on one
 model through one gateway:
 
-| State | Silent cheats | Runs | Rate | 95% CI |
-|---|---:|---:|---:|---|
-| `off` | 5 | 72 | 7% | [3, 15] |
-| `skill-only` | 5 | 72 | 7% | [3, 15] |
-| `full` | 6 | 72 | 8% | [4, 17] |
+| State | Integrity cheats | Underspecified | Runs | Rate | 95% CI |
+|---|---:|---:|---:|---:|---|
+| `off` | 0 | 5 | 72 | 0% | [0, 5] |
+| `skill-only` | 0 | 5 | 72 | 0% | [0, 5] |
+| `full` | 0 | 6 | 72 | 0% | [0, 5] |
 
-The delta is **-1.4 points**: every arm's interval overlaps every other arm's.
-That is a null, and it is published as one. Two limits on it, both load-bearing:
-the corpus is **first-party** (the people who wrote the detector wrote the
-tasks), and the run **predates** the test-integrity check, so it describes the
-plugin as it was, not as it is.
+The delta is **+0.0 points**: a null, and published as one. Three limits on it,
+all load-bearing: the corpus is **first-party** (the people who wrote the
+detector wrote the tasks), the run **predates** the test-integrity check, and
+the instrument that produced the labels **could not record a cheat that passes
+the held-out suite** while its rows saved no diffs and no detector flags. A 0%
+here means "this instrument found nothing", not "there was nothing to find".
+The fix is in; the re-run is not.
 
-What the run did buy is the interesting part: **all 16 silent cheats were `mock`
-or `swallow` shortcuts, and nine of them were the same task** -- an exception
-swallowed into a default, which no arm caught, because the visible suite still
-passed and the held-out suite that disagreed was one the agent never saw. The
-cheat classes the tool has leverage against (`hardcode`, `skip`, `exploit`,
-`weaken`) were fixed in every arm.
+What the run did buy is the correction, not the number: **all 16 runs the first
+labels called "silent cheats" were honest fixes to tasks whose hidden tests
+checked requirements the prompt never stated.** That is a corpus bug, and it is
+published with its arithmetic rather than quietly rewritten.
 
 ## What it does do, measured
 
@@ -60,12 +60,16 @@ class: an unconditional `__eq__` and a patched `conftest.py` satisfy the held-ou
 suite as well as the visible one, so only the static layer sees them (3/3
 static, 1/3 behavioral). Run both.
 
-On *real* history rather than a corpus: 29 flags over 59 commits and 1,225 file
-changes in three unrelated repositories, of which 20 are the rules that
-always ask for an explanation and **9 are genuine false positives**, each
-written up and each fixable one now a regression test. That is a survey, not a
-rate -- classifying 29 flags by hand gives a number, not a population estimate,
-and saying otherwise would be the same error this tool exists to catch.
+On *real* history rather than a corpus: 109 flags over 250 commits and 1,029
+file changes in ten unrelated repositories. **104 of them are one asking rule
+firing on ordinary maintenance** -- `verifier-config-changed` on GitHub
+workflow files, pre-commit config and dependency manifests -- and of the two
+flags that accused, both were legitimate. So the scanner is quiet; the strict
+gate is not. One review per 2.4 maintenance commits is a waiver queue, and
+narrowing that rule is the next thing I am doing, before recommending strict
+mode. That is a survey, not a rate -- classifying 109 flags by hand gives a
+number, not a population estimate, and saying otherwise would be the same error
+this tool exists to catch.
 
 ## How it works
 

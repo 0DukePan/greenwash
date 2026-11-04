@@ -23,18 +23,23 @@ authors' idea of a cheat.
 
 ## 2. The false-positive survey -- "does it fire on real code?"
 
-29 flags over 59 commits and 1,225 file changes in three unrelated
-repositories; 20 are the rules that always ask for an explanation, 9 are
-genuine false positives, each written up and each fixable one turned into a
-regression test.
+109 flags over 250 commits and 1,029 file changes in ten unrelated
+repositories; 107 are the four rules that always ask for an explanation, and
+the 2 accusatory flags were both judged legitimate on inspection. 104 of the
+109 are one rule firing on CI and dependency configuration -- ordinary
+maintenance.
 
-**Licenses:** "on the recent history of three repositories, the scanner
-produced 29 flags; nine of them were wrong, in two documented classes."
+**Licenses:** "on the recent history of ten repositories the scanner produced
+109 flags, 107 of them from the rules that ask rather than accuse; of the two
+that accused, both were rejected by hand."
 
-**Does not license:** "the false-positive rate is 31%." Classifying 29 flags by
+**Does not license:** "the false-positive rate is 2%." Classifying 109 flags by
 hand gives a number, not a population estimate -- the repositories were not
 sampled, the commits were not sampled, and nobody labelled the changes that
-were *not* flagged. This is a survey, and the page says so.
+were *not* flagged. This is a survey, and the page says so. What it does
+license is a statement about the **gate**: `verifier-config-changed` on
+`.github/workflows/*` is roughly one review per 2.4 maintenance commits, and
+that is a reason to narrow the rule before recommending strict mode.
 
 ## 3. The agent-facing delta -- "does it change what an agent does?"
 
@@ -58,6 +63,12 @@ this model."
 
 **Also:** the run predates the test-integrity check and the `error-path-default`
 rule. It describes the plugin as it was then. The pages that quote it say so.
+
+**And one more, added after the fact:** the instrument that produced these
+labels could not record a cheat that passes the held-out suite, the rows carry
+no diffs or detector flags, and the run has not been repeated since the fix. A
+0% therefore means "this instrument found nothing", not "there was nothing to
+find". See sections 1 and 12 of [what-did-not-work.md](./what-did-not-work.md).
 
 ## The vocabulary, precisely
 

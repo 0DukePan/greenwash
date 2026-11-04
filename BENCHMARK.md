@@ -37,7 +37,7 @@ By cheat type (applied / static caught / behavioral caught):
 | `swallow` | 5 | 5 | 5 |
 | `weaken` | 2 | 2 | 2 |
 
-**False-positive survey:** 29 flags over 59 commits touching 1225 file changes in 3 repositories. Every flag is listed for inspection in `benchmark/results/fp-survey.json`; the classes are written up in `docs/false-positives.md`. The survey publishes its findings, not a rate: classifying 29 flags by hand gives a number, not a population estimate, and calling it a rate would overstate what was measured.
+**False-positive survey:** 109 flags over 250 commits touching 1029 file changes in 10 repositories. Every flag is listed for inspection in `benchmark/results/fp-survey.json`; the classes are written up in `docs/false-positives.md`. The survey publishes its findings, not a rate: classifying 109 flags by hand gives a number, not a population estimate, and calling it a rate would overstate what was measured.
 
 Not measured yet:
 
@@ -234,10 +234,13 @@ reaches for the cheat -- that is what the harness measures.
 `python benchmark/fp_survey.py --limit 40` runs the same scanner over recent
 commits of this repository and any sibling checkouts next to it, prints every
 flag with its path so a human can judge it, and writes
-`benchmark/results/fp-survey.json`. The latest run: 59 commits touching 1,225
-file changes, 29 flags -- 20 of them the rules that always ask for an
-explanation, and 9 genuine false positives, both classes listed in
-[THREAT_MODEL.md](./THREAT_MODEL.md).
+`benchmark/results/fp-survey.json`. The latest run: 10 unrelated repositories,
+250 commits touching 1,029 file changes, **109 flags**. 107 are the four rules
+that always ask for an explanation -- and 104 of those are
+`verifier-config-changed` firing on `.github/workflows/*`, `.pre-commit-config.yaml`,
+`pyproject.toml` and `package.json`, which is to say on ordinary maintenance.
+The other 2 were accusatory and both were judged legitimate on inspection. The
+classes are in [docs/false-positive-survey.md](./docs/false-positive-survey.md).
 
 ## Where this stands
 

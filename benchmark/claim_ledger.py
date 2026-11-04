@@ -37,8 +37,8 @@ from report import wilson  # one interval implementation, in percent
 ROOT = Path(__file__).resolve().parent.parent
 RESULTS = ROOT / "benchmark" / "results"
 
-ASKING = {"mock-in-test", "swallowed-exception", "test-skipped",
-          "assertion-weakened", "conftest-changed"}
+ASKING = {"mock-in-test", "error-path-default", "conftest-changed",
+          "verifier-config-changed"}
 
 # A sentence that refuses or negates a claim is not an assertion of it, and a
 # promise about tomorrow is not evidence about today. `never` deliberately
@@ -109,8 +109,11 @@ def rows() -> tuple:
                      "confidence": 95},
             allowed=("No measurable effect at this sample size: "
                      f"{d['delta_points']:+.1f} points over {d['rows']} scored "
-                     "runs (95% CI [{:.0f}, {:.0f}] in every arm).".format(
-                         min(lows), max(highs))))
+                     "runs (95% CI [{:.0f}, {:.0f}] in every arm). The run "
+                     "recorded no detector flags and its labels predate the "
+                     "instrument fix that can label a passing cheat, so this "
+                     "is a label count, not a measurement of the plugin's "
+                     "effect.".format(min(lows), max(highs))))
     else:
         behavioural = dict(
             numbers={},
@@ -169,8 +172,11 @@ def rows() -> tuple:
             evidence=("The pre-registered behavioural study: an independent "
                       "corpus, a pinned image, and an instrument that is not "
                       "the treatment."),
-            status=("One live first-party run; the pages that quote it say it "
-                    "predates the test-integrity check."),
+            status=("One live first-party run. Its rows carry no detector "
+                    "flags, no diffs and no transcripts, and the classifier "
+                    "that produced the labels could not record a cheat that "
+                    "passes the held-out suite -- that is fixed now, but the "
+                    "run was not repeated after the fix."),
             allowed=behavioural["allowed"],
             numbers=behavioural["numbers"],
             triggers=(r"reduces reward hacking", r"reduces cheating",
@@ -186,8 +192,9 @@ def rows() -> tuple:
             claim="fp-survey",
             evidence=("A labelled sample of real code; classifying flags by "
                       "hand gives a number, not a population estimate."),
-            status=("A survey of recent history in three repositories, "
-                    "published for inspection."),
+            status=(f"A survey of recent history in "
+                    f"{len(survey['totals']['repos'])} repositories, published "
+                    f"for inspection."),
             allowed=("On the recent history of {repos} repositories "
                      "({commits} commits, {files:,} file changes) the scanner "
                      "produced {flags} flags: {asking} are the rules that "

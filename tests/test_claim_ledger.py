@@ -26,8 +26,9 @@ sys.path.insert(0, str(ROOT / "benchmark"))
 import claim_ledger  # noqa: E402
 from report import wilson  # noqa: E402  one interval implementation
 
-ASKING = {"mock-in-test", "swallowed-exception", "test-skipped",
-          "assertion-weakened", "conftest-changed"}
+# One implementation: the ledger's ASKING set is what the pages are checked
+# against, so a second copy here would drift exactly the way the two stop-gate
+# policy tables did (docs/what-did-not-work.md section 10).
 
 # Every claim the positioning plan and the spec name in public. One ledger row
 # each; a claim here without a row is a claim nobody is gating.
@@ -103,7 +104,7 @@ def expected_numbers(claim: str) -> dict:
     if claim == "fp-survey":
         data = json.loads((RESULTS / "fp-survey.json").read_text(encoding="utf-8"))
         detail = [flag for repo in data["repos"] for flag in repo["detail"]]
-        asking = sum(1 for flag in detail if flag["kind"] in ASKING)
+        asking = sum(1 for flag in detail if flag["kind"] in claim_ledger.ASKING)
         return {"repos": len(data["totals"]["repos"]), "commits": data["totals"]["commits"],
                 "files": data["totals"]["files"], "flags": len(detail),
                 "asking": asking, "genuine": len(detail) - asking}

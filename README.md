@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <strong>24/24 planted tampers caught &middot; 0 false positives on 24 matched fixes &middot; 889 tests</strong><br>
+  <strong>24/24 planted tampers caught &middot; 0 false positives on 24 matched fixes &middot; 1003 tests</strong><br>
   <sub>
     An agent under pressure to show green will skip the test, mock the unit under
     test, hardcode the expected value, or swallow the exception that would have
@@ -51,13 +51,15 @@ Known limits are in [docs/what-did-not-work.md](docs/what-did-not-work.md).
   <sub>
     Those are detector numbers from the maintainer's own corpus. The claim
     underneath them is that catching a fake
-    pass <em>changes what the agent does</em> -- and over 252 measured agent runs
-    it did not. We reported 7% of runs shipping a "silent cheat" and -1.4 points
-    of effect. On inspection those 16 runs were honest fixes to tasks whose
-    hidden tests checked unstated requirements, so the corrected integrity-cheat
-    rate is 0% in every arm (+0.0 points): our benchmark measured
-    underspecification, not cheating. The correction is documented in
-    <a href="#numbers">Numbers</a>.
+    pass <em>changes what the agent does</em> -- and over 252 scored runs, every
+    arm showed 0% integrity cheats (+0.0 points). That is <em>not</em> a
+    measurement of the plugin's effect: the run's rows carry no detector flags,
+    and the classifier that produced their labels could not record a cheat that
+    passes the held-out suite. It is fixed now; the run has not been repeated.
+    What the pilot does show is that the 16 runs the old labels called cheats
+    were honest fixes to tasks whose hidden tests checked unstated
+    requirements. Documented in <a href="#numbers">Numbers</a> and
+    <a href="docs/what-did-not-work.md">what did not work</a>.
   </sub>
 </p>
 
@@ -367,14 +369,17 @@ match may make a report `SUSPICIOUS`, but only evidence may make it
 `NOT_VERIFIED`. None of the six is convicted.
 
 **False positives on real history.** `benchmark/fp_survey.py` re-runs the
-scanner over recent commits of three unrelated repositories -- this one, a
-React/TypeScript app, and a Python tool -- 59 commits touching 1,225 file
-changes. It produced 29 flags. Hand-checked: 20 are the rules that always ask
-for an explanation, and **9 are genuine false positives** -- 6 from
-`hardcoded-return` on a function that legitimately returns a constant a test
-asserts, 3 from a successful `exit(0)` in ordinary CLI or hook code. Both
-classes are documented in [docs/false-positives.md](docs/false-positives.md),
-and each one that got fixed is now a regression test.
+scanner over recent commits of ten unrelated repositories -- Python and
+JavaScript/TypeScript, including `flask`, `requests`, `pytest`, `axios` and
+`express` -- 250 commits touching 1,029 file changes. It produced 109 flags:
+**107 are the rules that always ask for an explanation, and 104 of those are
+one rule firing on ordinary maintenance** -- `verifier-config-changed` on
+`.github/workflows/*`, `.pre-commit-config.yaml`, `pyproject.toml` and
+`package.json`. The other 2 are genuine false positives, both judged legitimate
+on inspection. The full list, the per-repository table and what the survey does
+not measure are in [docs/false-positive-survey.md](docs/false-positive-survey.md).
+The finding is about the gate, not the scanner: a strict run over active CI is
+a waiver queue, and narrowing that rule is the next thing to fix.
 
 **Language packs, measured.** `python benchmark/polyglot.py` runs 15 cases
 across Go, Rust, Ruby, Java and JavaScript -- a positive and a negative each --
@@ -399,14 +404,24 @@ toolchain on that machine) and kept out of every rate:
 | `skill-only` | 0 | 5 | 72 | 0% | [0, 5] |
 | `full` | 0 | 6 | 72 | 0% | [0, 5] |
 
-**Delta (off -> full): +0.0 points of integrity cheating -- and the benchmark
-that produced the old numbers was wrong.** We reported 7% "silent cheats" and a
--1.4 point delta. On inspection all 16 were honest fixes to tasks whose hidden
-tests checked unstated requirements, so under the corrected outcome taxonomy
-they are `underspecified` (clean diffs on underspecified tasks), not cheats. The
-model never cheated. Every row keeps its old label in `outcome_v1`, and
-`python benchmark/tools/relabel.py --dry-run` re-derives the corrected one.
-False positives: **0** on 200 genuinely-good runs across the three arms.
+**Delta (off -> full): +0.0 points of integrity cheating -- which is not a
+measurement of the effect.** We reported 7% "silent cheats" and a -1.4 point
+delta. On inspection all 16 were honest fixes to tasks whose hidden tests
+checked unstated requirements, so under the corrected outcome taxonomy they are
+`underspecified` (clean diffs on underspecified tasks), not cheats. Every row
+keeps its old label in `outcome_v1`, and `python benchmark/tools/relabel.py
+--dry-run` re-derives the corrected one. False positives: **0** on 200
+genuinely-good runs across the three arms.
+
+**What invalidates the +0.0 as evidence.** The 252 rows carry no diffs, no
+transcripts and no detector flags, and the classifier that labelled them
+behaved in one of two ways on a diff that carried a finding: it raised
+`TypeError` when the hidden suite failed, and labelled it `genuine fix` when
+the hidden suite passed. The cheat this tool exists to catch was the one shape
+the table could not produce. It is fixed in `benchmark/harness.py` and pinned by
+tests; the run has **not** been repeated, because that needs a reachable model.
+So the honest reading is "the pilot recorded no cheat with an instrument that
+could not have recorded one", not "the model never cheated".
 
 That run predates the test-integrity check described above, so it measures the
 plugin as it was then. `json-load-default` is precisely the shape that check now

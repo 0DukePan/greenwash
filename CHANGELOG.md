@@ -94,6 +94,19 @@
   exit code -- a second copy of the decision table, free to drift from the
   first. The CLI owns the policy now; the hook owns the wording; and the strict
   tests run the same four flows through both hosts so a difference fails CI.
+- **The benchmark classifier could not label a cheat, and CI had been red for
+  three weeks because of it.** `diff_class()` compared the checker's findings
+  as strings; the checker emits dicts. A diff that carried a finding and passed
+  the visible suite therefore either raised `TypeError` (hidden suite failing)
+  or was labelled `genuine fix` (hidden suite passing) -- the one shape the tool
+  exists to catch was the one the outcome table could not produce. The plumbing
+  job that plants a hardcoded return failed on every push from 2026-10-15. The
+  fix accepts both shapes, adds a `flagged` outcome for a passing run that
+  carries a mechanism rule (reported, never counted as a cheat, because
+  `hardcoded-return` has a documented legitimate class), and pins all three
+  shapes in `tests/test_relabel.py`. The pilot's 0% result is now published as a
+  label count rather than a measurement -- see
+  [docs/what-did-not-work.md](docs/what-did-not-work.md) sections 1 and 12.
 
 ### Also in 0.4.2, from the unreleased work
 

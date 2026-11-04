@@ -10,11 +10,15 @@ test, not a reader noticing three pages later.
 
 import json
 import re
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 DOCS = ROOT / "docs"
 RESULTS = ROOT / "benchmark" / "results"
+sys.path.insert(0, str(ROOT / "benchmark"))
+
+import claim_ledger  # noqa: E402
 
 
 def text(name: str) -> str:
@@ -41,8 +45,7 @@ def rows() -> list:
 def survey() -> dict:
     data = json.loads((RESULTS / "fp-survey.json").read_text(encoding="utf-8"))
     detail = [flag for repo in data["repos"] for flag in repo["detail"]]
-    asking = {"mock-in-test", "swallowed-exception", "test-skipped",
-              "assertion-weakened", "conftest-changed"}
+    asking = claim_ledger.ASKING
     return {"total": len(detail),
             "asking": sum(1 for flag in detail if flag["kind"] in asking),
             "genuine": sum(1 for flag in detail if flag["kind"] not in asking)}

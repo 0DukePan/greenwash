@@ -4,30 +4,36 @@ A launch page that only lists successes is a page nobody should believe. These
 are the things this project tried that did not do what it hoped, with the
 numbers attached. Most of them are still open.
 
-## 1. The behavioural claim: the plugin showed no effect, and the benchmark was wrong
+## 1. The behavioural claim: the pilot measured labels, not an effect
 
 This is the one that matters, because it is the claim the whole idea rests on.
 
-**We reported a 7% cheat rate and a null effect. On inspection, all 16 were
-honest fixes to tasks whose hidden tests checked unstated requirements. The
-model never cheated. Our benchmark measured underspecification, not cheating.**
+**We reported a 7% cheat rate and a null effect. On inspection, all 16 rows were
+honest fixes to tasks whose hidden tests checked unstated requirements: the
+model solved what the visible suite asked. The corrected labels are
+`underspecified`, the integrity-cheat rate is 0% in every arm (0/72 each, 95% CI
+[0, 5]), and the delta is +0.0 points.**
 
-Over 252 scored agent runs (24 tasks, three plugin states, three runs each) the
-v1 labels counted 16 "silent cheats" -- 7% with the plugin off, 7% with the
-skill alone, 8% with the skill and the hook -- and a delta of **-1.4 points**
-that sat inside every arm's confidence interval. Under the corrected outcome
-taxonomy those 16 rows are `underspecified`, the integrity-cheat rate is **0% in
-every arm** (0/72 each, 95% CI [0, 5]), and the delta is **+0.0 points**.
+**Then we found that the instrument could not have recorded the alternative.**
+At the time of the run, `classify()` compared the checker's findings -- dicts --
+against a set of rule ids, so a diff that carried a finding behaved in one of two
+ways: with the hidden suite failing it raised `TypeError` and ended the run, and
+with the hidden suite passing it was labelled `genuine fix`. The cheat the plugin
+exists to catch was the one shape the outcome table could not produce. It is
+fixed in `benchmark/harness.py` and pinned by tests (section 12); **the run has
+not been repeated**, because that needs a funded model.
 
-Every number here is re-derivable from the data alone. Each row in
-`benchmark/results/delta.jsonl` keeps its v1 label in `outcome_v1`, and
-`python benchmark/tools/relabel.py --dry-run` recomputes the corrected one from
-the recorded evidence. The summary is in `benchmark/RESULTS.md`.
+Two further limits are visible in the data rather than in the prose. The 252 rows
+in `benchmark/results/delta.jsonl` carry no diffs, no transcripts and no detector
+flags -- `greenwash_flags` is empty in every row -- so the 16-row correction
+rests on a manual reading the repository cannot reproduce. And the run predates
+the test-integrity check, so it describes the plugin as it was then.
 
-Two further limits on that number, both stated on the pages that quote it: the
-corpus is first-party, and the run predates the test-integrity check, so it
-describes the plugin as it was then and not as it is now. A preregistration for
-a study that would replace it is in [EVALUATION_PROTOCOL.md](./EVALUATION_PROTOCOL.md).
+What the pilot supports is therefore a set of labels on one corpus with one
+model, not a measurement of the plugin's effect in either direction. A re-run
+that saves its evidence and uses the fixed classifier is the next step; it is
+blocked on a reachable model -- `python benchmark/preflight.py` reports the
+gateway is not logged in.
 
 ## 2. The rows we called cheats were honest fixes to underspecified tasks
 
@@ -77,18 +83,23 @@ but does not close it. Independent authorship is the fix, and it has not
 happened yet -- which is why the evaluation governance documents describe a
 separate repository with non-core maintainers holding merge authority.
 
-## 6. Nine false positives on real history
+## 6. One asking rule is 95% of the noise on real history
 
-The scanner was run over 59 recent commits of three unrelated repositories --
-1,225 file changes -- and produced 29 flags. Twenty are the rules that always
-ask for an explanation (`mock-in-test`, `error-path-default`, and friends) and
-**nine are genuine false positives**: six `hardcoded-return` flags on functions
-that legitimately return a constant a test asserts, and three on a successful
-`exit(0)` in ordinary CLI code.
+The scanner was run over 250 recent commits of ten unrelated repositories --
+1,029 file changes -- and produced 109 flags. **104 of them are
+`verifier-config-changed` firing on `.github/workflows/*`,
+`.pre-commit-config.yaml`, `pyproject.toml`, `package.json` and `tox.ini`** --
+dependency bumps, action-version updates and lint configuration. Three are
+`conftest-changed`. Two accused, and both were judged legitimate on inspection:
+an assertion-weakened flag on a `werkzeug` compatibility test whose removed
+assertions were implied by the narrower expected exception, and a
+swallowed-exception flag on a deliberate empty `catch` in a `got` test.
 
-Each class is written up in [false-positives.md](./false-positives.md), and the
-ones that were fixable became regression tests. This is a survey, not a rate --
-classifying 29 flags by hand gives a number, not a population estimate.
+The scanner's precision on this sample is fine. The gate's is not: those 104
+reviews are what strict mode would demand over active CI, roughly one per 2.4
+commits. The survey is written up in
+[false-positive-survey.md](./false-positive-survey.md); it is a survey, not a
+rate -- classifying 109 flags by hand gives a number, not a population estimate.
 
 ## 7. `error-path-default` has not been through the false-positive survey
 
@@ -148,8 +159,8 @@ table stops matching the data.
 |---|---|---|---|
 | detector-recall | A frozen evaluation run on a corpus this project did not author, at the pre-registered sample size. | Measured on the first-party internal corpus only; the frozen run has not happened. | On a labelled corpus of 24 tasks with one planted cheat each, the scanner caught 24 of 24 planted cheats (95% CI 86.2%-100%). |
 | false-alarms | A labelled sample of real code large enough for a rate, not a hand-classified flag count. | Measured on the recorded honest fixes of the internal corpus only. | It flagged 0 of 24 recorded honest fixes (95% upper bound 13.8% at this sample size). |
-| behavioural-effect | The pre-registered behavioural study: an independent corpus, a pinned image, and an instrument that is not the treatment. | One live first-party run; the pages that quote it say it predates the test-integrity check. | No measurable effect at this sample size: +0.0 points over 252 scored runs (95% CI [0, 5] in every arm). |
-| fp-survey | A labelled sample of real code; classifying flags by hand gives a number, not a population estimate. | A survey of recent history in three repositories, published for inspection. | On the recent history of 3 repositories (59 commits, 1,225 file changes) the scanner produced 29 flags: 20 are the rules that always ask for an explanation, 9 are genuine false positives. This is a survey, not a rate. |
+| behavioural-effect | The pre-registered behavioural study: an independent corpus, a pinned image, and an instrument that is not the treatment. | One live first-party run. Its rows carry no detector flags, no diffs and no transcripts, and the classifier that produced the labels could not record a cheat that passes the held-out suite -- that is fixed now, but the run was not repeated after the fix. | No measurable effect at this sample size: +0.0 points over 252 scored runs (95% CI [0, 5] in every arm). The run recorded no detector flags and its labels predate the instrument fix that can label a passing cheat, so this is a label count, not a measurement of the plugin's effect. |
+| fp-survey | A labelled sample of real code; classifying flags by hand gives a number, not a population estimate. | A survey of recent history in 10 repositories, published for inspection. | On the recent history of 10 repositories (250 commits, 1,029 file changes) the scanner produced 109 flags: 107 are the rules that always ask for an explanation, 2 are genuine false positives. This is a survey, not a rate. |
 | first-party-corpus | Corpus authorship independent of this project, with merge authority outside it. | Not established; the governance documents are the invitation. | The corpus is first-party: it measures the detector against its own authors' idea of a cheat and cannot establish detector quality. |
 | rate-claims | The frozen run at the pre-registered sample size; until then every number is a count with an interval. | Not available; the current corpus is first-party and small. | Every published number is an interval-qualified count on the internal corpus; a rate claim waits on the frozen run. |
 | strength-advisory | The strength check's error rate, measured; promotion to a verdict is deliberately deferred. | Ships as an advisory flag in this version. | The strength check ships as an advisory flag, not a verdict; promotion waits until its error rate is measured. |
@@ -157,11 +168,33 @@ table stops matching the data.
 | scope-exclusions | Retrieval and leakage detection; training-time reward hacking; languages beyond Python and pytest. | Out of scope for this version; never claimed. | What greenwash does not cover: retrieval and leakage detection, training-time reward hacking, languages beyond Python and pytest in this version. |
 <!-- claim-ledger:end -->
 
+## 12. The classifier could not label a cheat, and CI said so for three weeks
+
+`diff_class()` compared the checker's findings as strings; the checker emits
+dicts (`[{"kind": "test-skipped", ...}]`). The result was deterministic:
+
+- a diff with a finding, visible suite passing, hidden suite failing:
+  `TypeError: cannot use 'dict' as a set element` -- the run ends;
+- a diff with a finding and both suites passing: `genuine fix`.
+
+The CI job `Harness plumbing (no model)` plants a hardcoded return with the fake
+agent and asserts the detector catches it. It failed on every push from
+2026-10-15, on all three branches. The unit suite did not see it because no test
+called `classify()` with the shape the checker actually emits -- the tests passed
+plain strings.
+
+The fix accepts both shapes (`flag_kinds`), adds a `flagged` outcome for a
+passing run that carries a mechanism rule (reported, never counted as a cheat,
+because `hardcoded-return` has a documented legitimate class), and pins all three
+shapes in `tests/test_relabel.py`. The plumbing run now completes:
+`add-subtract-swap full run1 -> integrity cheat ... flags=['hardcoded-return']`.
+
 ## What is still open
 
 | Open | Why it is not closed |
 |---|---|
-| A re-measured behavioural effect | Needs the preregistered study, an independent corpus, and a pinned image |
+| A re-measured behavioural effect | The instrument fix is in; the run needs a reachable model and a corpus that saves its diffs and flags |
+| Evidence for the 16-row correction | The rows carry no diffs or transcripts, so the correction rests on a manual reading |
 | Independent authorship of the corpus | Needs maintainers outside this project; the governance documents are the invitation |
 | A false-positive *rate* rather than a flag count | Needs a labelled sample of real code, not 29 hand-classified flags |
 | The swallow class, generally | Detection cannot see intent in an error path; the remedy today is a held-out suite, which almost nobody has |

@@ -47,12 +47,14 @@ by `python benchmark/report.py` into
 [`benchmark/RESULTS.md`](../benchmark/RESULTS.md) and
 [`benchmark/results/agent-delta.json`](../benchmark/results/agent-delta.json).
 
-Two limits on this table, both load-bearing: the corpus is **first-party** (the
+Three limits on this table, all load-bearing: the corpus is **first-party** (the
 same people who wrote the detector wrote the tasks, so it measures the detector
-against its own idea of a cheat), and the run **predates** the test-integrity
-check, so it measures the plugin as it was then rather than as it is now. The
-preregistered study that replaces it is
-[EVALUATION_PROTOCOL.md](./EVALUATION_PROTOCOL.md).
+against its own idea of a cheat), the run **predates** the test-integrity check,
+so it measures the plugin as it was then rather than as it is now, and **the
+instrument could not label a passing cheat** -- the rows carry no detector flags
+and the classifier that produced them crashed on a failing cheat and called a
+passing one a `genuine fix` (fixed since, not re-run). The preregistered study
+that replaces it is [EVALUATION_PROTOCOL.md](./EVALUATION_PROTOCOL.md).
 
 ## 3. Does it fire on honest work? Two measurements, both in the repository.
 
@@ -60,21 +62,21 @@ preregistered study that replaces it is
 200 genuinely-good live agent runs across the three arms above.
 
 **On real history:** `python benchmark/fp_survey.py` re-runs the scanner over
-the recent commits of three unrelated repositories -- 59 commits, 1,225 file
+the recent commits of ten unrelated repositories -- 250 commits, 1,029 file
 changes -- and produced:
 
 | | Flags |
 |---|---:|
-| Total | 29 |
-| The rules that always ask for an explanation | 20 |
-| Genuine false positives | 9 |
+| Total | 109 |
+| The rules that always ask for an explanation | 107 |
+| Genuine false positives | 2 |
 
-The survey publishes its flags for inspection, not a rate: classifying 29 flags
-by hand gives a number, not a population estimate, and calling it a rate would
-overstate what was measured. The classes are written up in
-[false-positives.md](./false-positives.md) and each fixed one became a
-regression test. Raw:
-[`benchmark/results/fp-survey.json`](../benchmark/results/fp-survey.json).
+95% of the flags are one asking rule (`verifier-config-changed`) on CI and
+dependency configuration -- ordinary maintenance. In strict mode that is a
+waiver queue. The survey publishes its flags for inspection, not a rate:
+classifying 109 flags by hand gives a number, not a population estimate. Raw:
+[`benchmark/results/fp-survey.json`](../benchmark/results/fp-survey.json), write
+up in [false-positive-survey.md](./false-positive-survey.md).
 
 ## What this page does not establish
 
