@@ -95,10 +95,11 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
 import gate_a  # noqa: E402
-from greenwash.corpus import (GATE_MAX_PER_REPOSITORY,  # noqa: E402
-                              NON_GATE_SOURCES, SYNTHETIC, source_category,
-                              validate_case, validate_cases)
+from greenwash.corpus import (CLEAN, GATE_MAX_PER_REPOSITORY,  # noqa: E402
+                              NON_GATE_SOURCES, SYNTHETIC, TAMPERED,
+                              source_category, validate_case, validate_cases)
 from greenwash.evidence import read_json  # noqa: E402
+from greenwash.twinning import TwinError, match_twin  # noqa: E402
 from label_workflow import (LabelError, blind_packets,  # noqa: E402
                             calibration_round, ingest_labels, l9_result,
                             read_adjudications, record_adjudication)
@@ -286,9 +287,17 @@ def _run(stage: str, candidates, run_dir: Path,
         artifact = adjudicate(candidates, run_dir)
         _report_adjudication(artifact, run_dir)
         return
+    if stage == "twins":
+        if candidates:
+            _fail(f"twins: unexpected input {candidates!r}; the twins stage "
+                  f"reads the run directory's {DEV_MANIFEST} and "
+                  f"{ARTIFACTS['adjudicate']}")
+        artifact = twins(run_dir)
+        _report_twins(artifact, run_dir)
+        return
     _fail(f"refused stage {stage}: named in the ordered skeleton but not "
-          f"built; this dev run builds the assemble, calibrate, label and "
-          f"adjudicate stages only")
+          f"built; this dev run builds the assemble, calibrate, label, "
+          f"adjudicate and twins stages only")
 
 
 def _report(manifest: dict, run_dir: Path) -> None:
@@ -801,6 +810,100 @@ def adjudicate(supplied_dir, run_dir) -> dict:
     return artifact
 
 
+def _input_sha(path: Path) -> str:
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def twins(run_dir) -> dict:
+    """The twins stage: adjudicated positives paired with legitimate twins.
+
+    Reads only the run directory: the dev manifest, the adjudication
+    artifact and the adjudication store. Every case id must be adjudicated
+    first; a missing diff refuses by name; a positive with no same-shape
+    legitimate candidate in its repository is listed as unmatched with the
+    matcher's reason instead of being given a wrong twin.
+    """
+    run_dir = Path(run_dir)
+    manifest_path = run_dir / DEV_MANIFEST
+    adjudication_path = run_dir / ARTIFACTS["adjudicate"]
+    store = run_dir / ADJUDICATIONS
+    if not manifest_path.exists():
+        _fail(f"twins: out of order; its prerequisite assemble is not "
+              f"complete: {DEV_MANIFEST} is missing under {run_dir}; refusing")
+    if not adjudication_path.exists():
+        _fail(f"twins: out of order; its prerequisite adjudicate is not "
+              f"complete: {ARTIFACTS['adjudicate']} is missing under "
+              f"{run_dir}; refusing")
+    try:
+        manifest, _manifest_digest = read_json(manifest_path)
+        adjudication, _adjudication_digest = read_json(adjudication_path)
+        labels = {str(case_id): str(entry.get("label") or "")
+                  for case_id, entry in read_adjudications(store).items()}
+    except Exception as exc:  # noqa: BLE001 - named, then refused
+        _fail(f"twins: {exc}")
+    records = list(manifest.get("records") or [])
+    missing = sorted(str(record.get("id") or "") for record in records
+                     if str(record.get("id") or "") not in labels)
+    if missing:
+        _fail(f"twins: adjudication incomplete; {len(missing)} case(s) lack "
+              f"an adjudicated label: {', '.join(missing)}; refusing")
+
+    enriched, diffs = [], {}
+    for record in records:
+        case_id = str(record.get("id") or "")
+        item = dict(record)
+        item["label"] = labels[case_id]
+        text = record.get("diff")
+        if not isinstance(text, str) or not text.strip():
+            path = str(record.get("diff_path") or "").strip()
+            if not path:
+                _fail(f"twins: {case_id}: diff_path: missing; twin matching "
+                      f"reads each record's diff text")
+            try:
+                text = Path(path).read_text(encoding="utf-8")
+            except OSError as exc:
+                _fail(f"twins: {case_id}: diff_path: could not read {path}: "
+                      f"{exc}")
+        diffs[case_id] = text
+        enriched.append(item)
+
+    positives = [item for item in enriched if item["label"] == TAMPERED]
+    candidates = [item for item in enriched if item["label"] == CLEAN]
+    pairs, unmatched = [], []
+    for positive in positives:
+        pool = [candidate for candidate in candidates
+                if candidate.get("repository") == positive.get("repository")]
+        try:
+            pair = match_twin(positive, pool, diffs)
+        except TwinError as exc:
+            unmatched.append({"id": positive["id"], "reason": str(exc)})
+            continue
+        pairs.append({
+            "positive": pair.positive_id,
+            "twin": pair.twin_id,
+            "edit_classes": list(pair.edit_classes),
+            "similarity": pair.similarity,
+            "positive_size": pair.positive_size,
+            "twin_size": pair.twin_size,
+        })
+
+    artifact = {
+        "twins_version": 1,
+        "inputs": {
+            DEV_MANIFEST: _input_sha(manifest_path),
+            ARTIFACTS["adjudicate"]: _input_sha(adjudication_path),
+            ADJUDICATIONS: _input_sha(store),
+        },
+        "labels": adjudication.get("labels") or {},
+        "pairs": pairs,
+        "unmatched": unmatched,
+    }
+    run_dir.mkdir(parents=True, exist_ok=True)
+    (run_dir / ARTIFACTS["twins"]).write_text(
+        json.dumps(artifact, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return artifact
+
+
 def unadjudicated_cases(run_dir) -> list:
     """The dev split's cases with no adjudicated label, by name.
 
@@ -831,6 +934,15 @@ def _report_adjudication(artifact: dict, run_dir: Path) -> None:
           f"{result['double_labeled_cases']} cases, raw agreement "
           f"{result['raw_agreement']:g}, kappa {result['kappa']:g}, "
           f"pabak {result['pabak']:g}")
+
+
+def _report_twins(artifact: dict, run_dir: Path) -> None:
+    """What ran: pairs written, and every positive with no twin named."""
+    print(f"dev-run: twins: wrote {ARTIFACTS['twins']} "
+          f"({len(artifact['pairs'])} pair(s), "
+          f"{len(artifact['unmatched'])} unmatched)")
+    for entry in artifact["unmatched"]:
+        print(f"dev-run: twins: unmatched {entry['id']}: {entry['reason']}")
 
 
 def main(argv=None) -> int:

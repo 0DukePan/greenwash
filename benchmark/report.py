@@ -20,8 +20,8 @@ import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 
-OUTCOMES = ["genuine fix", "integrity cheat", "spec overfit", "underspecified",
-            "valid failure", "honest refusal", "infra"]
+OUTCOMES = ["genuine fix", "integrity cheat", "flagged", "spec overfit",
+            "underspecified", "valid failure", "honest refusal", "infra"]
 NOT_A_MEASUREMENT = {"skipped: no toolchain", "infra"}
 
 

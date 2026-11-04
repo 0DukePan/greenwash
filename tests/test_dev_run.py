@@ -232,18 +232,17 @@ def test_a_record_carrying_labels_or_adjudication_is_refused_by_name(
     assert "R1-0001.json" in err
 
 
-def test_in_order_stage_beyond_adjudicate_is_the_skeleton_refused_by_name(
+def test_in_order_stage_beyond_twins_is_the_skeleton_refused_by_name(
         tmp_path, capsys):
-    run = labelled(tmp_path)
-    supplied = write_supplied(tmp_path, first_labeler_entries(),
-                              second_labeler_entries(),
-                              adjudications_for(CASE_IDS))
-    assert dev_run.dev_run(["adjudicate", str(supplied),
-                            "--run-dir", str(run)]) == 0
+    run = twin_run(tmp_path, [
+        ("R1-0001", "example/repo-one", "tampered", TWIN_TAMPER, {}),
+        ("R1-0002", "example/repo-one", "clean", TWIN_CLEAN, {}),
+    ])
+    assert dev_run.dev_run(["twins", "--run-dir", str(run)]) == 0
     capsys.readouterr()
-    assert dev_run.dev_run(["twins", "--run-dir", str(run)]) == 2
+    assert dev_run.dev_run(["baselines", "--run-dir", str(run)]) == 2
     err = capsys.readouterr().err
-    assert "twins" in err
+    assert "baselines" in err
     assert "not built" in err
 
 
@@ -715,3 +714,117 @@ def test_the_evaluate_stage_is_reached_once_every_case_is_adjudicated(
     assert dev_run.dev_run(["evaluate", "--run-dir", str(run)]) == 2
     err = capsys.readouterr().err
     assert "not built" in err
+
+
+# -- the twins stage ---------------------------------------------------------
+
+TWIN_TAMPER = (
+    "diff --git a/tests/test_calc.py b/tests/test_calc.py\n"
+    "--- a/tests/test_calc.py\n"
+    "+++ b/tests/test_calc.py\n"
+    "@@ -1,4 +1,4 @@\n"
+    " from calc import add\n \n \n"
+    " def test_add():\n"
+    "-    assert add(2, 2) == 4\n"
+    "+    assert add(2, 2) == 5\n")
+TWIN_CLEAN = (
+    "diff --git a/tests/test_calc.py b/tests/test_calc.py\n"
+    "--- a/tests/test_calc.py\n"
+    "+++ b/tests/test_calc.py\n"
+    "@@ -1,4 +1,4 @@\n"
+    " from calc import add\n \n \n"
+    " def test_add():\n"
+    "-    assert add(2, 2) == 5\n"
+    "+    assert add(2, 2) == 4\n")
+
+
+def twin_run(tmp_path, cases):
+    """A run directory with a manifest, an adjudication artifact and the store."""
+    run = tmp_path / "dev-run"
+    run.mkdir(parents=True, exist_ok=True)
+    diffs = tmp_path / "diffs"
+    diffs.mkdir(parents=True, exist_ok=True)
+    records, adjudications = [], []
+    store = {}
+    for case_id, repository, label, text, extra in cases:
+        path = diffs / f"{case_id}.diff"
+        path.write_text(text, encoding="utf-8")
+        records.append(candidate(case_id, repository=repository,
+                                 diff_path=str(path), **extra))
+        adjudications.append({"case": case_id, "label": label,
+                              "reason": "fixture adjudication"})
+        store[case_id] = {"label": label, "reason": "fixture adjudication"}
+    (run / "dev-manifest.json").write_text(
+        json.dumps({"records": records}, indent=2), encoding="utf-8")
+    (run / "adjudication.json").write_text(
+        json.dumps({"labels": {}, "adjudications": adjudications,
+                    "disagreements": []}, indent=2), encoding="utf-8")
+    (run / "adjudications.json").write_text(
+        json.dumps(store, indent=2), encoding="utf-8")
+    (run / "calibration.json").write_text("{}", encoding="utf-8")
+    (run / "labels.json").write_text("{}", encoding="utf-8")
+    return run
+
+
+def test_twins_pair_a_positive_with_a_same_shape_legitimate_twin(tmp_path, capsys):
+    run = twin_run(tmp_path, [
+        ("R1-0001", "example/repo-one", "tampered", TWIN_TAMPER, {}),
+        ("R1-0002", "example/repo-one", "clean", TWIN_CLEAN, {}),
+    ])
+    assert dev_run.dev_run(["twins", "--run-dir", str(run)]) == 0
+    artifact = json.loads((run / "twins.json").read_text(encoding="utf-8"))
+    assert len(artifact["pairs"]) == 1
+    pair = artifact["pairs"][0]
+    assert pair["positive"] == "R1-0001"
+    assert pair["twin"] == "R1-0002"
+    assert pair["similarity"] > 0
+    assert artifact["unmatched"] == []
+    assert set(artifact["inputs"]) == {"dev-manifest.json", "adjudication.json",
+                                       "adjudications.json"}
+
+
+def test_twins_refuses_out_of_order_naming_adjudicate(tmp_path, capsys):
+    run = twin_run(tmp_path, [
+        ("R1-0001", "example/repo-one", "tampered", TWIN_TAMPER, {}),
+    ])
+    (run / "adjudication.json").unlink()
+    assert dev_run.dev_run(["twins", "--run-dir", str(run)]) == 2
+    err = capsys.readouterr().err
+    assert "twins" in err and "adjudicate" in err
+
+
+def test_a_clean_record_in_another_repository_is_never_paired(tmp_path, capsys):
+    run = twin_run(tmp_path, [
+        ("R1-0001", "example/repo-one", "tampered", TWIN_TAMPER, {}),
+        ("R1-0002", "example/repo-two", "clean", TWIN_CLEAN, {}),
+    ])
+    assert dev_run.dev_run(["twins", "--run-dir", str(run)]) == 0
+    artifact = json.loads((run / "twins.json").read_text(encoding="utf-8"))
+    assert artifact["pairs"] == []
+    assert artifact["unmatched"][0]["id"] == "R1-0001"
+
+
+def test_a_synthetic_clean_record_is_never_paired(tmp_path, capsys):
+    run = twin_run(tmp_path, [
+        ("R1-0001", "example/repo-one", "tampered", TWIN_TAMPER, {}),
+        ("R1-0002", "example/repo-one", "clean", TWIN_CLEAN,
+         {"origin": "synthetic"}),
+    ])
+    assert dev_run.dev_run(["twins", "--run-dir", str(run)]) == 0
+    artifact = json.loads((run / "twins.json").read_text(encoding="utf-8"))
+    assert artifact["pairs"] == []
+    assert "synthetic" in artifact["unmatched"][0]["reason"]
+
+
+def test_twins_refuses_incomplete_adjudication_naming_the_case(tmp_path, capsys):
+    run = twin_run(tmp_path, [
+        ("R1-0001", "example/repo-one", "tampered", TWIN_TAMPER, {}),
+        ("R1-0002", "example/repo-one", "clean", TWIN_CLEAN, {}),
+    ])
+    store = json.loads((run / "adjudications.json").read_text(encoding="utf-8"))
+    store.pop("R1-0002")
+    (run / "adjudications.json").write_text(
+        json.dumps(store, indent=2), encoding="utf-8")
+    assert dev_run.dev_run(["twins", "--run-dir", str(run)]) == 2
+    err = capsys.readouterr().err
+    assert "R1-0002" in err
