@@ -60,16 +60,18 @@ class: an unconditional `__eq__` and a patched `conftest.py` satisfy the held-ou
 suite as well as the visible one, so only the static layer sees them (3/3
 static, 1/3 behavioral). Run both.
 
-On *real* history rather than a corpus: 109 flags over 250 commits and 1,029
-file changes in ten unrelated repositories. **104 of them are one asking rule
-firing on ordinary maintenance** -- `verifier-config-changed` on GitHub
-workflow files, pre-commit config and dependency manifests -- and of the two
-flags that accused, both were legitimate. So the scanner is quiet; the strict
-gate is not. One review per 2.4 maintenance commits is a waiver queue, and
-narrowing that rule is the next thing I am doing, before recommending strict
-mode. That is a survey, not a rate -- classifying 109 flags by hand gives a
-number, not a population estimate, and saying otherwise would be the same error
-this tool exists to catch.
+On *real* history rather than a corpus: 250 commits and 1,029 file changes in
+ten unrelated repositories. The first run produced 109 flags, and **104 of them
+were one asking rule firing on ordinary maintenance** -- `verifier-config-changed`
+on GitHub workflow files, pre-commit config and dependency manifests. I
+narrowed that rule to fire only when a change can alter what runs, and measured
+again on the same history: **12 flags**, 10 asking and 2 false positives, with
+all seven remaining flags from that rule being real runner changes -- a `test`
+script rewritten, a hook's scope narrowed, a tox environment given a
+dependency. The gate's noise floor went from one review every 2.4 commits to
+seven reviews in 250 commits. That is a survey, not a rate -- classifying 109
+flags by hand gives a number, not a population estimate, and saying otherwise
+would be the same error this tool exists to catch.
 
 ## How it works
 

@@ -360,6 +360,146 @@ def test_a_dependency_bump_alone_is_not_verifier_config(tmp_path, monkeypatch):
     assert "verifier-config-changed" not in _kinds(tmp_path, monkeypatch)
 
 
+# -- verifier config: the changed-line tier -----------------------------------
+#
+# These files mix runner configuration with ordinary maintenance. The tests are
+# pairs -- a Dependabot bump that must stay silent, and the tamper it is one
+# keystroke away from, which must not.
+
+WORKFLOW_TEST = {
+    **BASE,
+    ".github/workflows/ci.yml":
+        "jobs:\n  test:\n    steps:\n      - uses: actions/checkout@v4\n"
+        "      - run: pytest -q\n",
+}
+
+
+def _workflow(tmp, monkeypatch, body, base=WORKFLOW_TEST):
+    _repo(tmp, base)
+    _write(tmp, ".github/workflows/ci.yml", body)
+    return _kinds(tmp, monkeypatch)
+
+
+def test_a_workflow_action_version_bump_is_not_verifier_config(tmp_path, monkeypatch):
+    """Benign twin: what a Dependabot PR looks like when it touches a workflow."""
+    kinds = _workflow(tmp_path, monkeypatch,
+                      "jobs:\n  test:\n    steps:\n"
+                      "      - uses: actions/checkout@v5\n"
+                      "      - run: pytest -q\n")
+    assert "verifier-config-changed" not in kinds
+
+
+def test_a_test_command_removed_from_a_workflow_is_flagged(tmp_path, monkeypatch):
+    kinds = _workflow(tmp_path, monkeypatch,
+                      "jobs:\n  test:\n    steps:\n"
+                      "      - uses: actions/checkout@v4\n")
+    assert "verifier-config-changed" in kinds
+
+
+def test_a_skip_condition_added_to_a_workflow_is_flagged(tmp_path, monkeypatch):
+    kinds = _workflow(tmp_path, monkeypatch,
+                      "jobs:\n  test:\n    steps:\n"
+                      "      - uses: actions/checkout@v4\n"
+                      "      - run: pytest -q\n"
+                      "        continue-on-error: true\n")
+    assert "verifier-config-changed" in kinds
+
+
+def test_a_workflow_renamed_job_is_not_verifier_config(tmp_path, monkeypatch):
+    """Benign twin: relabelling a job changes nothing about what runs."""
+    kinds = _workflow(tmp_path, monkeypatch,
+                      "jobs:\n  tests:\n    steps:\n"
+                      "      - uses: actions/checkout@v4\n"
+                      "      - run: pytest -q\n")
+    assert "verifier-config-changed" not in kinds
+
+
+def test_a_workflow_reemitted_with_crlf_is_not_verifier_config(tmp_path, monkeypatch):
+    """A whole-file re-emit is not a removal of the test command.
+
+    Found on flask's "update dependencies" commit: the same 64 lines came back
+    with different line endings, and "every test command was removed" is the
+    wrong reading of that.
+    """
+    _repo(tmp_path, WORKFLOW_TEST)
+    body = WORKFLOW_TEST[".github/workflows/ci.yml"]
+    (tmp_path / ".github" / "workflows" / "ci.yml").write_bytes(
+        body.replace("\n", "\r\n").encode("utf-8"))
+    assert "verifier-config-changed" not in _kinds(tmp_path, monkeypatch)
+
+
+PRE_COMMIT = {
+    **BASE,
+    ".pre-commit-config.yaml":
+        "repos:\n  - repo: https://github.com/psf/black\n    rev: v4.6.0\n"
+        "    hooks:\n      - id: black\n        entry: black --check\n",
+}
+
+
+def _pre_commit(tmp, monkeypatch, body):
+    _repo(tmp, PRE_COMMIT)
+    _write(tmp, ".pre-commit-config.yaml", body)
+    return _kinds(tmp, monkeypatch)
+
+
+def test_a_pre_commit_rev_bump_is_not_verifier_config(tmp_path, monkeypatch):
+    kinds = _pre_commit(tmp_path, monkeypatch,
+                        "repos:\n  - repo: https://github.com/psf/black\n"
+                        "    rev: v4.7.0\n"
+                        "    hooks:\n      - id: black\n        entry: black --check\n")
+    assert "verifier-config-changed" not in kinds
+
+
+def test_a_pre_commit_hook_removed_is_flagged(tmp_path, monkeypatch):
+    kinds = _pre_commit(tmp_path, monkeypatch, "repos: []\n")
+    assert "verifier-config-changed" in kinds
+
+
+def test_a_pre_commit_hook_command_change_is_flagged(tmp_path, monkeypatch):
+    kinds = _pre_commit(tmp_path, monkeypatch,
+                        "repos:\n  - repo: https://github.com/psf/black\n"
+                        "    rev: v4.6.0\n"
+                        "    hooks:\n      - id: black\n"
+                        "        entry: black --check --diff\n")
+    assert "verifier-config-changed" in kinds
+
+
+PACKAGE_JSON = {
+    **BASE,
+    "package.json": '{\n  "scripts": {\n    "test": "jest"\n  },\n'
+                    '  "devDependencies": {\n    "@types/jest": "^29.5.0"\n  }\n}\n',
+}
+
+
+def _manifest(tmp, monkeypatch, body, base=PACKAGE_JSON):
+    _repo(tmp, base)
+    _write(tmp, "package.json", body)
+    return _kinds(tmp, monkeypatch)
+
+
+def test_a_runner_dependency_bump_in_a_manifest_is_not_verifier_config(tmp_path, monkeypatch):
+    """Benign twin: `@types/jest` is a package name, not test configuration."""
+    kinds = _manifest(tmp_path, monkeypatch,
+                      '{\n  "scripts": {\n    "test": "jest"\n  },\n'
+                      '  "devDependencies": {\n    "@types/jest": "^29.6.0"\n  }\n}\n')
+    assert "verifier-config-changed" not in kinds
+
+
+def test_a_test_script_change_in_a_manifest_is_flagged(tmp_path, monkeypatch):
+    kinds = _manifest(tmp_path, monkeypatch,
+                      '{\n  "scripts": {\n    "test": "jest --coverage=false"\n  },\n'
+                      '  "devDependencies": {\n    "@types/jest": "^29.5.0"\n  }\n}\n')
+    assert "verifier-config-changed" in kinds
+
+
+def test_a_pytest_dependency_bump_in_pyproject_is_not_verifier_config(tmp_path, monkeypatch):
+    base = {**BASE, "pyproject.toml": '[project.optional-dependencies]\ndev = ["pytest>=7.0"]\n'}
+    _repo(tmp_path, base)
+    _write(tmp_path, "pyproject.toml",
+           '[project.optional-dependencies]\ndev = ["pytest>=8.0"]\n')
+    assert "verifier-config-changed" not in _kinds(tmp_path, monkeypatch)
+
+
 def _signals(tmp, monkeypatch):
     monkeypatch.chdir(tmp)
     return list(scan_mod.scan())

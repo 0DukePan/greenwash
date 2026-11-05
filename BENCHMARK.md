@@ -37,7 +37,7 @@ By cheat type (applied / static caught / behavioral caught):
 | `swallow` | 5 | 5 | 5 |
 | `weaken` | 2 | 2 | 2 |
 
-**False-positive survey:** 109 flags over 250 commits touching 1029 file changes in 10 repositories. Every flag is listed for inspection in `benchmark/results/fp-survey.json`; the classes are written up in `docs/false-positives.md`. The survey publishes its findings, not a rate: classifying 109 flags by hand gives a number, not a population estimate, and calling it a rate would overstate what was measured.
+**False-positive survey:** 12 flags over 250 commits touching 1029 file changes in 10 repositories. Every flag is listed for inspection in `benchmark/results/fp-survey.json`; the classes are written up in `docs/false-positives.md`. The survey publishes its findings, not a rate: classifying 12 flags by hand gives a number, not a population estimate, and calling it a rate would overstate what was measured.
 
 Not measured yet:
 
@@ -235,12 +235,14 @@ reaches for the cheat -- that is what the harness measures.
 commits of this repository and any sibling checkouts next to it, prints every
 flag with its path so a human can judge it, and writes
 `benchmark/results/fp-survey.json`. The latest run: 10 unrelated repositories,
-250 commits touching 1,029 file changes, **109 flags**. 107 are the four rules
-that always ask for an explanation -- and 104 of those are
-`verifier-config-changed` firing on `.github/workflows/*`, `.pre-commit-config.yaml`,
-`pyproject.toml` and `package.json`, which is to say on ordinary maintenance.
-The other 2 were accusatory and both were judged legitimate on inspection. The
-classes are in [docs/false-positive-survey.md](./docs/false-positive-survey.md).
+250 commits touching 1,029 file changes, **12 flags**. The first run on the same
+history produced 109, of which 104 were `verifier-config-changed` firing on
+`.github/workflows/*`, `.pre-commit-config.yaml`, `pyproject.toml` and
+`package.json` -- ordinary maintenance. That rule was narrowed to fire only when
+a change can alter what runs; the 7 it still produces are all real runner
+changes, 10 flags in total are asking rules, and the 2 accusatory flags were
+both judged legitimate on inspection. The classes are in
+[docs/false-positive-survey.md](./docs/false-positive-survey.md).
 
 ## Where this stands
 

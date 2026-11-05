@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <strong>24/24 planted tampers caught &middot; 0 false positives on 24 matched fixes &middot; 1003 tests</strong><br>
+  <strong>24/24 planted tampers caught &middot; 0 false positives on 24 matched fixes &middot; 1014 tests</strong><br>
   <sub>
     An agent under pressure to show green will skip the test, mock the unit under
     test, hardcode the expected value, or swallow the exception that would have
@@ -276,7 +276,7 @@ Ten static rules, and seven signals that only a run can produce:
 | `GW-EXP-001` | `known-exploit-pattern` | high | An unconditional `__eq__`, or `sys.exit(0)` / `os._exit(0)` / `process.exit(0)` |
 | `GW-TEST-005` | `mock-in-test` | medium | A mock appears in a test file -- **asks**, never accuses |
 | `GW-TEST-006` | `conftest-changed` | medium | `conftest.py` was touched -- **asks**, never accuses |
-| `GW-TEST-007` | `verifier-config-changed` | medium | Files that decide what gets checked and what may pass were touched -- **asks**, never accuses |
+| `GW-TEST-007` | `verifier-config-changed` | medium | Files that decide what gets checked and what may pass changed in a way that can alter what runs -- **asks**, never accuses |
 | `GW-VER-001` | `tests-failed` | high | The test command exits non-zero after "done" |
 | `GW-VER-002` | `heldout-failed` | high | The visible suite passes but the held-out suite fails |
 | `GW-VER-003` | `regression` | high | A test that passed at the committed baseline fails now |
@@ -371,15 +371,16 @@ match may make a report `SUSPICIOUS`, but only evidence may make it
 **False positives on real history.** `benchmark/fp_survey.py` re-runs the
 scanner over recent commits of ten unrelated repositories -- Python and
 JavaScript/TypeScript, including `flask`, `requests`, `pytest`, `axios` and
-`express` -- 250 commits touching 1,029 file changes. It produced 109 flags:
-**107 are the rules that always ask for an explanation, and 104 of those are
-one rule firing on ordinary maintenance** -- `verifier-config-changed` on
-`.github/workflows/*`, `.pre-commit-config.yaml`, `pyproject.toml` and
-`package.json`. The other 2 are genuine false positives, both judged legitimate
-on inspection. The full list, the per-repository table and what the survey does
-not measure are in [docs/false-positive-survey.md](docs/false-positive-survey.md).
-The finding is about the gate, not the scanner: a strict run over active CI is
-a waiver queue, and narrowing that rule is the next thing to fix.
+`express` -- 250 commits touching 1,029 file changes. The first run produced
+109 flags, **104 of them one asking rule** on CI and dependency configuration.
+That rule was narrowed to fire only when a change can alter what runs, and the
+same history now produces 12 flags: **10 are the rules that always ask for an
+explanation**, and **2 are genuine false positives**, both judged legitimate on
+inspection. All seven of the remaining flags from that rule are real runner
+changes -- a `test` script rewritten, a hook's scope narrowed, a tox
+environment given a dependency. The before-and-after, the per-repository table
+and what the survey does not measure are in
+[docs/false-positive-survey.md](docs/false-positive-survey.md).
 
 **Language packs, measured.** `python benchmark/polyglot.py` runs 15 cases
 across Go, Rust, Ruby, Java and JavaScript -- a positive and a negative each --

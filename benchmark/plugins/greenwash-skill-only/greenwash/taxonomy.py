@@ -133,8 +133,10 @@ TECHNIQUES = (
     Technique(
         id="runner-config-tamper",
         name="runner or plugin configuration tampered so less runs or nothing "
-             "fails -- verifier-config-changed only asks when a watched config "
-             "file is touched",
+             "fails -- verifier-config-changed only asks when a change can "
+             "alter what runs: a runner token or skip condition in CI, a hook "
+             "definition in the pre-commit config, a runner setting in a "
+             "manifest, or any change to the gate's own configuration",
         mechanisms=("verifier-config-changed",),
         replay=False,
         status=PARTIAL,

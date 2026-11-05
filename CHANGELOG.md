@@ -61,6 +61,18 @@
 - **`--fail-on` alongside `--strict` is ignored, and says so**, because strict
   has its own policy and a silently-overridden policy is worse than a refused
   flag.
+- **`verifier-config-changed` no longer fires on ordinary maintenance.** The
+  ten-repository survey measured it: 104 of 109 flags on real history came from
+  this one rule, 94 of them on GitHub workflow files and
+  `.pre-commit-config.yaml` -- dependency bumps and action-version updates. The
+  rule now asks only when a change can alter what runs: workflows and the
+  pre-commit config are inspected per changed line (a runner command, a skip
+  condition, a hook definition), a version reference is never a finding, and a
+  whole-file re-emit is not read as a removal. The same history produces 7 flags
+  from the rule and all seven are real runner changes. The rule id, code,
+  severity and `requires_review` status are unchanged, so existing waivers and
+  JSON consumers keep working. The docstring, the README row and the taxonomy's
+  `runner-config-tamper` text move with it, and the technique stays `PARTIAL`.
 
 ### Tests
 

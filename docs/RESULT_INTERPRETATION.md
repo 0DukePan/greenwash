@@ -23,23 +23,24 @@ authors' idea of a cheat.
 
 ## 2. The false-positive survey -- "does it fire on real code?"
 
-109 flags over 250 commits and 1,029 file changes in ten unrelated
-repositories; 107 are the four rules that always ask for an explanation, and
-the 2 accusatory flags were both judged legitimate on inspection. 104 of the
-109 are one rule firing on CI and dependency configuration -- ordinary
-maintenance.
+The scanner was run twice over 250 commits and 1,029 file changes in ten
+unrelated repositories. Run 1: 109 flags, 104 of them one rule
+(`verifier-config-changed`) firing on CI and dependency configuration. Run 2,
+after that rule was narrowed to fire only when a change can alter what runs: 12
+flags -- 10 from the rules that ask rather than accuse, and 2 accusatory flags
+that were both rejected by hand.
 
-**Licenses:** "on the recent history of ten repositories the scanner produced
-109 flags, 107 of them from the rules that ask rather than accuse; of the two
-that accused, both were rejected by hand."
+**Licenses:** "on the recent history of ten repositories the scanner produced 12
+flags, 10 of them from the rules that ask rather than accuse; of the two that
+accused, both were rejected by hand. The one rule that produced 104 of the
+first run's 109 flags produces 7 now, and all seven are real runner changes."
 
-**Does not license:** "the false-positive rate is 2%." Classifying 109 flags by
+**Does not license:** "the false-positive rate is 17%." Classifying 12 flags by
 hand gives a number, not a population estimate -- the repositories were not
 sampled, the commits were not sampled, and nobody labelled the changes that
-were *not* flagged. This is a survey, and the page says so. What it does
-license is a statement about the **gate**: `verifier-config-changed` on
-`.github/workflows/*` is roughly one review per 2.4 maintenance commits, and
-that is a reason to narrow the rule before recommending strict mode.
+were *not* flagged. This is a survey, and the page says so. It also does not
+license "the rule is precise": a narrowed rule sees less, and the taxonomy keeps
+`runner-config-tamper` at `PARTIAL` for exactly that reason.
 
 ## 3. The agent-facing delta -- "does it change what an agent does?"
 

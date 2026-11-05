@@ -40,10 +40,12 @@ already runs on.
    only evidence that the tool crossed the boundary between the author's
    machine and someone else's work.
 2. **What was the first complaint?** The first complaint is the product roadmap,
-   whatever the plan says. If it is the waiver queue from the
-   [false-positive survey](./false-positive-survey.md), narrow
-   `verifier-config-changed`. If it is runtime, measure the hook. If it is a
-   false accusation, that is the highest-severity bug in the project.
+   whatever the plan says. The waiver queue from the
+   [false-positive survey](./false-positive-survey.md) has already been treated:
+   `verifier-config-changed` went from 104 of 109 flags to 7 of 12 on the same
+   history. So the complaint now has to be something else -- runtime, a false
+   accusation, or the hook's cost on a real suite. If it is a false accusation,
+   that is the highest-severity bug in the project.
 3. **Would you install it on a repository you did not write?** If the answer is
    no, the tool is not ready, regardless of the star count.
 

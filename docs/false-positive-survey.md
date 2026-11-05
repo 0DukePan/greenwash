@@ -6,6 +6,10 @@ that were *not* flagged, the repositories were not sampled, and the clones are
 shallow (the last 25 commits of each default branch). What it can say is what
 fired, on what, and whether a human would accept it.
 
+It was run twice. The first run found that one asking rule was 95% of the
+noise, the rule was narrowed, and the second run measures the result against
+the same history. Both runs are published.
+
 Reproduce with:
 
 ```bash
@@ -15,28 +19,28 @@ python benchmark/fp_survey.py --limit 25 flask requests httpx pytest llm \
 ```
 
 Artifact: `benchmark/results/fp-survey.json` (every flag, with path and commit).
+The second run is the committed artifact.
 
 ## What was scanned
 
-| Repository | Commits | File changes | Flags |
-|---|---:|---:|---:|
-| `axios` | 25 | 168 | 11 |
-| `chalk` | 25 | 84 | 6 |
-| `express` | 25 | 53 | 15 |
-| `flask` | 25 | 96 | 20 |
-| `got` | 25 | 125 | 1 |
-| `httpx` | 25 | 47 | 5 |
-| `koa` | 25 | 50 | 5 |
-| `llm` | 25 | 65 | 1 |
-| `pytest` | 25 | 290 | 12 |
-| `requests` | 25 | 51 | 33 |
-| **total** | **250** | **1,029** | **109** |
+| Repository | Commits | File changes | Flags before | Flags after |
+|---|---:|---:|---:|---:|
+| `axios` | 25 | 168 | 11 | 0 |
+| `chalk` | 25 | 84 | 6 | 2 |
+| `express` | 25 | 53 | 15 | 0 |
+| `flask` | 25 | 96 | 20 | 4 |
+| `got` | 25 | 125 | 1 | 1 |
+| `httpx` | 25 | 47 | 5 | 0 |
+| `koa` | 25 | 50 | 5 | 0 |
+| `llm` | 25 | 65 | 1 | 1 |
+| `pytest` | 25 | 290 | 12 | 4 |
+| `requests` | 25 | 51 | 33 | 0 |
+| **total** | **250** | **1,029** | **109** | **12** |
 
-0.44 flags per commit; one flag per 9.4 changed files. Python and JavaScript /
-TypeScript only, static layer only -- no test suite was executed for this
-survey, so none of the behavioral rules could fire.
+Python and JavaScript / TypeScript only, static layer only -- no test suite was
+executed for this survey, so none of the behavioral rules could fire.
 
-## What fired
+## Run 1: one asking rule was the noise
 
 | Rule | Flags | Asks or accuses |
 |---|---:|---|
@@ -45,20 +49,43 @@ survey, so none of the behavioral rules could fire.
 | `assertion-weakened` | 1 | accuses |
 | `swallowed-exception` | 1 | accuses |
 
-**104 of the 109 flags are one asking rule firing on ordinary maintenance.**
-The files that carried `verifier-config-changed`:
+104 of 109 flags were one rule: 94 on GitHub workflows and
+`.pre-commit-config.yaml`, 10 on manifests. The files that carried it:
 
 - `.github/workflows/*.yml` -- 76 flags
 - `.pre-commit-config.yaml` -- 18 flags
-- `package.json` / `pyproject.toml` -- 6 flags
+- `package.json` / `pyproject.toml` -- 10 flags
 - `tox.ini` -- 2 flags
-- `tests/**/package.json` -- 2 flags
 
-Not one of those was a tamper: they are dependency bumps, action-version
-updates, and lint configuration. In report mode that is noise next to honest
-work. In strict mode every one of them blocks the turn until somebody waives
-it, which is roughly one review every 2.4 commits in this sample. That is the
-real cost of the strict gate, and it is measured here for the first time.
+Not one was a tamper: dependency bumps, action-version updates, lint
+configuration. In strict mode every one of them blocks the turn until somebody
+waives it -- roughly one review every 2.4 commits. The rule was fixed rather
+than the finding being waived: it now asks only when a change can alter what
+runs, and a version reference is not that.
+
+## Run 2: after the narrowing
+
+| Rule | Flags | Asks or accuses |
+|---|---:|---|
+| `verifier-config-changed` | 7 | asks (needs review) |
+| `conftest-changed` | 3 | asks (needs review) |
+| `assertion-weakened` | 1 | accuses |
+| `swallowed-exception` | 1 | accuses |
+
+**The 104 became 7, and all seven are real changes to runner configuration:**
+
+| Repository | Commit | File | What changed |
+|---|---|---|---|
+| `chalk` | `7211001` | `package.json` | the `test` script switched from `ava` to `node --test` |
+| `chalk` | `8a94e0e` | `package.json` | the `test` script changed again in the same migration |
+| `flask` | `6a2f545` | `.pre-commit-config.yaml` | a hook gained `additional_dependencies` and lost an `args` line |
+| `pytest` | `4abdff3` | `.pre-commit-config.yaml` | a hook gained an `exclude:` for release notes |
+| `pytest` | `ed37b23` | `.pre-commit-config.yaml` | the same exclude, seen through a second commit |
+| `pytest` | `ed37b23` | `tox.ini` | a test environment gained a dependency |
+| `pytest` | `4abdff3` | `tox.ini` | the same dependency, seen through a second commit |
+
+Two of the seven are one change seen through two commits; the rest are distinct.
+No accusatory flag changed, because the narrowing was about the asking rules.
 
 ## The two flags that accused, checked by hand
 
@@ -89,15 +116,16 @@ looks like weakening and an empty handler that is deliberate.
   commits that were *not* flagged, which nobody here produced.
 - **Not the strict-mode experience.** It counts blocks, not how annoying a
   block is, how long a waiver takes, or whether a team would keep the gate.
+  "One review every 2.4 commits" is the pre-fix arithmetic on this sample.
 - **Not representative.** No Go, Rust, Ruby or Java repositories; no monorepos;
   no repository whose tests were actually modified to cheat.
+- **A narrowed rule sees less.** The seven that remain are the changes the new
+  trigger can see. A bypass written as a shell script in a separate file, or a
+  test job replaced by a no-op with the same name, is still a partial-coverage
+  gap and the taxonomy says so.
 
 ## What it says to do next
 
-The verdict on the scanner is good; the verdict on the strict gate's noise is
-bad, and it is one rule. `verifier-config-changed` should distinguish "this
-change alters what runs" (a test command, a `conftest.py`-like hook, a skip in
-CI) from "this change bumps an action version or a dependency", or drop
-`.github/workflows/*` and dependency manifests from the rule entirely. Until
-then, strict mode on a repository with active CI is a waiver queue, and a
-waiver queue is the thing people route around.
+The gate's noise floor on this sample moved from 104 reviews to 7, and every
+one of the seven is a change a reviewer would want to see. The next measurement
+is not another corpus: it is whether a team leaves the gate on for a week.

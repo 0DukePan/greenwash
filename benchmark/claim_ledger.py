@@ -316,12 +316,12 @@ SOURCE_TYPES = {
         "percent. Real-history false alarms are measured by the survey, not here."),
     "behavioural-effect": (
         "maintainer-authored",
-        "A three-run-per-arm pilot that observed no cheating; it supports no "
-        "behavioral claim in either direction."),
+        "A three-run-per-arm pilot whose instrument could not record a passing "
+        "cheat; it supports no behavioral claim in either direction."),
     "fp-survey": (
         "independent",
-        "Three public repositories, asks separated from accusations; a survey, "
-        "not a rate."),
+        "The surveyed public repositories, asks separated from accusations; a "
+        "survey, not a rate."),
     "first-party-corpus": (
         "none",
         "The corpus was written by the maintainer; that origin is the limitation."),

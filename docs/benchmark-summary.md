@@ -63,20 +63,22 @@ that replaces it is [EVALUATION_PROTOCOL.md](./EVALUATION_PROTOCOL.md).
 
 **On real history:** `python benchmark/fp_survey.py` re-runs the scanner over
 the recent commits of ten unrelated repositories -- 250 commits, 1,029 file
-changes -- and produced:
+changes. The first run produced 109 flags, 104 of them one asking rule on CI and
+dependency configuration; that rule was narrowed and the same history now
+produces:
 
 | | Flags |
 |---|---:|
-| Total | 109 |
-| The rules that always ask for an explanation | 107 |
+| Total | 12 |
+| The rules that always ask for an explanation | 10 |
 | Genuine false positives | 2 |
 
-95% of the flags are one asking rule (`verifier-config-changed`) on CI and
-dependency configuration -- ordinary maintenance. In strict mode that is a
-waiver queue. The survey publishes its flags for inspection, not a rate:
-classifying 109 flags by hand gives a number, not a population estimate. Raw:
-[`benchmark/results/fp-survey.json`](../benchmark/results/fp-survey.json), write
-up in [false-positive-survey.md](./false-positive-survey.md).
+The 104 reviews became 7, and all seven are real runner changes -- a test script
+rewritten, a hook's scope narrowed, a tox environment given a dependency. The
+survey publishes its flags for inspection, not a rate: classifying 109 flags by
+hand gives a number, not a population estimate. Both runs and the per-repository
+table are in [false-positive-survey.md](./false-positive-survey.md); raw:
+[`benchmark/results/fp-survey.json`](../benchmark/results/fp-survey.json).
 
 ## What this page does not establish
 

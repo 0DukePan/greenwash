@@ -14,128 +14,31 @@
     ],
     "commits": 250,
     "files": 1029,
-    "flags": 109,
+    "flags": 12,
     "fixture_flags": 0,
-    "real_flags": 109
+    "real_flags": 12
   },
   "repos": [
     {
       "repo": "axios",
       "commits": 25,
       "files": 168,
-      "flags": 11,
+      "flags": 0,
       "fixture_flags": 0,
-      "real_flags": 11,
-      "detail": [
-        {
-          "repo": "axios",
-          "commit": "31cc02a",
-          "file": ".github/workflows/zizmor.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "axios",
-          "commit": "8f4ed56",
-          "file": ".github/workflows/bundle-size.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "axios",
-          "commit": "8f4ed56",
-          "file": ".github/workflows/lockfile-lint.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "axios",
-          "commit": "8f4ed56",
-          "file": ".github/workflows/moderator.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "axios",
-          "commit": "8f4ed56",
-          "file": ".github/workflows/release-branch.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "axios",
-          "commit": "8f4ed56",
-          "file": ".github/workflows/run-ci.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "axios",
-          "commit": "8f4ed56",
-          "file": ".github/workflows/verify-build-reproducibility.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "axios",
-          "commit": "8f4ed56",
-          "file": ".github/workflows/zizmor.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "axios",
-          "commit": "49e9e84",
-          "file": "tests/module/esm/package.json",
-          "kind": "verifier-config-changed",
-          "detail": "test-runner configuration changed in this manifest -- it decides what runs",
-          "fixture": false
-        },
-        {
-          "repo": "axios",
-          "commit": "2317c65",
-          "file": ".github/workflows/zizmor.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "axios",
-          "commit": "ad8814d",
-          "file": "tests/smoke/esm/package.json",
-          "kind": "verifier-config-changed",
-          "detail": "test-runner configuration changed in this manifest -- it decides what runs",
-          "fixture": false
-        }
-      ]
+      "real_flags": 0,
+      "detail": []
     },
     {
       "repo": "chalk",
       "commits": 25,
       "files": 84,
-      "flags": 6,
+      "flags": 2,
       "fixture_flags": 0,
-      "real_flags": 6,
+      "real_flags": 2,
       "detail": [
         {
           "repo": "chalk",
           "commit": "7211001",
-          "file": ".github/workflows/main.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "chalk",
-          "commit": "7211001",
           "file": "package.json",
           "kind": "verifier-config-changed",
           "detail": "test-runner configuration changed in this manifest -- it decides what runs",
@@ -144,33 +47,9 @@
         {
           "repo": "chalk",
           "commit": "8a94e0e",
-          "file": ".github/workflows/main.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "chalk",
-          "commit": "8a94e0e",
           "file": "package.json",
           "kind": "verifier-config-changed",
           "detail": "test-runner configuration changed in this manifest -- it decides what runs",
-          "fixture": false
-        },
-        {
-          "repo": "chalk",
-          "commit": "678e550",
-          "file": ".github/workflows/main.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "chalk",
-          "commit": "77126fb",
-          "file": ".github/workflows/main.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
           "fixture": false
         }
       ]
@@ -179,139 +58,18 @@
       "repo": "express",
       "commits": 25,
       "files": 53,
-      "flags": 15,
+      "flags": 0,
       "fixture_flags": 0,
-      "real_flags": 15,
-      "detail": [
-        {
-          "repo": "express",
-          "commit": "6389ae5",
-          "file": ".github/workflows/ci.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "express",
-          "commit": "6389ae5",
-          "file": ".github/workflows/codeql.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "express",
-          "commit": "6389ae5",
-          "file": ".github/workflows/legacy.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "express",
-          "commit": "6389ae5",
-          "file": ".github/workflows/npm-publish.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "express",
-          "commit": "6389ae5",
-          "file": ".github/workflows/scorecard.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "express",
-          "commit": "2717ae3",
-          "file": ".github/workflows/codeql.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "express",
-          "commit": "2717ae3",
-          "file": ".github/workflows/scorecard.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "express",
-          "commit": "3ce6d0e",
-          "file": ".github/workflows/npm-publish.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "express",
-          "commit": "4e65ec9",
-          "file": ".github/workflows/ci.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "express",
-          "commit": "4e65ec9",
-          "file": ".github/workflows/codeql.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "express",
-          "commit": "4e65ec9",
-          "file": ".github/workflows/legacy.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "express",
-          "commit": "4e65ec9",
-          "file": ".github/workflows/scorecard.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "express",
-          "commit": "023767f",
-          "file": ".github/workflows/scorecard.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "express",
-          "commit": "2574a53",
-          "file": ".github/workflows/ci.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "express",
-          "commit": "2574a53",
-          "file": ".github/workflows/legacy.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        }
-      ]
+      "real_flags": 0,
+      "detail": []
     },
     {
       "repo": "flask",
       "commits": 25,
       "files": 96,
-      "flags": 20,
+      "flags": 4,
       "fixture_flags": 0,
-      "real_flags": 20,
+      "real_flags": 4,
       "detail": [
         {
           "repo": "flask",
@@ -319,38 +77,6 @@
           "file": "tests/test_basic.py",
           "kind": "assertion-weakened",
           "detail": "2 assertion(s) removed, 1 added back",
-          "fixture": false
-        },
-        {
-          "repo": "flask",
-          "commit": "728c5e4",
-          "file": ".github/workflows/tests.yaml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "flask",
-          "commit": "728c5e4",
-          "file": "pyproject.toml",
-          "kind": "verifier-config-changed",
-          "detail": "test-runner configuration changed in this manifest -- it decides what runs",
-          "fixture": false
-        },
-        {
-          "repo": "flask",
-          "commit": "7689f98",
-          "file": ".github/workflows/tests.yaml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "flask",
-          "commit": "7689f98",
-          "file": "pyproject.toml",
-          "kind": "verifier-config-changed",
-          "detail": "test-runner configuration changed in this manifest -- it decides what runs",
           "fixture": false
         },
         {
@@ -364,105 +90,9 @@
         {
           "repo": "flask",
           "commit": "6a2f545",
-          "file": ".github/workflows/lock.yaml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "flask",
-          "commit": "6a2f545",
-          "file": ".github/workflows/pre-commit.yaml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "flask",
-          "commit": "6a2f545",
-          "file": ".github/workflows/publish.yaml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "flask",
-          "commit": "6a2f545",
-          "file": ".github/workflows/tests.yaml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "flask",
-          "commit": "6a2f545",
-          "file": ".github/workflows/zizmor.yaml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "flask",
-          "commit": "6a2f545",
           "file": ".pre-commit-config.yaml",
           "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "flask",
-          "commit": "30d1c5d",
-          "file": ".github/workflows/tests.yaml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "flask",
-          "commit": "ff6fa22",
-          "file": ".github/workflows/lock.yaml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "flask",
-          "commit": "ff6fa22",
-          "file": ".github/workflows/pre-commit.yaml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "flask",
-          "commit": "ff6fa22",
-          "file": ".github/workflows/publish.yaml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "flask",
-          "commit": "ff6fa22",
-          "file": ".github/workflows/tests.yaml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "flask",
-          "commit": "ff6fa22",
-          "file": ".github/workflows/zizmor.yaml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "flask",
-          "commit": "ff6fa22",
-          "file": ".pre-commit-config.yaml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
+          "detail": "a pre-commit hook's command or scope changed -- it decides what gets checked",
           "fixture": false
         },
         {
@@ -497,101 +127,19 @@
       "repo": "httpx",
       "commits": 25,
       "files": 47,
-      "flags": 5,
+      "flags": 0,
       "fixture_flags": 0,
-      "real_flags": 5,
-      "detail": [
-        {
-          "repo": "httpx",
-          "commit": "435e1da",
-          "file": ".github/workflows/publish.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "httpx",
-          "commit": "435e1da",
-          "file": ".github/workflows/test-suite.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "httpx",
-          "commit": "4fb9528",
-          "file": ".github/workflows/publish.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "httpx",
-          "commit": "4fb9528",
-          "file": ".github/workflows/test-suite.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "httpx",
-          "commit": "c7c13f1",
-          "file": ".github/workflows/test-suite.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        }
-      ]
+      "real_flags": 0,
+      "detail": []
     },
     {
       "repo": "koa",
       "commits": 25,
       "files": 50,
-      "flags": 5,
+      "flags": 0,
       "fixture_flags": 0,
-      "real_flags": 5,
-      "detail": [
-        {
-          "repo": "koa",
-          "commit": "4a191b1",
-          "file": ".github/workflows/node.js.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "koa",
-          "commit": "52d5e8f",
-          "file": ".github/workflows/node.js.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "koa",
-          "commit": "d485f97",
-          "file": ".github/workflows/node.js.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "koa",
-          "commit": "99c8f05",
-          "file": ".github/workflows/node.js.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "koa",
-          "commit": "99c8f05",
-          "file": ".github/workflows/npm-publish.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        }
-      ]
+      "real_flags": 0,
+      "detail": []
     },
     {
       "repo": "llm",
@@ -615,72 +163,16 @@
       "repo": "pytest",
       "commits": 25,
       "files": 290,
-      "flags": 12,
+      "flags": 4,
       "fixture_flags": 0,
-      "real_flags": 12,
+      "real_flags": 4,
       "detail": [
         {
           "repo": "pytest",
-          "commit": "8b005ed",
-          "file": ".pre-commit-config.yaml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "pytest",
-          "commit": "1211245",
-          "file": ".github/workflows/deploy.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "pytest",
-          "commit": "1211245",
-          "file": ".github/workflows/test.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "pytest",
-          "commit": "dfd896b",
-          "file": ".github/workflows/deploy.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "pytest",
-          "commit": "dfd896b",
-          "file": ".github/workflows/test.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "pytest",
-          "commit": "b503c1c",
-          "file": ".github/workflows/deploy.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "pytest",
-          "commit": "b503c1c",
-          "file": ".github/workflows/test.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "pytest",
           "commit": "4abdff3",
           "file": ".pre-commit-config.yaml",
           "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
+          "detail": "a pre-commit hook's command or scope changed -- it decides what gets checked",
           "fixture": false
         },
         {
@@ -696,21 +188,13 @@
           "commit": "ed37b23",
           "file": ".pre-commit-config.yaml",
           "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
+          "detail": "a pre-commit hook's command or scope changed -- it decides what gets checked",
           "fixture": false
         },
         {
           "repo": "pytest",
           "commit": "ed37b23",
           "file": "tox.ini",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "pytest",
-          "commit": "679d09c",
-          "file": ".pre-commit-config.yaml",
           "kind": "verifier-config-changed",
           "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
           "fixture": false
@@ -721,275 +205,10 @@
       "repo": "requests",
       "commits": 25,
       "files": 51,
-      "flags": 33,
+      "flags": 0,
       "fixture_flags": 0,
-      "real_flags": 33,
-      "detail": [
-        {
-          "repo": "requests",
-          "commit": "3c7baaa",
-          "file": ".github/workflows/codeql-analysis.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "requests",
-          "commit": "3c7baaa",
-          "file": ".github/workflows/zizmor.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "requests",
-          "commit": "611c616",
-          "file": ".github/workflows/codeql-analysis.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "requests",
-          "commit": "dae7ef6",
-          "file": ".pre-commit-config.yaml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "requests",
-          "commit": "5460f46",
-          "file": ".github/workflows/lock-issues.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "requests",
-          "commit": "6af0b94",
-          "file": ".pre-commit-config.yaml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "requests",
-          "commit": "8f8b212",
-          "file": ".pre-commit-config.yaml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "requests",
-          "commit": "8068356",
-          "file": ".pre-commit-config.yaml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "requests",
-          "commit": "1f6589e",
-          "file": ".pre-commit-config.yaml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "requests",
-          "commit": "414f051",
-          "file": ".github/workflows/lint.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "requests",
-          "commit": "414f051",
-          "file": ".github/workflows/publish.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "requests",
-          "commit": "414f051",
-          "file": ".github/workflows/run-tests.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "requests",
-          "commit": "414f051",
-          "file": ".github/workflows/typecheck.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "requests",
-          "commit": "414f051",
-          "file": ".github/workflows/zizmor.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "requests",
-          "commit": "ded3287",
-          "file": ".pre-commit-config.yaml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "requests",
-          "commit": "69f8484",
-          "file": ".github/workflows/codeql-analysis.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "requests",
-          "commit": "b17c61b",
-          "file": ".pre-commit-config.yaml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "requests",
-          "commit": "f361ead",
-          "file": ".pre-commit-config.yaml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "requests",
-          "commit": "4c800e9",
-          "file": ".github/workflows/lint.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "requests",
-          "commit": "4c800e9",
-          "file": ".github/workflows/publish.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "requests",
-          "commit": "4c800e9",
-          "file": ".github/workflows/run-tests.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "requests",
-          "commit": "4c800e9",
-          "file": ".github/workflows/typecheck.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "requests",
-          "commit": "23953c0",
-          "file": ".pre-commit-config.yaml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "requests",
-          "commit": "4ed3d1b",
-          "file": ".github/workflows/codeql-analysis.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "requests",
-          "commit": "4ed3d1b",
-          "file": ".github/workflows/lint.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "requests",
-          "commit": "4ed3d1b",
-          "file": ".github/workflows/publish.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "requests",
-          "commit": "4ed3d1b",
-          "file": ".github/workflows/run-tests.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "requests",
-          "commit": "4ed3d1b",
-          "file": ".github/workflows/typecheck.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "requests",
-          "commit": "4ed3d1b",
-          "file": ".github/workflows/zizmor.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "requests",
-          "commit": "d44b67e",
-          "file": ".pre-commit-config.yaml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "requests",
-          "commit": "74c56d5",
-          "file": ".github/workflows/lint.yml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "requests",
-          "commit": "d64b9ad",
-          "file": ".pre-commit-config.yaml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        },
-        {
-          "repo": "requests",
-          "commit": "fbd0eb3",
-          "file": ".pre-commit-config.yaml",
-          "kind": "verifier-config-changed",
-          "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
-          "fixture": false
-        }
-      ]
+      "real_flags": 0,
+      "detail": []
     }
   ]
 }

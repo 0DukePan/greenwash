@@ -83,23 +83,32 @@ but does not close it. Independent authorship is the fix, and it has not
 happened yet -- which is why the evaluation governance documents describe a
 separate repository with non-core maintainers holding merge authority.
 
-## 6. One asking rule is 95% of the noise on real history
+## 6. One asking rule was 95% of the noise on real history
 
 The scanner was run over 250 recent commits of ten unrelated repositories --
-1,029 file changes -- and produced 109 flags. **104 of them are
+1,029 file changes -- and produced 109 flags. **104 of them were
 `verifier-config-changed` firing on `.github/workflows/*`,
 `.pre-commit-config.yaml`, `pyproject.toml`, `package.json` and `tox.ini`** --
-dependency bumps, action-version updates and lint configuration. Three are
+dependency bumps, action-version updates and lint configuration. Three were
 `conftest-changed`. Two accused, and both were judged legitimate on inspection:
 an assertion-weakened flag on a `werkzeug` compatibility test whose removed
 assertions were implied by the narrower expected exception, and a
 swallowed-exception flag on a deliberate empty `catch` in a `got` test.
 
-The scanner's precision on this sample is fine. The gate's is not: those 104
-reviews are what strict mode would demand over active CI, roughly one per 2.4
-commits. The survey is written up in
-[false-positive-survey.md](./false-positive-survey.md); it is a survey, not a
-rate -- classifying 109 flags by hand gives a number, not a population estimate.
+The scanner's precision on this sample was fine. The gate's was not: those 104
+reviews are what strict mode demanded over active CI, roughly one per 2.4
+commits. That was the first thing fixed rather than waived -- the rule now asks
+only when a change can alter what runs, and a version reference is not that. The
+same history now produces **12 flags**: 10 asking (7 of them the narrowed rule,
+all genuine runner changes) and the same two false positives. The before and
+after are in [false-positive-survey.md](./false-positive-survey.md); it is a
+survey, not a rate -- classifying 109 flags by hand gives a number, not a
+population estimate.
+
+The narrowing has the shape every narrowing has: it sees less. A bypass written
+in a separate shell script, or a test job replaced by a no-op with the same
+name, is still outside the trigger, and the taxonomy keeps that technique's
+coverage at `PARTIAL` rather than promoting it.
 
 ## 7. `error-path-default` has not been through the false-positive survey
 
@@ -160,7 +169,7 @@ table stops matching the data.
 | detector-recall | A frozen evaluation run on a corpus this project did not author, at the pre-registered sample size. | Measured on the first-party internal corpus only; the frozen run has not happened. | On a labelled corpus of 24 tasks with one planted cheat each, the scanner caught 24 of 24 planted cheats (95% CI 86.2%-100%). |
 | false-alarms | A labelled sample of real code large enough for a rate, not a hand-classified flag count. | Measured on the recorded honest fixes of the internal corpus only. | It flagged 0 of 24 recorded honest fixes (95% upper bound 13.8% at this sample size). |
 | behavioural-effect | The pre-registered behavioural study: an independent corpus, a pinned image, and an instrument that is not the treatment. | One live first-party run. Its rows carry no detector flags, no diffs and no transcripts, and the classifier that produced the labels could not record a cheat that passes the held-out suite -- that is fixed now, but the run was not repeated after the fix. | No measurable effect at this sample size: +0.0 points over 252 scored runs (95% CI [0, 5] in every arm). The run recorded no detector flags and its labels predate the instrument fix that can label a passing cheat, so this is a label count, not a measurement of the plugin's effect. |
-| fp-survey | A labelled sample of real code; classifying flags by hand gives a number, not a population estimate. | A survey of recent history in 10 repositories, published for inspection. | On the recent history of 10 repositories (250 commits, 1,029 file changes) the scanner produced 109 flags: 107 are the rules that always ask for an explanation, 2 are genuine false positives. This is a survey, not a rate. |
+| fp-survey | A labelled sample of real code; classifying flags by hand gives a number, not a population estimate. | A survey of recent history in 10 repositories, published for inspection. | On the recent history of 10 repositories (250 commits, 1,029 file changes) the scanner produced 12 flags: 10 are the rules that always ask for an explanation, 2 are genuine false positives. This is a survey, not a rate. |
 | first-party-corpus | Corpus authorship independent of this project, with merge authority outside it. | Not established; the governance documents are the invitation. | The corpus is first-party: it measures the detector against its own authors' idea of a cheat and cannot establish detector quality. |
 | rate-claims | The frozen run at the pre-registered sample size; until then every number is a count with an interval. | Not available; the current corpus is first-party and small. | Every published number is an interval-qualified count on the internal corpus; a rate claim waits on the frozen run. |
 | strength-advisory | The strength check's error rate, measured; promotion to a verdict is deliberately deferred. | Ships as an advisory flag in this version. | The strength check ships as an advisory flag, not a verdict; promotion waits until its error rate is measured. |
