@@ -12,7 +12,27 @@ positives because it reasons about structure instead of text.
 from __future__ import annotations
 
 import ast
+from dataclasses import dataclass
 from typing import Iterable, Optional
+
+BINARY_FAILURE = "BinaryFile"
+MISSING_FAILURE = "FileNotFoundError"
+
+
+@dataclass(frozen=True)
+class ReadFailure:
+    """Why the static layer has no tree for a file.
+
+    `type` is the exception name for a read or parse failure, or
+    `BinaryFile` when git called the changed content binary. `line` is the
+    1-indexed source line a `SyntaxError` failed on, so a report can give a
+    `path:line` coordinate; it is `None` when the failure has none.
+    """
+
+    type: str
+    message: str
+    line: Optional[int] = None
+    binary: bool = False
 
 
 def textual_forms(value) -> set:
@@ -35,10 +55,17 @@ SKIP_CALLS = ("pytest.skip", "self.skipTest", "unittest.skip")
 class PythonModule:
     """A parsed Python file. Returns raw findings; rules turn them into Signals."""
 
-    def __init__(self, path: str):
+    def __init__(self, path: str, binary: bool = False):
         self.path = path
-        self.error = ""
-        self.error_type = ""
+        self.tree: Optional[ast.AST] = None
+        self.failure: Optional[ReadFailure] = None
+        if binary:
+            # The diff said this content is binary, so there is no text to
+            # parse. Recorded as a failure of the same shape as a parse error,
+            # which lets the rule ask one question instead of branching on
+            # where the knowledge came from.
+            self._record_binary()
+            return
         try:
             # utf-8-sig, not utf-8: a byte-order mark is legal Python source and
             # common on Windows (PowerShell, Visual Studio and Notepad all write
@@ -46,20 +73,64 @@ class PythonModule:
             # string. Read as plain utf-8, every AST rule went silent on such a
             # file -- no signal, no note, and a report that read as clean.
             with open(path, "r", encoding="utf-8-sig", errors="ignore") as handle:
-                self.tree: Optional[ast.AST] = ast.parse(handle.read())
+                self.tree = ast.parse(handle.read())
         except (OSError, SyntaxError, ValueError) as error:
             # The failure is kept, not just swallowed: a file no rule could read
             # is a gap the report has to name (see rules/unreadable_file.py).
-            # The type is kept too, because "this path is not in the tree" and
-            # "this file will not parse" are different statements.
-            self.tree = None
-            self.error_type = type(error).__name__
-            message = getattr(error, "msg", None) or str(error)
-            self.error = f"{self.error_type}: {message}"
+            # Its type, line and message are kept too, because "this path is not
+            # in the tree" and "this file will not parse" are different
+            # statements, and a SyntaxError knows which line it gave up on.
+            message = (getattr(error, "msg", None) or str(error)
+                       or type(error).__name__)
+            self.failure = ReadFailure(type(error).__name__, message,
+                                       getattr(error, "lineno", None))
+
+    def _record_binary(self) -> None:
+        """A path git called binary was never text the parser could read.
+
+        Existence is checked deliberately: a synthetic or replayed diff may
+        name a binary path the checkout does not hold, and that is the same
+        caller-mismatch boundary as a text path missing from the tree -- there
+        was no file there to fail to read, so there is nothing to report.
+        """
+        try:
+            with open(self.path, "rb"):
+                pass
+        except OSError as error:
+            self.failure = ReadFailure(type(error).__name__,
+                                       str(error) or type(error).__name__,
+                                       binary=True)
+            return
+        self.failure = ReadFailure(
+            BINARY_FAILURE,
+            "git reports this changed file as binary, so it was not read as "
+            "Python text",
+            binary=True)
 
     @property
     def ok(self) -> bool:
         return self.tree is not None
+
+    @property
+    def missing(self) -> bool:
+        """True when the path was not in the tree, not a file that failed."""
+        return self.failure is not None and self.failure.type == MISSING_FAILURE
+
+    @property
+    def unreadable(self) -> bool:
+        """True when a file was there and the static layer could not read it."""
+        return self.failure is not None and not self.missing
+
+    @property
+    def error_type(self) -> str:
+        """The failure type, kept for callers that already display it."""
+        return self.failure.type if self.failure else ""
+
+    @property
+    def error(self) -> str:
+        """The failure as one line, e.g. `SyntaxError: invalid syntax`."""
+        return (f"{self.failure.type}: {self.failure.message}"
+                if self.failure else "")
 
     # -- helpers ---------------------------------------------------------------
 

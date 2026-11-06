@@ -131,6 +131,7 @@ def score(verification: Optional[VerificationResult],
     elif verification.baseline == Outcome.FAIL.value:
         reasons.append("the change regressed tests that passed at the baseline")
 
+    review_only = [s for s in signals if s.requires_review]
     for signal in counted:
         points += _severity_penalty(signal)
     if counted:
@@ -140,10 +141,12 @@ def score(verification: Optional[VerificationResult],
         detail = ", ".join(f"{n} {sev.lower()}-severity"
                            for sev, n in sorted(by_severity.items()))
         reasons.append(f"{detail} signal(s) in the diff")
-    else:
+    elif not review_only:
+        # A review-only finding is still a finding. Saying "nothing suspicious
+        # was detected" directly under it would deny what the report shows; the
+        # review line below says what was seen and why it did not cost points.
         reasons.append("no suspicious patterns detected")
 
-    review_only = [s for s in signals if s.requires_review]
     if review_only:
         reasons.append(f"{len(review_only)} signal(s) asked for a review only, "
                        "and were not counted against the score")

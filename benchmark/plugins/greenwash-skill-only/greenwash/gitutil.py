@@ -157,6 +157,39 @@ def parse_diff(diff_text: str):
     return files, deleted
 
 
+BINARY_LINE = "Binary files "
+BINARY_SUFFIX = " differ"
+
+
+def binary_paths(diff_text: str) -> list:
+    """New-side paths git marked binary in this diff, in diff order.
+
+    A binary stanza has no `---`/`+++` pair, so `parse_diff` cannot see it:
+    the file never enters the hunk map and every rule that reads hunks misses
+    it. The path is still in the diff, on the `Binary files ... differ` line,
+    and the scan context carries it so a rule can say the file was there and
+    the static layer did not read it.
+
+    A deleted binary file has `/dev/null` on the new side and is not a changed
+    path; it is left out. Paths are split on the new-side `b/` prefix, not on
+    the first ` and `, because a filename may contain that text.
+    """
+    paths: list[str] = []
+    for line in diff_text.splitlines():
+        if not line.startswith(BINARY_LINE) or not line.endswith(BINARY_SUFFIX):
+            continue
+        body = line[len(BINARY_LINE):-len(BINARY_SUFFIX)]
+        if " and b/" in body:
+            _, new = body.rsplit(" and b/", 1)
+        elif " and " in body:
+            _, new = body.rsplit(" and ", 1)
+        else:
+            continue
+        if new and new != "/dev/null" and new not in paths:
+            paths.append(new)
+    return paths
+
+
 def change_list(files: dict, deleted: list) -> list:
     """FileChange records for the report's Changes section."""
     changes = []

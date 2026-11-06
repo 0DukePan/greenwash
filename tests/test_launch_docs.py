@@ -169,6 +169,26 @@ def test_the_survey_page_repository_table_matches_the_artifact():
     assert total[4] == str(measured["total"]), "total flags after"
 
 
+def test_the_survey_page_repository_names_match_the_artifact():
+    """The page's repository set is the artifact's set, not just a lookup.
+
+    The per-row test iterates the artifact and finds each name, so a row for a
+    repository the artifact never saw would pass it. This pins the other
+    direction: an invented row fails.
+    """
+    measured = survey()
+    page = text("false-positive-survey.md")
+    names = set()
+    for line in page.splitlines():
+        cells = survey_cells(line)
+        if (len(cells) >= 5 and cells[0].startswith("`")
+                and cells[1].isdigit() and cells[2].isdigit()):
+            names.add(cells[0].strip("`"))
+    assert names == set(measured["repos"]), (
+        f"the page names repositories {sorted(names)}; the artifact names "
+        f"{sorted(measured['repos'])}")
+
+
 def test_the_survey_page_run_one_column_adds_up():
     """Run 1 predates the committed artifact, so its column is pinned here."""
     page = text("false-positive-survey.md")
@@ -204,6 +224,30 @@ def test_the_survey_page_rule_table_matches_the_artifact():
                 f"ledger puts it in the {'asking' if expected == 'asks' else 'accusing'} set")
     assert rows == measured["by_rule"], (
         f"the page's rule table says {rows}; the artifact says {measured['by_rule']}")
+
+
+def test_the_false_positive_page_table_counts_match_the_artifact():
+    """`docs/false-positives.md` says a test guards this table; this is it.
+
+    The prose promised that `tests/test_launch_docs.py` fails when the table
+    disagrees with `fp-survey.json`, and nothing read the page. The measured
+    table is parsed rule-by-rule and reconciled with the artifact's counts, so
+    a count that drifts in either file fails here.
+    """
+    measured = survey()
+    page = text("false-positives.md")
+    section = page.split("## Measured on real history", 1)[1].split(
+        "An earlier survey", 1)[0]
+    rows = {}
+    for line in section.splitlines():
+        cells = survey_cells(line)
+        if len(cells) >= 2 and cells[0].startswith("`") and cells[1].isdigit():
+            match = re.match(r"`([^`]+)`", cells[0])
+            assert match, f"the measured table row names no rule: {line!r}"
+            rows[match.group(1)] = int(cells[1])
+    assert rows == measured["by_rule"], (
+        f"docs/false-positives.md says {rows}; fp-survey.json says "
+        f"{measured['by_rule']}")
 
 
 def test_every_flag_the_artifact_records_is_named_with_its_commit_and_file():

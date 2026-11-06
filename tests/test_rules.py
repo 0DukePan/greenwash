@@ -192,6 +192,87 @@ def test_a_diff_path_missing_from_the_tree_is_not_a_parse_failure(tmp_path):
     assert not [s for s in signals if s.rule_id == "unreadable-file"]
 
 
+def test_a_binary_changed_python_file_produces_a_finding(tmp_path, monkeypatch):
+    """Git calls a UTF-16 file binary, so it has no hunk for the rule to read.
+
+    The diff carries only `Binary files ... differ`, `parse_diff` never puts
+    the path in `ctx.files`, and the static layer went silent -- a changed
+    Python file the rules could not read, reported as though it were clean.
+    The finding must name the file and say binary, not SyntaxError: nothing
+    parsed it, so no parse error exists.
+    """
+    _repo(tmp_path)
+    (tmp_path / "src" / "calc.py").write_bytes(
+        "def add(a, b):\n    return a + b\n".encode("utf-16"))
+    monkeypatch.chdir(tmp_path)
+
+    signal = next(s for s in scan_mod.scan() if s.rule_id == "unreadable-file")
+    assert signal.path == "src/calc.py"
+    assert signal.requires_review, "a file the layer could not read must not accuse"
+    assert not signal.mechanism and not signal.grade_relevance
+    explanation = " ".join(signal.explanation.lower().split())
+    assert "binary" in explanation
+    assert "could not" in explanation
+    assert "syntaxerror" not in explanation
+    assert "binary" in signal.evidence.get("parse_error", "").lower()
+
+
+def test_a_binary_changed_non_python_file_is_not_unreadable(tmp_path, monkeypatch):
+    """An image is binary by design; only Python was meant to be parsed."""
+    _repo(tmp_path)
+    (tmp_path / "assets").mkdir()
+    (tmp_path / "assets" / "logo.png").write_bytes(
+        b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR")
+    monkeypatch.chdir(tmp_path)
+
+    assert "unreadable-file" not in _kinds(tmp_path, monkeypatch)
+
+
+def test_a_binary_path_missing_from_the_tree_is_not_a_parse_failure(tmp_path):
+    """The missing-path boundary holds for binary stanzas too.
+
+    A replayed diff can carry a binary marker for a path the checkout does not
+    have. There was no file there to fail to read, so it is the same caller
+    mismatch the text case already leaves alone.
+    """
+    diff = ("diff --git a/src/gone.py b/src/gone.py\n"
+            "index 1111111..2222222 100644\n"
+            "Binary files a/src/gone.py and b/src/gone.py differ\n")
+    signals = scan_mod.scan_diff(diff, cwd=str(tmp_path), root=str(tmp_path))
+    assert not [s for s in signals if s.rule_id == "unreadable-file"]
+
+
+def test_a_parse_error_carries_the_line_it_failed_on(tmp_path, monkeypatch):
+    """A SyntaxError knows its line; the report should give path:line."""
+    _repo(tmp_path)
+    _write(tmp_path, "src/calc.py", "def add(a, b):\n    return a + +\n")
+    monkeypatch.chdir(tmp_path)
+
+    signal = next(s for s in scan_mod.scan() if s.rule_id == "unreadable-file")
+    assert signal.line == 2
+    assert "SyntaxError" in signal.evidence.get("parse_error", "")
+
+
+def test_module_failure_distinguishes_missing_from_unreadable(tmp_path):
+    """The rule asks the module a question; it does not string-match a type."""
+    from greenwash.scan.languages.python_ast import PythonModule
+
+    missing = PythonModule(str(tmp_path / "gone.py"))
+    assert missing.missing
+    assert not missing.unreadable
+    assert missing.failure.type == "FileNotFoundError"
+    assert missing.failure.line is None
+
+    broken = tmp_path / "broken.py"
+    broken.write_text("def add(a, b):\n    return a + +\n", encoding="utf-8")
+    unreadable = PythonModule(str(broken))
+    assert unreadable.unreadable
+    assert not unreadable.missing
+    assert unreadable.failure.type == "SyntaxError"
+    assert unreadable.failure.line == 2
+    assert "invalid syntax" in unreadable.failure.message
+
+
 def test_deleting_a_source_file_is_not_a_deleted_test(tmp_path, monkeypatch):
     _repo(tmp_path)
     (tmp_path / "src" / "calc.py").unlink()

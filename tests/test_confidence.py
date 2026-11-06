@@ -63,6 +63,19 @@ def test_requires_review_signals_are_not_counted_against_the_score():
     assert any("review only" in reason for reason in review.reasons)
 
 
+def test_a_review_only_finding_does_not_read_as_nothing_detected():
+    """A report carrying an ask must not then say no patterns were detected.
+
+    Review-only signals are not scored, so the old arithmetic fell through to
+    "no suspicious patterns detected" and printed it directly beneath the
+    review finding. The review line is the one that says what was seen.
+    """
+    confidence = score(neutral(), [signal(Level.MEDIUM.value, requires_review=True)])
+    joined = " ".join(confidence.reasons).lower()
+    assert "no suspicious patterns" not in joined
+    assert "asked for a review only" in joined
+
+
 def test_low_coverage_is_a_deduction():
     assert score(neutral()).score == BASE
     assert score(v(coverage=0.5)).score == BASE + VISIBLE_PASS

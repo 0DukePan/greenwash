@@ -21,10 +21,12 @@ import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 RESULTS = ROOT / "benchmark" / "results"
+sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "benchmark"))
 
 import claim_ledger  # noqa: E402
 from report import wilson  # noqa: E402  one interval implementation
+from greenwash.scan.rules import RULES  # noqa: E402
 
 # One implementation: the ledger's ASKING set is what the pages are checked
 # against, so a second copy here would drift exactly the way the two stop-gate
@@ -109,6 +111,21 @@ def expected_numbers(claim: str) -> dict:
                 "files": data["totals"]["files"], "flags": len(detail),
                 "asking": asking, "genuine": len(detail) - asking}
     return {}
+
+
+def test_the_asking_set_is_the_registrys_review_rules():
+    """`ASKING` has one implementation and it is the registry.
+
+    The ledger classifies a survey flag as asking or accusing, so a rule that
+    `requires_review` but is missing here would be counted as an accusation --
+    the opposite of what the rule does. The set is derived from the registry
+    here rather than trusted to stay in sync by hand.
+    """
+    review = {rule.id for rule in RULES if rule.requires_review}
+    assert claim_ledger.ASKING == review, (
+        "claim_ledger.ASKING and the rule registry disagree: "
+        f"only in ASKING {sorted(claim_ledger.ASKING - review)}; "
+        f"only in the registry {sorted(review - claim_ledger.ASKING)}")
 
 
 def test_every_claim_in_the_positioning_plan_has_a_ledger_row():

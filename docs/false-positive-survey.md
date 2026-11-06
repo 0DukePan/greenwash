@@ -56,9 +56,11 @@ when a row below disagrees with it.
 
 Python and JavaScript / TypeScript only, static layer only -- no test suite was
 executed for this survey, so none of the behavioral rules could fire. The
-`before` column is the pre-narrowing run and exists only in this page; the
 `after` column is checked against the committed artifact, so it cannot drift
-from the data it quotes.
+from the data it quotes. The `before` column is historical: it is retained from
+the pre-narrowing run whose artifact the committed one overwrote, no committed
+artifact holds run 1, and so it is not checked against data -- only its total is
+pinned by a test.
 
 ## Run 1: one asking rule was the noise
 
@@ -205,6 +207,6 @@ named cause. The rule's measured history is now that, not a blank.
 The gate's noise floor on this sample moved from 104 reviews to 7, and every
 one of the seven is a change a reviewer would want to see. The one rule that
 had never been measured now has a measured history -- two flags, one change,
-zero cheats -- and it is the fifth asking rule on the page rather than an
+zero cheats -- and it is the third asking rule on the page rather than an
 unmeasured blank. The next measurement is not another corpus: it is whether a
 team leaves the gate on for a week.

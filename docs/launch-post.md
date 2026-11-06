@@ -178,11 +178,11 @@ which drive the real hooks in a throwaway repository. No model, no network.
 
 ```bash
 git clone https://github.com/0DukePan/greenwash && cd greenwash
-python -m pytest -q                  # 412 tests, no model needed
+python -m pytest -q                  # 1038 tests, no model needed
 python demo/run_demo.py              # the catch, end to end
 python demo/strict_claude.py --terse # the strict gate, through the real hook
-python benchmark/detection.py        # 24/24, and the runtime
-python benchmark/fp_survey.py        # the survey flags, listed
+python benchmark/detection.py        # 24/24 planted tampers, 0 false positives
+python benchmark/fp_survey.py        # the 14 survey flags, listed
 ```
 
 Every number in this post is produced by one of those commands, and the ones

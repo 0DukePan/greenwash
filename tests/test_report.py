@@ -77,11 +77,10 @@ def test_an_unreadable_changed_file_is_a_gap_not_a_pass():
     whatever the behavioral layer did.
     """
     rule = BY_ID["unreadable-file"]
-    gap = rule.signal(
-        "src/api.py", None,
-        "the static layer could not read this changed file (SyntaxError: invalid "
-        "syntax) -- the checks that parse Python did not run on it",
-        parse_error="SyntaxError: invalid syntax")
+    # The rule's own wording, not a hand-copied literal that silently diverges
+    # the moment the rule's explanation changes.
+    gap = rule.signal("src/api.py", None, explanation=rule.description,
+                      parse_error="SyntaxError: invalid syntax")
 
     for verification in (VerificationResult(),
                          VerificationResult(outcome=Outcome.PASS.value,

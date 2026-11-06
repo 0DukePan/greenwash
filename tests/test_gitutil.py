@@ -64,3 +64,19 @@ def test_session_diff_keeps_committed_work_in_scope(tmp_path):
                     "commit", "-q", "-m", "agent work"], cwd=tmp_path,
                    check=True, capture_output=True)
     assert "cheat" in gitutil.session_diff(state["base"], cwd=tmp_path)
+
+
+def test_binary_paths_are_read_from_the_differ_line():
+    """A binary stanza has no +++ line, so it needs its own parse."""
+    diff = ("diff --git a/src/calc.py b/src/calc.py\n"
+            "index 1111111..2222222 100644\n"
+            "Binary files a/src/calc.py and b/src/calc.py differ\n"
+            "diff --git a/assets/logo.png b/assets/logo.png\n"
+            "new file mode 100644\n"
+            "index 0000000..3333333\n"
+            "Binary files /dev/null and b/assets/logo.png differ\n"
+            "diff --git a/assets/old.png b/assets/old.png\n"
+            "deleted file mode 100644\n"
+            "index 4444444..0000000\n"
+            "Binary files a/assets/old.png and /dev/null differ\n")
+    assert gitutil.binary_paths(diff) == ["src/calc.py", "assets/logo.png"]

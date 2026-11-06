@@ -149,6 +149,29 @@ def test_scan_reports_a_changed_file_it_could_not_parse(tmp_path, monkeypatch, c
     assert "could not" in gap["explanation"]
 
 
+def test_a_binary_changed_python_file_cannot_read_as_clean(tmp_path, monkeypatch, capsys):
+    """The ticket 02 acceptance, end to end: UTF-16 is binary to git.
+
+    `git diff` emits no hunk for it, so before the scan context carried the
+    binary marker the rule never saw the file and the report could come back
+    VERIFIED with `signals: []`.
+    """
+    _repo(tmp_path)
+    (tmp_path / "src" / "calc.py").write_bytes(
+        "def add(a, b):\n    return a + b\n".encode("utf-16"))
+    monkeypatch.chdir(tmp_path)
+
+    code, out, _ = _run(monkeypatch, capsys, ["scan", "--json"])
+    assert code == 1
+    payload = json.loads(out)
+    assert payload["verdict"] not in ("CLEAN", "VERIFIED")
+    gap = next(s for s in payload["signals"] if s["rule_id"] == "unreadable-file")
+    assert gap["files"] == ["src/calc.py"]
+    assert gap["requires_review"] is True
+    assert "binary" in gap["explanation"].lower()
+    assert "SyntaxError" not in gap["explanation"]
+
+
 def test_output_is_not_colourised_when_it_is_not_a_terminal(cheat, monkeypatch, capsys):
     """Piped output is for files and CI logs, not for a TTY."""
     _, out, _ = _run(monkeypatch, capsys, [])

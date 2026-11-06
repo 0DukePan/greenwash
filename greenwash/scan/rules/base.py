@@ -66,6 +66,7 @@ class ScanContext:
 
     files: dict = field(default_factory=dict)      # path -> {added, removed, added_lines}
     deleted: list = field(default_factory=list)
+    binary: list = field(default_factory=list)     # changed paths git called binary
     diff_text: str = ""
     asserted_literals: set = field(default_factory=set)
     root: str = ""                                 # repo root the paths are relative to
@@ -73,6 +74,16 @@ class ScanContext:
 
     def paths(self) -> list:
         return list(self.files)
+
+    def binary_paths(self) -> list:
+        """Changed paths git called binary, which have no hunks to read.
+
+        Kept out of `paths()` on purpose: these files have no added or removed
+        lines, and treating them as ordinary text changes would make every
+        hunk-reading rule judge an empty diff. The rule that reports unreadable
+        content asks for them explicitly.
+        """
+        return [path for path in self.binary if path not in self.files]
 
     def is_test(self, path: str) -> bool:
         from ..languages.packs import is_test_file
@@ -120,7 +131,7 @@ class ScanContext:
         from ..languages.python_ast import PythonModule
         if path not in self._modules:
             full = os.path.join(self.root, path) if self.root else path
-            self._modules[path] = PythonModule(full)
+            self._modules[path] = PythonModule(full, binary=path in self.binary)
         return self._modules[path]
 
     def counts(self, path: str) -> dict:

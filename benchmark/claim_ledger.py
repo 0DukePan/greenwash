@@ -38,7 +38,7 @@ ROOT = Path(__file__).resolve().parent.parent
 RESULTS = ROOT / "benchmark" / "results"
 
 ASKING = {"mock-in-test", "error-path-default", "conftest-changed",
-          "verifier-config-changed"}
+          "verifier-config-changed", "unreadable-file"}
 
 # A sentence that refuses or negates a claim is not an assertion of it, and a
 # promise about tomorrow is not evidence about today. `never` deliberately

@@ -34,7 +34,9 @@ def build_context(diff_text: str, cwd: Optional[str] = None,
     files, deleted = gitutil.parse_diff(diff_text)
     if root is None:
         root = gitutil.repo_root(cwd) or (cwd or "")
-    ctx = ScanContext(files=files, deleted=deleted, diff_text=diff_text,
+    ctx = ScanContext(files=files, deleted=deleted,
+                      binary=gitutil.binary_paths(diff_text),
+                      diff_text=diff_text,
                       root="" if root in ("", ".") else root)
 
     literals: set = set()
