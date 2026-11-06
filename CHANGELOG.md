@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **The trial collector's per-PR time bound escaped on Python 3.10.**
+  `concurrent.futures.TimeoutError` is a distinct class before Python 3.11 and
+  an alias of the builtin afterwards, and the collector caught only the
+  builtin. On 3.10 a pull request that exceeded its time bound raised out of
+  `collect()` instead of producing the named `Refusal` -- the CI matrix caught
+  it on the released tag. Both classes are caught now, and a test pins the seam
+  so the difference cannot come back unnoticed.
+
 ## 0.4.2
 
 ### Added

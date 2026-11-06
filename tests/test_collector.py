@@ -406,3 +406,21 @@ def test_each_pull_request_is_time_bounded(tmp_path, monkeypatch):
     message = str(excinfo.value)
     assert "alpha#1" in message
     assert "time bound" in message
+
+
+def test_a_future_timeout_is_a_refusal_not_an_escape():
+    """The future's timeout is not the builtin one before Python 3.11.
+
+    `concurrent.futures.TimeoutError` was a distinct class until 3.11 made it
+    an alias of the builtin. Catching only the builtin let a slow pull request
+    raise out of `collect()` on 3.10 -- the version this project still
+    supports, and the one its CI matrix runs. Pinned here at the seam so the
+    class difference cannot come back unnoticed.
+    """
+    def slow():
+        time.sleep(0.3)
+        return []
+
+    with pytest.raises(collector.Refusal) as excinfo:
+        collector._bounded(slow, 0.02, "alpha#1")
+    assert "time bound" in str(excinfo.value)

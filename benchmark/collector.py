@@ -48,6 +48,7 @@ import re
 import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FutureTimeout
 from datetime import datetime
 from pathlib import Path, PurePosixPath
 
@@ -212,7 +213,11 @@ def _bounded(work, seconds: float, label: str):
         future = pool.submit(work)
         try:
             return future.result(timeout=seconds)
-        except TimeoutError as exc:
+        except (TimeoutError, FutureTimeout) as exc:
+            # Both, on purpose: `concurrent.futures.TimeoutError` is a distinct
+            # class before Python 3.11 and an alias of the builtin after it, so
+            # catching only the builtin let a slow pull request raise out of
+            # `collect()` on 3.10 -- the version this project still supports.
             raise Refusal(f"pull request {label!r}: exceeded the per-PR time "
                           f"bound of {seconds} seconds") from exc
     finally:
