@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done — merged `7d8bddd`, review fixes `9579da2` on `integration/launch-followups`. The finding is `unreadable-file` (GW-DIV-003), covering both a file that will not parse and one git reports as binary; a missing path is still not a finding.
 
 - [ ] A changed file that fails to parse produces a finding naming that file, in text and JSON
 - [ ] A report with such a gap cannot be `CLEAN` or `VERIFIED`

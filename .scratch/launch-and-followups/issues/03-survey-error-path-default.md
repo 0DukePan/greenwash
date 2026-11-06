@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done — merged `cd7ea0d`, review fixes `9579da2` on `integration/launch-followups`. Measured 2 flags, both one pytest change; found and fixed a blind-rule bug in the survey harness; the page is now guarded against drift.
 
 - [ ] The survey artifact contains the `error-path-default` flags and the survey page names what fired and on what
 - [ ] Every flag from that rule is classified, with genuine positives separated from asks
