@@ -65,10 +65,13 @@ ten unrelated repositories. The first run produced 109 flags, and **104 of them
 were one asking rule firing on ordinary maintenance** -- `verifier-config-changed`
 on GitHub workflow files, pre-commit config and dependency manifests. I
 narrowed that rule to fire only when a change can alter what runs, and measured
-again on the same history: **12 flags**, 10 asking and 2 false positives, with
+again on the same history: **14 flags**, 12 asking and 2 false positives, with
 all seven remaining flags from that rule being real runner changes -- a `test`
 script rewritten, a hook's scope narrowed, a tox environment given a
-dependency. The gate's noise floor went from one review every 2.4 commits to
+dependency. Two of the asking flags were the first measurement of
+`error-path-default`, on one `pytest` change seen through a commit and its
+merge: a true ask and a false positive, neither a cheat. The gate's noise floor
+went from one review every 2.4 commits to
 seven reviews in 250 commits. That is a survey, not a rate -- classifying 109
 flags by hand gives a number, not a population estimate, and saying otherwise
 would be the same error this tool exists to catch.
@@ -179,7 +182,7 @@ python -m pytest -q                  # 412 tests, no model needed
 python demo/run_demo.py              # the catch, end to end
 python demo/strict_claude.py --terse # the strict gate, through the real hook
 python benchmark/detection.py        # 24/24, and the runtime
-python benchmark/fp_survey.py        # the 29 flags, listed
+python benchmark/fp_survey.py        # the survey flags, listed
 ```
 
 Every number in this post is produced by one of those commands, and the ones
@@ -191,10 +194,13 @@ that appear in prose are guarded by tests that fail when the artifact moves.
   finding in enforce mode, including a verified one, because it re-derived the
   decision instead of reading the CLI's exit code. Found while building strict
   mode; fixed by deleting the copy.
-- **`error-path-default` has never been through the false-positive survey.** It
-  exists *because* of the swallow misses in the null above, which means its
-  false-positive behaviour is unmeasured, and the docs say so rather than
-  implying a zero.
+- **`error-path-default` was invisible to my own survey.** It exists *because*
+  of the swallow misses in the null above, and when I first ran it over real
+  history it reported nothing -- because the survey harness parsed every file
+  against the greenwash checkout instead of the repository it was surveying. A
+  blind instrument returns zero either way. Anchoring each scan to its
+  repository made it see: two flags on one `pytest` change, one a true ask and
+  one a false positive, neither a cheat.
 - **Two namesakes.** The PyPI name `greenwash` belongs to another project and
   the npm name is not owned here. The distribution is now `greenwash-cli`, and
   `npx greenwash` is no longer advertised -- because a public install command

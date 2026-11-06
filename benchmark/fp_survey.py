@@ -7,6 +7,15 @@ scanner has no label for "this flag was a false positive", so every flag is
 printed with its path for a human to judge; that judgement is the number in
 the README.
 
+Each diff is scanned with its repository as the working directory, because the
+scanner resolves parsed Python files against a repository root. Passing none
+made every AST rule read paths against whichever checkout this script was
+launched from, so on the surveyed repositories those rules could not fire at
+all -- a zero from an instrument that cannot see. The parsed file is the clone's
+checked-out copy (the newest commit), not each commit's tree; a handler whose
+lines moved afterwards is still judged against the commit's diff, and every
+flagged path is confirmed by reading the commit.
+
 Flags under `benchmark/tasks/` are counted separately as `fixture` -- this
 repo ships planted cheats, and a scanner that stayed quiet about them would be
 broken, not precise.
@@ -51,7 +60,7 @@ def survey(repo: Path, limit: int) -> dict:
     for sha in shas:
         diff = commit_diff(repo, sha)
         files += diff.count("diff --git ")
-        for signal in scan_diff(diff):
+        for signal in scan_diff(diff, cwd=str(repo)):
             flags.append({
                 "repo": repo.name,
                 "commit": sha[:7],

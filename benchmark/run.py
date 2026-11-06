@@ -126,7 +126,7 @@ def metrics() -> dict:
         }
         out["not_measured"].append(
             "the real-world false-positive *rate* -- the survey needs hand "
-            "classification, and the 29 flags are listed for inspection instead")
+            f"classification, and the {flags} flags are listed for inspection instead")
     else:
         out["not_measured"].append("false-positive survey (run benchmark/fp_survey.py)")
 

@@ -69,16 +69,19 @@ produces:
 
 | | Flags |
 |---|---:|
-| Total | 12 |
-| The rules that always ask for an explanation | 10 |
+| Total | 14 |
+| The rules that always ask for an explanation | 12 |
 | Genuine false positives | 2 |
 
 The 104 reviews became 7, and all seven are real runner changes -- a test script
 rewritten, a hook's scope narrowed, a tox environment given a dependency. The
-survey publishes its flags for inspection, not a rate: classifying 109 flags by
-hand gives a number, not a population estimate. Both runs and the per-repository
-table are in [false-positive-survey.md](./false-positive-survey.md); raw:
-[`benchmark/results/fp-survey.json`](../benchmark/results/fp-survey.json).
+other two asking flags are the first measurement of `error-path-default`, seen
+through one commit and its merge: one is a true ask (the fix landed without a
+test) and one is a false positive (the merge already carries the regression
+test). The survey publishes its flags for inspection, not a rate: classifying
+109 flags by hand gives a number, not a population estimate. Both runs and the
+per-repository table are in [false-positive-survey.md](./false-positive-survey.md);
+raw: [`benchmark/results/fp-survey.json`](../benchmark/results/fp-survey.json).
 
 ## What this page does not establish
 

@@ -37,11 +37,11 @@ By cheat type (applied / static caught / behavioral caught):
 | `swallow` | 5 | 5 | 5 |
 | `weaken` | 2 | 2 | 2 |
 
-**False-positive survey:** 12 flags over 250 commits touching 1029 file changes in 10 repositories. Every flag is listed for inspection in `benchmark/results/fp-survey.json`; the classes are written up in `docs/false-positives.md`. The survey publishes its findings, not a rate: classifying 12 flags by hand gives a number, not a population estimate, and calling it a rate would overstate what was measured.
+**False-positive survey:** 14 flags over 250 commits touching 1029 file changes in 10 repositories. Every flag is listed for inspection in `benchmark/results/fp-survey.json`; the classes are written up in `docs/false-positives.md`. The survey publishes its findings, not a rate: classifying 14 flags by hand gives a number, not a population estimate, and calling it a rate would overstate what was measured.
 
 Not measured yet:
 
-- the real-world false-positive *rate* -- the survey needs hand classification, and the 29 flags are listed for inspection instead
+- the real-world false-positive *rate* -- the survey needs hand classification, and the 14 flags are listed for inspection instead
 
 **Integrity-cheat rate, by plugin state** (lower is better)
 
@@ -235,13 +235,15 @@ reaches for the cheat -- that is what the harness measures.
 commits of this repository and any sibling checkouts next to it, prints every
 flag with its path so a human can judge it, and writes
 `benchmark/results/fp-survey.json`. The latest run: 10 unrelated repositories,
-250 commits touching 1,029 file changes, **12 flags**. The first run on the same
+250 commits touching 1,029 file changes, **14 flags**. The first run on the same
 history produced 109, of which 104 were `verifier-config-changed` firing on
 `.github/workflows/*`, `.pre-commit-config.yaml`, `pyproject.toml` and
 `package.json` -- ordinary maintenance. That rule was narrowed to fire only when
 a change can alter what runs; the 7 it still produces are all real runner
-changes, 10 flags in total are asking rules, and the 2 accusatory flags were
-both judged legitimate on inspection. The classes are in
+changes, 12 flags in total are asking rules, and the 2 accusatory flags were
+both judged legitimate on inspection. Two of the asking flags are the first
+measurement of `error-path-default`, seen through one `pytest` commit and its
+merge: one true ask and one false positive. The classes are in
 [docs/false-positive-survey.md](./docs/false-positive-survey.md).
 
 ## Where this stands
