@@ -8,6 +8,7 @@ this repository exists to catch. Guarding it here means the fix is a failing
 test, not a reader noticing three pages later.
 """
 
+import collections
 import json
 import re
 import sys
@@ -48,7 +49,17 @@ def survey() -> dict:
     asking = claim_ledger.ASKING
     return {"total": len(detail),
             "asking": sum(1 for flag in detail if flag["kind"] in asking),
-            "genuine": sum(1 for flag in detail if flag["kind"] not in asking)}
+            "genuine": sum(1 for flag in detail if flag["kind"] not in asking),
+            "commits": data["totals"]["commits"],
+            "files": data["totals"]["files"],
+            "repos": {repo["repo"]: repo for repo in data["repos"]},
+            "by_rule": dict(collections.Counter(flag["kind"] for flag in detail)),
+            "detail": detail}
+
+
+def survey_cells(line: str) -> list:
+    """The cells of one markdown table row, stripped."""
+    return [cell.strip() for cell in line.strip().strip("|").split("|")]
 
 
 # ---- the benchmark one-pager -------------------------------------------------
@@ -130,6 +141,95 @@ def test_the_limits_page_states_the_survey_split():
     page = flat("what-did-not-work.md")
     assert str(measured["total"]) in page
     assert str(measured["genuine"]) in page
+
+
+# ---- the false-positive survey page ------------------------------------------
+
+def test_the_survey_page_repository_table_matches_the_artifact():
+    """Every per-repository count on the page is the artifact's count.
+
+    The "after" column is the committed run, so it is the artifact's. The
+    "before" column is the pre-narrowing run, which no committed artifact
+    holds; `test_the_survey_page_run_one_column_adds_up` pins that one.
+    """
+    measured = survey()
+    page = text("false-positive-survey.md")
+    rows = [survey_cells(line) for line in page.splitlines() if line.startswith("|")]
+    for name, repo in measured["repos"].items():
+        cells = next((row for row in rows
+                      if row[0] == f"`{name}`" and row[1].isdigit()), None)
+        assert cells is not None, f"the page has no repository row for {name}"
+        assert cells[1] == str(repo["commits"]), f"{name} commits"
+        assert cells[2] == str(repo["files"]), f"{name} file changes"
+        assert cells[4] == str(repo["real_flags"]), f"{name} flags after"
+    total = [cell.strip("*") for cell in next(row for row in rows
+                                              if row[0] == "**total**")]
+    assert total[1] == str(measured["commits"]), "total commits"
+    assert total[2] == f"{measured['files']:,}", "total file changes"
+    assert total[4] == str(measured["total"]), "total flags after"
+
+
+def test_the_survey_page_run_one_column_adds_up():
+    """Run 1 predates the committed artifact, so its column is pinned here."""
+    page = text("false-positive-survey.md")
+    rows = [survey_cells(line) for line in page.splitlines() if line.startswith("|")]
+    before = [int(row[3]) for row in rows
+              if len(row) >= 5 and row[0].startswith("`") and row[1].isdigit()]
+    total = [cell.strip("*") for cell in next(row for row in rows
+                                              if row[0] == "**total**")]
+    assert sum(before) == int(total[3]) == 109, (
+        "the pre-narrowing column and its total disagree; run 1 produced 109")
+
+
+def test_the_survey_page_rule_table_matches_the_artifact():
+    """The rule table's counts and asks/accuses split come from the artifact.
+
+    `claim_ledger.ASKING` is the one implementation of "this rule asks"; the
+    table must classify a rule the same way, and its counts must equal the
+    artifact rather than a retyped number.
+    """
+    measured = survey()
+    section = text("false-positive-survey.md").split(
+        "## Run 2: after the narrowing", 1)[1].split("\n## ", 1)[0]
+    rows = {}
+    for line in section.splitlines():
+        cells = survey_cells(line)
+        if len(cells) == 3 and cells[0].startswith("`"):
+            rule = cells[0].strip("`")
+            assert cells[1].isdigit(), f"{rule} has no count"
+            rows[rule] = int(cells[1])
+            expected = "asks" if rule in claim_ledger.ASKING else "accuses"
+            assert cells[2].startswith(expected), (
+                f"{rule} is classified {cells[2]!r} on the page, but the "
+                f"ledger puts it in the {'asking' if expected == 'asks' else 'accusing'} set")
+    assert rows == measured["by_rule"], (
+        f"the page's rule table says {rows}; the artifact says {measured['by_rule']}")
+
+
+def test_every_flag_the_artifact_records_is_named_with_its_commit_and_file():
+    """The page lists every flag: if one appears in the artifact it appears here."""
+    measured = survey()
+    page = text("false-positive-survey.md")
+    listed = set()
+    for line in page.splitlines():
+        cells = survey_cells(line)
+        if (len(cells) >= 4 and re.fullmatch(r"`[0-9a-f]{7}`", cells[1])):
+            listed.add((cells[0].strip("`"), cells[1].strip("`"),
+                        cells[2].strip("`"), cells[3].strip("`")))
+    expected = {(flag["repo"], flag["commit"], flag["file"], flag["kind"])
+                for flag in measured["detail"]}
+    assert listed == expected, (
+        "the survey page and fp-survey.json disagree about the flags: "
+        f"on the page but not the artifact {sorted(listed - expected)}; "
+        f"in the artifact but not the page {sorted(expected - listed)}")
+
+
+def test_the_survey_page_states_the_asking_split():
+    measured = survey()
+    page = flat("false-positive-survey.md")
+    assert f"{measured['total']} flags" in page
+    assert f"{measured['asking']} asking" in page
+    assert f"{measured['genuine']} accusatory" in page
 
 
 # ---- result interpretation ---------------------------------------------------

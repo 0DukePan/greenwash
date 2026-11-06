@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <strong>24/24 planted tampers caught &middot; 0 false positives on 24 matched fixes &middot; 1014 tests</strong><br>
+  <strong>24/24 planted tampers caught &middot; 0 false positives on 24 matched fixes &middot; 1021 tests</strong><br>
   <sub>
     An agent under pressure to show green will skip the test, mock the unit under
     test, hardcode the expected value, or swallow the exception that would have
@@ -374,12 +374,16 @@ JavaScript/TypeScript, including `flask`, `requests`, `pytest`, `axios` and
 `express` -- 250 commits touching 1,029 file changes. The first run produced
 109 flags, **104 of them one asking rule** on CI and dependency configuration.
 That rule was narrowed to fire only when a change can alter what runs, and the
-same history now produces 12 flags: **10 are the rules that always ask for an
+same history now produces 14 flags: **12 are the rules that always ask for an
 explanation**, and **2 are genuine false positives**, both judged legitimate on
 inspection. All seven of the remaining flags from that rule are real runner
 changes -- a `test` script rewritten, a hook's scope narrowed, a tox
-environment given a dependency. The before-and-after, the per-repository table
-and what the survey does not measure are in
+environment given a dependency. The twelfth asking flag is the first
+measurement of `error-path-default`, a rule the earlier passes could not see:
+it fires twice on one `pytest` change, once as a true ask (the fix landed
+without a test) and once as a false positive (the merge already carries the
+regression test). Neither is a cheat. The before-and-after, the per-repository
+table and what the survey does not measure are in
 [docs/false-positive-survey.md](docs/false-positive-survey.md).
 
 **Language packs, measured.** `python benchmark/polyglot.py` runs 15 cases

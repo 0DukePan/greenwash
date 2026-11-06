@@ -26,16 +26,17 @@ authors' idea of a cheat.
 The scanner was run twice over 250 commits and 1,029 file changes in ten
 unrelated repositories. Run 1: 109 flags, 104 of them one rule
 (`verifier-config-changed`) firing on CI and dependency configuration. Run 2,
-after that rule was narrowed to fire only when a change can alter what runs: 12
-flags -- 10 from the rules that ask rather than accuse, and 2 accusatory flags
-that were both rejected by hand.
+after that rule was narrowed to fire only when a change can alter what runs: 14
+flags -- 12 from the rules that ask rather than accuse, and 2 accusatory flags
+that were both rejected by hand. Two of the asking flags are `error-path-default`
+(the rule that had never been measured), seen through one commit and its merge.
 
-**Licenses:** "on the recent history of ten repositories the scanner produced 12
-flags, 10 of them from the rules that ask rather than accuse; of the two that
+**Licenses:** "on the recent history of ten repositories the scanner produced 14
+flags, 12 of them from the rules that ask rather than accuse; of the two that
 accused, both were rejected by hand. The one rule that produced 104 of the
 first run's 109 flags produces 7 now, and all seven are real runner changes."
 
-**Does not license:** "the false-positive rate is 17%." Classifying 12 flags by
+**Does not license:** "the false-positive rate is 14%." Classifying 14 flags by
 hand gives a number, not a population estimate -- the repositories were not
 sampled, the commits were not sampled, and nobody labelled the changes that
 were *not* flagged. This is a survey, and the page says so. It also does not

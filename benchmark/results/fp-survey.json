@@ -14,9 +14,9 @@
     ],
     "commits": 250,
     "files": 1029,
-    "flags": 12,
+    "flags": 14,
     "fixture_flags": 0,
-    "real_flags": 12
+    "real_flags": 14
   },
   "repos": [
     {
@@ -163,10 +163,18 @@
       "repo": "pytest",
       "commits": 25,
       "files": 290,
-      "flags": 4,
+      "flags": 6,
       "fixture_flags": 0,
-      "real_flags": 4,
+      "real_flags": 6,
       "detail": [
+        {
+          "repo": "pytest",
+          "commit": "4b3bb3c",
+          "file": "src/_pytest/approx.py",
+          "kind": "error-path-default",
+          "detail": "except NotImplementedError in _contains_decimal() returns False, and no related test file mentions it -- the failure becomes a default nothing checks",
+          "fixture": false
+        },
         {
           "repo": "pytest",
           "commit": "4abdff3",
@@ -181,6 +189,14 @@
           "file": "tox.ini",
           "kind": "verifier-config-changed",
           "detail": "verifier configuration changed -- this file decides what gets checked and what may pass",
+          "fixture": false
+        },
+        {
+          "repo": "pytest",
+          "commit": "564d690",
+          "file": "src/_pytest/approx.py",
+          "kind": "error-path-default",
+          "detail": "except NotImplementedError in _contains_decimal() returns False, and no related test file mentions it -- the failure becomes a default nothing checks",
           "fixture": false
         },
         {
