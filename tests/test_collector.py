@@ -397,12 +397,16 @@ def test_each_pull_request_is_time_bounded(tmp_path, monkeypatch):
         tmp_path, lambda base, flagged, docs: [pr_entry(1, base, flagged)])
 
     def slow_scan(diff_text, cwd=None, root=None):
-        time.sleep(0.5)
+        time.sleep(3.0)
         return []
 
     monkeypatch.setattr(collector, "scan_diff", slow_scan)
     with pytest.raises(collector.Refusal) as excinfo:
-        collector.collect(export, clone, consent, per_pr_seconds=0.05)
+        # A one-second bound, not a millisecond one: the collector still runs
+        # real git plumbing inside the bound, and Windows spawns git slower
+        # than the 50 ms this test used to allow. A git timeout would be a
+        # different refusal than the per-PR bound this test pins.
+        collector.collect(export, clone, consent, per_pr_seconds=1.0)
     message = str(excinfo.value)
     assert "alpha#1" in message
     assert "time bound" in message
