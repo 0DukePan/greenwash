@@ -138,3 +138,7 @@ def test_zero_executed_at_the_baseline_too_is_inconclusive(empty_suite, monkeypa
     assert "the suite executes nothing at the baseline either" in out, out
     assert "Verdict: INCONCLUSIVE" in out
     assert "Verdict: NOT_VERIFIED" not in out
+
+# Excluded from the default gate: this module spawns a process
+# (a CLI, a hook, a git repository or a benchmark harness).
+pytestmark = pytest.mark.slow

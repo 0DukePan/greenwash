@@ -379,3 +379,7 @@ def test_editing_a_ratified_waiver_makes_it_self_issued(tmp_path):
     _write_ledger(tmp_path, [edited])
     ledger = waivers.load(tmp_path)
     assert waivers.self_issued_ids(ledger, base, root=str(tmp_path)) == {edited.id}
+
+# Excluded from the default gate: this module spawns a process
+# (a CLI, a hook, a git repository or a benchmark harness).
+pytestmark = pytest.mark.slow

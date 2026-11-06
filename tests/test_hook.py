@@ -114,3 +114,9 @@ def test_a_block_budget_bounds_the_loop(tmp_path):
     result = _stop(tmp_path, payload, enforce=True)
     assert result.returncode == 0, "the budget is spent for good, not per window"
     assert "UNRESOLVED AT STOP" in result.stdout
+
+import pytest  # noqa: E402
+
+# Excluded from the default gate: this module spawns a process
+# (a CLI, a hook, a git repository or a benchmark harness).
+pytestmark = pytest.mark.slow

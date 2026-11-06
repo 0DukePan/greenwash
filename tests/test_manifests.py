@@ -112,3 +112,7 @@ def test_skill_only_plugin_has_no_hook():
     # The Stop hook is the one intended difference between the two states.
     assert not (PLUGIN / "scripts" / "greenwash_hook.py").exists()
     assert not (PLUGIN / "hooks").exists()
+
+# Excluded from the default gate: this module spawns a process
+# (a CLI, a hook, a git repository or a benchmark harness).
+pytestmark = pytest.mark.slow

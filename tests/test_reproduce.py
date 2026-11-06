@@ -151,3 +151,7 @@ def test_the_readme_methods_section_documents_the_command_and_its_expected_outpu
     assert "benchmark/reproduce.py" in body
     assert "[benchmark/results/headline.md](benchmark/results/headline.md)" in body
     assert PUBLISHED.is_file(), "the expected output is not published"
+
+# Programme test: the frozen research apparatus, not the
+# shipped product's gate.
+pytestmark = [pytest.mark.slow, pytest.mark.program]

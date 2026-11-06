@@ -293,3 +293,7 @@ def test_a_candidate_without_a_diff_is_refused_by_name():
     with pytest.raises(TwinError) as excinfo:
         match_twin(positive, [twin], _diffs(("p1", EXPECTED_DIFF)))
     assert "diff" in str(excinfo.value)
+
+# Programme test: the frozen research apparatus, not the
+# shipped product's gate.
+pytestmark = [pytest.mark.slow, pytest.mark.program]

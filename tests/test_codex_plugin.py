@@ -255,3 +255,7 @@ def test_invalid_stdin_does_not_crash_the_hook(cheat):
         errors="replace", env={**os.environ, "PYTHONPATH": str(ROOT)}, timeout=300)
     assert result.returncode in (0, 2)
     assert "Traceback" not in result.stderr
+
+# Excluded from the default gate: this module spawns a process
+# (a CLI, a hook, a git repository or a benchmark harness).
+pytestmark = pytest.mark.slow

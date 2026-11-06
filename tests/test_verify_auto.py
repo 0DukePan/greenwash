@@ -70,3 +70,9 @@ def test_auto_does_not_flag_preexisting_failure(tmp_path, monkeypatch):
     assert outcome.result.outcome == Outcome.FAIL.value
     assert not any(signal.rule_id == "regression" for signal in outcome.signals)
     assert any(signal.rule_id == "tests-failed" for signal in outcome.signals)
+
+import pytest  # noqa: E402
+
+# Excluded from the default gate: this module spawns a process
+# (a CLI, a hook, a git repository or a benchmark harness).
+pytestmark = pytest.mark.slow

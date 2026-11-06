@@ -253,3 +253,7 @@ def test_calibration_refuses_a_round_that_is_not_twenty_cases_or_a_reading_witho
     with pytest.raises(LabelError) as excinfo:
         label_workflow.calibration_round(broken)
     assert "seconds" in str(excinfo.value)
+
+# Programme test: the frozen research apparatus, not the
+# shipped product's gate.
+pytestmark = [pytest.mark.slow, pytest.mark.program]

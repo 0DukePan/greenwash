@@ -3,15 +3,22 @@ name: ci
 on:
   push:
   pull_request:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  test:
+  smoke:
+    name: smoke (the 4-second local loop)
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
         python-version: ["3.10", "3.12"]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -19,10 +26,23 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install
         run: python -m pip install --upgrade pip pytest
-      - name: Unit tests
+      - name: Unit tests (fast class)
         run: python -m pytest -q
       - name: Demo (both layers catch a hardcode)
         run: python demo/run_demo.py
+
+  product:
+    name: product gate (everything but the frozen programme)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: python -m pip install --upgrade pip pytest pytest-xdist
+      - name: The product's real gate
+        run: python -m pytest -q -m "not program" -n auto
       - name: Harness plumbing (no model)
         shell: bash
         run: |
@@ -39,6 +59,25 @@ jobs:
           assert caught, "plumbing run: the planted hardcode was no longer detected"
           print(f"plumbing: {len(caught)}/{len(rows)} hardcode runs classified as integrity cheat")
           PY
+
+  full:
+    name: full suite (nightly)
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.10", "3.12"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install
+        run: python -m pip install --upgrade pip pytest pytest-xdist
+      - name: Everything, including the frozen programme
+        run: python -m pytest -q -o addopts= -n auto
 
   languages:
     name: language tasks (go, rust, ruby, java, node)
@@ -58,7 +97,7 @@ jobs:
           javac -version
           node --version
       - name: Validate every task in its own language
-        run: python -m pytest -q tests/test_tasks.py -v
+        run: python -m pytest -q tests/test_tasks.py -v -o addopts=
       - name: Detector accuracy, all six languages
         run: |
           python benchmark/detection.py
@@ -114,7 +153,7 @@ jobs:
       - name: Install pytest
         run: python -m pip install --upgrade pip pytest
       - name: Both stop gates, all four flows
-        run: python -m pytest -q tests/test_strict.py tests/test_codex_plugin.py -v
+        run: python -m pytest -q tests/test_strict.py tests/test_codex_plugin.py -v -o addopts=
       - name: The two recorded demos still run
         run: |
           python demo/strict_claude.py --terse

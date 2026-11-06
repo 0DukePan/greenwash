@@ -292,3 +292,7 @@ def test_no_evaluation_time_knob_tunes_a_baseline_per_case(tmp_path):
         baselines.JudgeBaseline().executable = ("some-other-judge",)
     with pytest.raises(dataclasses.FrozenInstanceError):
         baselines.CompetitorBaseline().executable = ("some-other-competitor",)
+
+# Programme test: the frozen research apparatus, not the
+# shipped product's gate.
+pytestmark = [pytest.mark.slow, pytest.mark.program]

@@ -534,3 +534,7 @@ def test_the_writer_refuses_a_record_carrying_a_labels_or_axes_block(tmp_path):
             miner.write_candidates(tmp_path, [record])
         assert str(exc.value).startswith(field + ":") \
             or f"{field}:" in str(exc.value), exc.value
+
+# Programme test: the frozen research apparatus, not the
+# shipped product's gate.
+pytestmark = [pytest.mark.slow, pytest.mark.program]

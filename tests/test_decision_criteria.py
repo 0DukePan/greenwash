@@ -167,3 +167,11 @@ def test_the_config_matches_the_documented_thresholds():
     labels = criteria["L9"]["value"]
     assert labels["double_labeled_cases"] == 100 and "100" in spec_row("L9")
     assert labels["pabak"] == 0.7 and "0.70" in spec_row("L9")
+
+import pytest  # noqa: E402
+
+import pytest  # noqa: E402
+
+# Programme test: the frozen research apparatus, not the
+# shipped product's gate.
+pytestmark = [pytest.mark.slow, pytest.mark.program]

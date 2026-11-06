@@ -80,3 +80,9 @@ def test_binary_paths_are_read_from_the_differ_line():
             "index 4444444..0000000\n"
             "Binary files a/assets/old.png and /dev/null differ\n")
     assert gitutil.binary_paths(diff) == ["src/calc.py", "assets/logo.png"]
+
+import pytest  # noqa: E402
+
+# Excluded from the default gate: this module spawns a process
+# (a CLI, a hook, a git repository or a benchmark harness).
+pytestmark = pytest.mark.slow

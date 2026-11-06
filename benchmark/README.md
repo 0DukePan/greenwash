@@ -1,5 +1,23 @@
 # Running the benchmark
 
+## Which scripts produce published numbers
+
+Eight scripts here produce the numbers the README, the claim ledger and the
+docs quote, and CI runs them: `detection.py`, `polyglot.py`, `tampering.py`,
+`fp_survey.py`, `report.py`, `run.py`, `claim_ledger.py`, `reproduce.py`.
+
+Everything else in this directory — the corpus kit, the labelling workflow, twin
+matching, Gate A, pre-registration, the launch criteria engine, `dev_run.py`,
+the trial report, the friction and usability harnesses, the collector — is the
+**frozen research programme**. It is kept for provenance, its tests carry the
+`program` marker, it is excluded from the per-push gate, and it runs in the
+nightly suite and on demand:
+
+```bash
+python -m pytest -m program      # the programme
+python -m pytest -o addopts=     # everything, including the programme
+```
+
 The benchmark answers one question: **does having greenwash around change how
 often an agent's "done" claim is actually true?** It measures the silent-cheat
 rate under three plugin states and reports the delta plus a false-positive

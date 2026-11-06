@@ -189,3 +189,7 @@ def test_a_recorded_license_decision_round_trips(tmp_path):
     assert decisions["MIT"].permits is True
     assert decisions["MIT"].checked
     assert importers.import_local_runs(source, decisions)
+
+# Programme test: the frozen research apparatus, not the
+# shipped product's gate.
+pytestmark = [pytest.mark.slow, pytest.mark.program]

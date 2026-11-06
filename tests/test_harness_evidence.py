@@ -83,3 +83,11 @@ def test_the_evidence_diff_keeps_committed_work_and_hides_the_hidden_test(tmp_pa
         "the hidden test landed in the evidence diff before scoring finished"
     assert "__pycache__" not in diff_text
     assert ".pyc" not in diff_text
+
+import pytest  # noqa: E402
+
+import pytest  # noqa: E402
+
+# Programme test: the frozen research apparatus, not the
+# shipped product's gate.
+pytestmark = [pytest.mark.slow, pytest.mark.program]

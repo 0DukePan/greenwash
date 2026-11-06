@@ -307,3 +307,7 @@ def test_the_beta_guide_explains_consent_the_export_and_what_an_owner_receives()
     section = text[start:].split("\n## ")[0].lower()
     for word in ("consent", "export", "receive"):
         assert word in section, word
+
+# Programme test: the frozen research apparatus, not the
+# shipped product's gate.
+pytestmark = [pytest.mark.slow, pytest.mark.program]

@@ -699,3 +699,7 @@ def test_a_replay_may_be_a_sandbox_reference(tmp_path):
 def test_an_unrecognized_replay_shape_is_rejected_naming_the_field():
     issues = corpus.validate_case(gate_record(replay={"output": "12 passed"}))
     assert issues and issues[0].startswith("replay:"), issues
+
+# Programme test: the frozen research apparatus, not the
+# shipped product's gate.
+pytestmark = [pytest.mark.slow, pytest.mark.program]

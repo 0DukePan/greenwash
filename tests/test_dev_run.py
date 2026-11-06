@@ -828,3 +828,7 @@ def test_twins_refuses_incomplete_adjudication_naming_the_case(tmp_path, capsys)
     assert dev_run.dev_run(["twins", "--run-dir", str(run)]) == 2
     err = capsys.readouterr().err
     assert "R1-0002" in err
+
+# Programme test: the frozen research apparatus, not the
+# shipped product's gate.
+pytestmark = [pytest.mark.slow, pytest.mark.program]

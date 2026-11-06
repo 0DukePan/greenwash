@@ -428,3 +428,7 @@ def test_a_future_timeout_is_a_refusal_not_an_escape():
     with pytest.raises(collector.Refusal) as excinfo:
         collector._bounded(slow, 0.02, "alpha#1")
     assert "time bound" in str(excinfo.value)
+
+# Excluded from the default gate: this module spawns a process
+# (a CLI, a hook, a git repository or a benchmark harness).
+pytestmark = pytest.mark.slow

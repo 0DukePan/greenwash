@@ -266,3 +266,9 @@ def test_a_runner_with_no_case_counts_falls_back_to_exit_status(tmp_path, monkey
     assert outcome.result.integrity_detail["weakened"] == []
     weakened = [s for s in outcome.signals if s.rule_id == "test-weakened"]
     assert weakened and "committed suite fails" in weakened[0].explanation
+
+import pytest  # noqa: E402
+
+# Excluded from the default gate: this module spawns a process
+# (a CLI, a hook, a git repository or a benchmark harness).
+pytestmark = pytest.mark.slow

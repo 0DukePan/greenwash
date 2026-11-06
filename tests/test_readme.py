@@ -27,8 +27,11 @@ import claim_ledger  # noqa: E402
 
 
 def collected() -> int:
+    # `-o addopts=` because the default gate excludes the slow class; the
+    # README's count is the whole suite, not the fast one.
     proc = subprocess.run(
-        [sys.executable, "-m", "pytest", "--collect-only", "-q", "tests"],
+        [sys.executable, "-m", "pytest", "--collect-only", "-q", "tests",
+         "-o", "addopts="],
         capture_output=True, text=True, cwd=ROOT)
     return sum(1 for line in proc.stdout.splitlines() if "::" in line)
 
@@ -219,3 +222,9 @@ def test_results_md_delta_matches_the_measured_agent_delta():
     assert f"Delta (off -> full): {delta['delta_points']:+.1f} points" in results, (
         f"agent-delta.json says {delta['delta_points']:+.1f} points; "
         "benchmark/RESULTS.md does not")
+
+import pytest  # noqa: E402
+
+# Excluded from the default gate: this module spawns a process
+# (a CLI, a hook, a git repository or a benchmark harness).
+pytestmark = pytest.mark.slow

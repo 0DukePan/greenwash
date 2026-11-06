@@ -168,3 +168,9 @@ def test_cli_require_implies_verification(tmp_path, monkeypatch, capsys):
 
     cli.main(["--require", "The build stays green => cmd: exit 1", "--quiet"])
     assert "not_verified" in capsys.readouterr().out
+
+import pytest  # noqa: E402
+
+# Excluded from the default gate: this module spawns a process
+# (a CLI, a hook, a git repository or a benchmark harness).
+pytestmark = pytest.mark.slow

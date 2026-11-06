@@ -62,3 +62,9 @@ def test_the_command_names_both_interpreter_spellings():
     """The fallback is the fix, so pin it rather than trusting a future edit."""
     command = _hook_command()
     assert "python3" in command and "python " in command
+
+import pytest  # noqa: E402
+
+# Excluded from the default gate: this module spawns a process
+# (a CLI, a hook, a git repository or a benchmark harness).
+pytestmark = pytest.mark.slow

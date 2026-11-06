@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+### Added
+
+- **`GREENWASH_STATE_DIR` pins the Stop hook's block budget.** Without it the
+  budget follows the git directory, so a target that is not itself a repository
+  inherits whichever ancestor repository it sits under. On a machine whose home
+  directory is a repository, every temporary directory under it shared one
+  budget, and the test suite passed once and failed on the second run. The
+  override is also the only way to make the gate's state deterministic in CI.
+
+### Changed
+
+- **The test suite is split into three classes.** A test that spawns a process
+  carries `slow`; the frozen research programme carries `program`. The default
+  `python -m pytest -q` is the 154-test, ten-second loop; `-m "not program"` is
+  the product's real gate; `-o addopts=` is everything. CI runs the smoke class
+  on both supported Pythons, the product gate in parallel on every push, and
+  everything -- including Windows -- nightly. See `docs/maintenance.md`.
+
 ### Fixed
 
 - **The trial collector's per-PR time bound escaped on Python 3.10.**
@@ -11,6 +29,11 @@
   `collect()` instead of producing the named `Refusal` -- the CI matrix caught
   it on the released tag. Both classes are caught now, and a test pins the seam
   so the difference cannot come back unnoticed.
+- **The suite was not idempotent in two ways, both fixed.** The Stop hook's
+  block budget leaked between runs through a shared ancestor repository (above),
+  and the waiver fixtures used an expiry exactly at the thirty-day ceiling,
+  which is refused in the hours after local midnight when the timezone is ahead
+  of UTC. Two days of slack keeps the fixture valid at any hour.
 
 ## 0.4.2
 

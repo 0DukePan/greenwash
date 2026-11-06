@@ -166,3 +166,9 @@ def pinned_tmp_diff(tmp_path: Path) -> str:
     result = subprocess.run(["git", "diff"], cwd=tmp_path, capture_output=True,
                             text=True, check=True)
     return result.stdout
+
+import pytest  # noqa: E402
+
+# Excluded from the default gate: this module spawns a process
+# (a CLI, a hook, a git repository or a benchmark harness).
+pytestmark = pytest.mark.slow

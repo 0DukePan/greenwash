@@ -181,3 +181,7 @@ def test_a_stash_does_not_launder_the_change(session, monkeypatch, capsys):
     assert "Verdict: VERIFIED" not in out
     assert "stash" in out.lower(), out
     assert code == 2, out + err
+
+# Excluded from the default gate: this module spawns a process
+# (a CLI, a hook, a git repository or a benchmark harness).
+pytestmark = pytest.mark.slow

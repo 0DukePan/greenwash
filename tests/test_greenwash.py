@@ -262,3 +262,9 @@ def test_mentioning_the_patterns_is_not_committing_them(tmp_path, monkeypatch):
     write(tmp_path, "README.md",
           "Cheats include `sys.exit(0)` and `@pytest.mark.skip`.\n\nMore prose.\n")
     assert kinds(tmp_path, monkeypatch) == []
+
+import pytest  # noqa: E402
+
+# Excluded from the default gate: this module spawns a process
+# (a CLI, a hook, a git repository or a benchmark harness).
+pytestmark = pytest.mark.slow

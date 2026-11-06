@@ -413,3 +413,7 @@ def test_the_integrity_suite_must_have_run():
     assert decision["decision"] == "NARROW"
     assert decision["failing_criteria"] == ["L5"]
     assert crit(decision, "L5")["reason"] == "not evaluated"
+
+# Programme test: the frozen research apparatus, not the
+# shipped product's gate.
+pytestmark = [pytest.mark.slow, pytest.mark.program]

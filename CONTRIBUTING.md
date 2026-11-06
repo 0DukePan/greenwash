@@ -5,12 +5,33 @@ stay honest, and the benchmark numbers stay reproducible.
 
 ## Run the tests
 
+Three commands, in the order you will use them:
+
 ```bash
-python -m pytest -q
+python -m pytest -q                 # 10 seconds: pure units and the claim guards
+python -m pytest -q -m "not program"  # the product's real gate, about seven minutes
+python -m pytest -q -o addopts=     # everything, including the frozen programme
 ```
 
-These cover the scanner (regex + AST) and the verifier. Add a test with every
-new check or language pack.
+The default is deliberately not everything. A test that spawns a process -- a
+CLI, a hook, a git repository, a benchmark harness -- carries the `slow`
+marker; the frozen research programme carries `program`. CI runs the default on
+both supported Pythons, the product gate on every push, and everything on a
+nightly schedule (including Windows). If you change shipped behaviour, run the
+product gate before you push.
+
+Add a test with every new check or language pack. Disabling, weakening or
+deleting a test to make the suite green is the failure this project exists to
+catch -- fix the code or explain, in the pull request, why the test was wrong.
+
+## How work is tracked
+
+GitHub Issues, one issue per change. There are no ticket files in the tree and
+no separate tracker: the issue is the spec, the pull request links it, and a
+closed issue with a merged pull request is the record. If an issue needs more
+than a paragraph, put the detail in the pull request description rather than in
+a new document.
+
 
 ## Add a language pack
 

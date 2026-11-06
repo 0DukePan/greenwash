@@ -278,3 +278,7 @@ def test_the_command_refuses_an_open_assumption_naming_it(tmp_path):
     assert result.returncode == 2
     assert "speed-slos" in result.stderr
     assert not out.exists()
+
+# Programme test: the frozen research apparatus, not the
+# shipped product's gate.
+pytestmark = [pytest.mark.slow, pytest.mark.program]

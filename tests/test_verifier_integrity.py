@@ -317,3 +317,7 @@ def test_the_integrity_suite_reports_zero_successful_modifications(tmp_path, mon
     assert successes == [], (
         f"the integrity suite reports {len(successes)} successful modification(s): "
         f"{successes}")
+
+# Excluded from the default gate: this module spawns a process
+# (a CLI, a hook, a git repository or a benchmark harness).
+pytestmark = pytest.mark.slow

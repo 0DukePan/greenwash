@@ -675,3 +675,7 @@ def test_an_exit_zero_under_the_main_guard_is_clean(tmp_path, monkeypatch):
            "import sys\n\n\ndef add(a, b):\n    return a + b\n\n\n"
            "if __name__ == '__main__':\n    print(add(1, 2))\n    sys.exit(0)\n")
     assert "known-exploit-pattern" not in _kinds(tmp_path, monkeypatch)
+
+# Excluded from the default gate: this module spawns a process
+# (a CLI, a hook, a git repository or a benchmark harness).
+pytestmark = pytest.mark.slow

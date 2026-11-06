@@ -57,6 +57,15 @@ def blocking_mode(cwd=".") -> str:
 
 
 def _state_path(cwd=None) -> str:
+    # An explicit location for the block budget. Without it the state follows
+    # the git directory, and a target that is not itself a repository inherits
+    # whichever ancestor repository it happens to sit under -- on Windows a
+    # pytest temp directory is inside `C:\Users\<user>`, and if that home
+    # directory is a repository every test shares one budget. The override is
+    # also the only way a caller can make the gate deterministic in CI.
+    override = os.environ.get("GREENWASH_STATE_DIR")
+    if override:
+        return os.path.join(os.path.abspath(override), "state.json")
     try:
         return gitutil.git_path(os.path.join("greenwash", "state.json"), cwd=cwd)
     except gitutil.GitError:

@@ -730,3 +730,7 @@ def test_subprocess_detector_configurations_land_in_the_same_table(tmp_path):
     assert b3["version"] == baselines.COMPETITOR_VERSION
     assert b3["pooled"]["cost"] == 3.0       # one competitor run x three repeats
     assert b3["pooled"]["variance"] == 0.0
+
+# Programme test: the frozen research apparatus, not the
+# shipped product's gate.
+pytestmark = [pytest.mark.slow, pytest.mark.program]

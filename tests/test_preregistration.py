@@ -362,3 +362,7 @@ def test_a_refused_run_writes_no_ledger_entry(tmp_path):
         recorded(tmp_path, root, thresholds)
     assert not (tmp_path / "ledger.jsonl").exists()
     assert not (tmp_path / "retired.json").exists()
+
+# Programme test: the frozen research apparatus, not the
+# shipped product's gate.
+pytestmark = [pytest.mark.slow, pytest.mark.program]

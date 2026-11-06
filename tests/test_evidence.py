@@ -107,3 +107,9 @@ def test_cli_emits_a_machine_readable_failed_evidence_check(tmp_path):
     assert result.returncode == 1
     assert payload["valid"] is False
     assert payload["sha256"] == "sha256:" + hashlib.sha256(record.read_bytes()).hexdigest()
+
+import pytest  # noqa: E402
+
+# Excluded from the default gate: this module spawns a process
+# (a CLI, a hook, a git repository or a benchmark harness).
+pytestmark = pytest.mark.slow

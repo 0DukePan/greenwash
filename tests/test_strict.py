@@ -23,8 +23,14 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 
 
-def _future(days: int = 30) -> str:
-    """A valid expiry relative to the clock, so the fixtures cannot go stale."""
+def _future(days: int = 28) -> str:
+    """A valid expiry relative to the clock, so the fixtures cannot go stale.
+
+    Not thirty: the ceiling is thirty days from *now*, and an expiry is a date
+    at midnight. Just after local midnight -- with the timezone ahead of UTC --
+    a date thirty days out is a few hours past the ceiling and the waiver is
+    refused. Two days of slack keeps the fixture valid at any hour.
+    """
     return (date.today() + timedelta(days=days)).isoformat()
 sys.path.insert(0, str(ROOT))
 
@@ -381,9 +387,43 @@ def test_a_broken_checker_blocks_bounded_in_strict(tmp_path, hook):
     assert "unresolved at stop" in combined
 
 
+def test_a_state_directory_override_starts_a_fresh_budget(tmp_path, monkeypatch):
+    """The budget must be placeable where the caller controls it.
+
+    Without the override the budget follows the git directory, so a target
+    that is not a repository inherits whichever ancestor repository it sits
+    under -- which made the suite non-idempotent on a machine whose home
+    directory is a repository.
+    """
+    from greenwash import hooking
+
+    monkeypatch.setenv("GREENWASH_STATE_DIR", str(tmp_path / "one"))
+    assert [hooking.take_block(tmp_path, "s") for _ in range(4)] == [
+        True, True, True, False]
+    monkeypatch.setenv("GREENWASH_STATE_DIR", str(tmp_path / "two"))
+    assert hooking.take_block(tmp_path, "s") is True
+
+
+@pytest.mark.parametrize("hook", [HOOK, CODEX_HOOK], ids=["claude", "codex"])
+def test_the_budget_flow_is_repeatable_in_a_fresh_state_directory(
+        tmp_path, hook, monkeypatch):
+    """The same four-call flow must answer the same way on a second run."""
+    tmp_path.joinpath("notes.txt").write_text("not a repository\n", encoding="utf-8")
+    for run_index in (1, 2):
+        monkeypatch.setenv("GREENWASH_STATE_DIR", str(tmp_path / f"run-{run_index}"))
+        codes = [stop(hook, tmp_path,
+                      env={"GREENWASH_STRICT": "1"}).returncode
+                 for _ in range(4)]
+        assert codes == [2, 2, 2, 0], (run_index, codes)
+
+
 def test_a_broken_checker_never_blocks_in_report_mode(tmp_path):
     """The default profile stays fail-open: a broken tool cannot block a person."""
     tmp_path.joinpath("notes.txt").write_text("not a repository\n", encoding="utf-8")
     result = stop(HOOK, tmp_path)
     assert result.returncode == 0
     assert "could not" in (result.stdout + result.stderr).lower()
+
+# Excluded from the default gate: this module spawns a process
+# (a CLI, a hook, a git repository or a benchmark harness).
+pytestmark = pytest.mark.slow

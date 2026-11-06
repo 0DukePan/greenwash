@@ -364,3 +364,7 @@ def test_the_json_report_carries_flags_and_finding_evidence_fields(cheat, monkey
     assert payload["signals"], "the fixture diff raises a finding"
     for finding in payload["signals"]:
         assert "mechanism" in finding and "grade_relevance" in finding
+
+# Excluded from the default gate: this module spawns a process
+# (a CLI, a hook, a git repository or a benchmark harness).
+pytestmark = pytest.mark.slow

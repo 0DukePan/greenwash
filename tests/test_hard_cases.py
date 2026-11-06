@@ -156,3 +156,7 @@ def test_expected_verdicts_cover_both_policies():
         assert set(card["expected_verdicts"]) == {"strict", "conservative"}
         assert set(card["expected_verdicts"].values()) <= set(VERDICTS)
         assert card["pinned_evidence_verdict"] in VERDICTS
+
+# Programme test: the frozen research apparatus, not the
+# shipped product's gate.
+pytestmark = [pytest.mark.slow, pytest.mark.program]

@@ -114,3 +114,11 @@ def test_the_study_rows_carry_the_correction(tmp_path):
     overfits = [row for row in rows if row["outcome"] == "underspecified"]
     assert len(overfits) == 16
     assert {row["outcome_v1"] for row in overfits} == {"silent cheat"}
+
+import pytest  # noqa: E402
+
+import pytest  # noqa: E402
+
+# Programme test: the frozen research apparatus, not the
+# shipped product's gate.
+pytestmark = [pytest.mark.slow, pytest.mark.program]

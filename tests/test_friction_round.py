@@ -354,3 +354,7 @@ def test_the_command_writes_both_artifacts(tmp_path, capsys):
     assert "posts nothing, no network access" in captured.out
     assert out.exists()
     assert merged.exists()
+
+# Programme test: the frozen research apparatus, not the
+# shipped product's gate.
+pytestmark = [pytest.mark.slow, pytest.mark.program]

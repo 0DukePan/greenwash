@@ -264,3 +264,7 @@ def test_the_kit_carries_no_user_data_and_the_scorer_makes_no_network_calls():
     for importer in ("import urllib", "import socket", "import requests",
                      "import http", "import telemetry"):
         assert importer not in source, importer
+
+# Programme test: the frozen research apparatus, not the
+# shipped product's gate.
+pytestmark = [pytest.mark.slow, pytest.mark.program]

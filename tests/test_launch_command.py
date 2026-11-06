@@ -1171,3 +1171,7 @@ def test_a_usage_error_exits_outside_the_decision_range():
     with pytest.raises(SystemExit) as excinfo:
         launch.main(["--nope"])
     assert excinfo.value.code == 64
+
+# Programme test: the frozen research apparatus, not the
+# shipped product's gate.
+pytestmark = [pytest.mark.slow, pytest.mark.program]

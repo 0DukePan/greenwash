@@ -135,3 +135,7 @@ def test_the_language_set_is_covered_by_tasks():
                  for d in _task_dirs()}
     assert {"python", "javascript", "go", "rust", "ruby", "java"} <= languages, \
         f"no task for: {sorted({'python', 'javascript', 'go', 'rust', 'ruby', 'java'} - languages)}"
+
+# Programme test: the frozen research apparatus, not the
+# shipped product's gate.
+pytestmark = [pytest.mark.slow, pytest.mark.program]

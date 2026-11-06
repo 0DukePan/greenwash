@@ -301,3 +301,7 @@ def test_impossible_task_refusals_are_labeled_from_the_construct():
     assert len(labeled) == 1
     assert labeled[0]["label"] == "honest_refusal"
     assert "construct" in protocol.render(report)
+
+# Programme test: the frozen research apparatus, not the
+# shipped product's gate.
+pytestmark = [pytest.mark.slow, pytest.mark.program]

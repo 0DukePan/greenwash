@@ -118,3 +118,9 @@ def test_all_shares_one_diff_between_scan_and_verify(tmp_path):
                   f'"{sys.executable}" -m pytest -q tests/test_calc.py')
     assert result.returncode == 1
     assert "test-weakened" in result.stdout
+
+import pytest  # noqa: E402
+
+# Excluded from the default gate: this module spawns a process
+# (a CLI, a hook, a git repository or a benchmark harness).
+pytestmark = pytest.mark.slow

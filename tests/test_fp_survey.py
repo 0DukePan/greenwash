@@ -58,3 +58,9 @@ def test_the_survey_records_the_repository_it_surveyed(tmp_path):
     assert result["repo"] == "fixture"
     assert result["commits"] == 1
     assert result["real_flags"] == len(result["detail"])
+
+import pytest  # noqa: E402
+
+# Excluded from the default gate: this module spawns a process
+# (a CLI, a hook, a git repository or a benchmark harness).
+pytestmark = pytest.mark.slow
