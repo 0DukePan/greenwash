@@ -150,6 +150,48 @@ def test_hardcoded_returns_survive_a_bom_too(tmp_path, monkeypatch):
     assert "hardcoded-return" in _kinds(tmp_path, monkeypatch)
 
 
+def test_a_changed_file_that_cannot_be_parsed_produces_a_finding(tmp_path, monkeypatch):
+    """A parse failure is a gap in the check, and it must say so.
+
+    The AST rules read a parsed tree, and an unparseable file used to be
+    skipped with no signal -- so a diff the static layer never read produced
+    "no suspicious patterns" and the run moved on. The finding names the file
+    and asks for a look; it never accuses the change of tampering.
+    """
+    _repo(tmp_path)
+    _write(tmp_path, "src/calc.py", "def add(a, b):\n    return a + +\n")
+    monkeypatch.chdir(tmp_path)
+
+    signal = next(s for s in scan_mod.scan() if s.rule_id == "unreadable-file")
+    assert signal.path == "src/calc.py"
+    assert signal.requires_review, "a check that could not run must not accuse"
+    assert not signal.mechanism and not signal.grade_relevance
+    assert "could not" in " ".join(signal.explanation.lower().split())
+    assert "SyntaxError" in signal.evidence.get("parse_error", "")
+
+
+def test_a_well_formed_changed_file_is_not_unreadable(tmp_path, monkeypatch):
+    """Benign twin: an ordinary Python edit never raises the gap finding."""
+    _repo(tmp_path)
+    _write(tmp_path, "src/calc.py", "def add(a, b):\n    return a + b\n")
+    assert "unreadable-file" not in _kinds(tmp_path, monkeypatch)
+
+
+def test_a_diff_path_missing_from_the_tree_is_not_a_parse_failure(tmp_path):
+    """A synthetic or historical diff need not resolve against a checkout.
+
+    `scan_diff` is used on corpora and replayed history whose post-image is not
+    the working tree; a missing path there is a caller mismatch, not a file
+    that failed to parse, and reporting it would fill those runs with noise.
+    """
+    diff = ("diff --git a/src/gone.py b/src/gone.py\n"
+            "--- a/src/gone.py\n+++ b/src/gone.py\n"
+            "@@ -1 +1,2 @@\n"
+            "-def add(a, b):\n+def add(a, b):\n+    return a + b\n")
+    signals = scan_mod.scan_diff(diff, cwd=str(tmp_path), root=str(tmp_path))
+    assert not [s for s in signals if s.rule_id == "unreadable-file"]
+
+
 def test_deleting_a_source_file_is_not_a_deleted_test(tmp_path, monkeypatch):
     _repo(tmp_path)
     (tmp_path / "src" / "calc.py").unlink()

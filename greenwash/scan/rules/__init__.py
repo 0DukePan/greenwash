@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from . import (assertion_weakened, conftest_changed, error_path_default, hardcoded_return,
                known_exploit, mock_in_test, swallowed_exception, test_file_deleted,
-               test_skipped, verifier_config_changed)
+               test_skipped, unreadable_file, verifier_config_changed)
 
 MODULES = [
     test_skipped,
@@ -21,6 +21,7 @@ MODULES = [
     mock_in_test,
     conftest_changed,
     verifier_config_changed,
+    unreadable_file,
 ]
 
 RULES = [module.RULE for module in MODULES]

@@ -138,19 +138,24 @@ list is a rule change and needs its own pass, and the AST rules still read the
 clone's checked-out tree rather than each commit's tree, so a flag is confirmed
 by reading the commit.
 
-## 8. A file that cannot be parsed produces no note
+## 8. A file that cannot be parsed used to produce no note
 
-The Python rules work on a parsed tree, and a file that will not parse is simply
-skipped: no signal, no note, nothing in the report. That is the wrong shape for
-this tool's own philosophy -- a check that could not run must not read as a
-pass -- and it bit this release: a UTF-8 byte-order mark (what PowerShell,
+The Python rules work on a parsed tree, and a file that would not parse was
+simply skipped: no signal, no note, nothing in the report. That is the wrong
+shape for this tool's own philosophy -- a check that could not run must not read
+as a pass -- and it bit this release: a UTF-8 byte-order mark (what PowerShell,
 Visual Studio and Notepad write by default) made `ast.parse` fail, and a
 planted `@pytest.mark.skip` came back as `0 signal(s)` on a Windows machine.
 
-The BOM half is fixed (`utf-8-sig`, with regression tests). The general half is
-not: a genuinely unparseable *changed* Python file still goes quiet instead of
-saying so. The fix is a signal for "this file was changed and could not be
-read", and it is on the list rather than in the build.
+The BOM half was fixed first (`utf-8-sig`, with regression tests). The general
+half is fixed too: **`unreadable-file` (GW-DIV-003)** names the changed file,
+says the static layer could not parse it, and appears in the text and JSON
+reports. It asks rather than accuses -- no mechanism, no grade relevance, so it
+never resolves to `TAMPERED` and never outranks a finding that did run -- and a
+report carrying it cannot be `CLEAN` or `VERIFIED`. The benign twin, a
+well-formed changed file, produces nothing. What remains uncovered is the rest
+of the story: only Python is parsed, so a language pack that is regex-only
+cannot produce this finding at all.
 
 ## 9. Two namesakes, and one install path that had to be withdrawn
 
@@ -226,5 +231,4 @@ shapes in `tests/test_relabel.py`. The plumbing run now completes:
 | Independent authorship of the corpus | Needs maintainers outside this project; the governance documents are the invitation |
 | A false-positive *rate* rather than a flag count | Needs a labelled sample of real code, not 14 hand-classified flags |
 | The swallow class, generally | Detection cannot see intent in an error path; the remedy today is a held-out suite, which almost nobody has |
-| A note when a changed file cannot be parsed | The BOM half is fixed; a genuinely unparseable file still goes quiet (section 8) |
 | The four unmeasured language tasks | Needs the toolchains and a full re-run |

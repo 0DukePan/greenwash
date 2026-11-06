@@ -37,6 +37,8 @@ class PythonModule:
 
     def __init__(self, path: str):
         self.path = path
+        self.error = ""
+        self.error_type = ""
         try:
             # utf-8-sig, not utf-8: a byte-order mark is legal Python source and
             # common on Windows (PowerShell, Visual Studio and Notepad all write
@@ -45,8 +47,15 @@ class PythonModule:
             # file -- no signal, no note, and a report that read as clean.
             with open(path, "r", encoding="utf-8-sig", errors="ignore") as handle:
                 self.tree: Optional[ast.AST] = ast.parse(handle.read())
-        except (OSError, SyntaxError, ValueError):
+        except (OSError, SyntaxError, ValueError) as error:
+            # The failure is kept, not just swallowed: a file no rule could read
+            # is a gap the report has to name (see rules/unreadable_file.py).
+            # The type is kept too, because "this path is not in the tree" and
+            # "this file will not parse" are different statements.
             self.tree = None
+            self.error_type = type(error).__name__
+            message = getattr(error, "msg", None) or str(error)
+            self.error = f"{self.error_type}: {message}"
 
     @property
     def ok(self) -> bool:

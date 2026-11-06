@@ -124,6 +124,31 @@ def test_scan_subcommand_is_clean_when_it_should_be(tmp_path, monkeypatch, capsy
     assert "None detected" in out
 
 
+def test_scan_reports_a_changed_file_it_could_not_parse(tmp_path, monkeypatch, capsys):
+    """The user sees the gap by name, in the text and the JSON report."""
+    _repo(tmp_path)
+    _write(tmp_path, "src/calc.py", "def add(a, b):\n    return a + +\n")
+    monkeypatch.chdir(tmp_path)
+
+    code, out, _ = _run(monkeypatch, capsys, ["scan"])
+    assert code == 1
+    text = " ".join(out.split())
+    assert "unreadable-file" in text
+    assert "src/calc.py" in text
+    assert "could not" in text
+    assert "Verdict: PARTIALLY_VERIFIED" in out
+    assert "None detected" not in out
+
+    code, out, _ = _run(monkeypatch, capsys, ["scan", "--json"])
+    assert code == 1
+    payload = json.loads(out)
+    assert payload["verdict"] not in ("CLEAN", "VERIFIED")
+    gap = next(s for s in payload["signals"] if s["rule_id"] == "unreadable-file")
+    assert gap["files"] == ["src/calc.py"]
+    assert gap["requires_review"] is True
+    assert "could not" in gap["explanation"]
+
+
 def test_output_is_not_colourised_when_it_is_not_a_terminal(cheat, monkeypatch, capsys):
     """Piped output is for files and CI logs, not for a TTY."""
     _, out, _ = _run(monkeypatch, capsys, [])

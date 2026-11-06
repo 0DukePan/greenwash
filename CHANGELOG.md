@@ -44,6 +44,17 @@
   drive the real hooks and print captured output -- block, waive, allow, and the
   could-not-check path. A `strict-hooks` CI job runs both, and the flows behind
   them, on every push.
+- **`unreadable-file` (GW-DIV-003): a changed Python file the static layer could
+  not parse is reported, not skipped.** Every AST rule is silent on a file that
+  will not parse, and that silence was indistinguishable from a clean result --
+  the defect recorded in [docs/what-did-not-work.md](docs/what-did-not-work.md)
+  section 8. The finding names the file, says the static layer could not read
+  it, and appears in both the text and the JSON report. It **asks**, never
+  accuses: it carries no mechanism and no grade relevance, so it can never
+  resolve to `TAMPERED` and never outranks a finding that did run. A report
+  carrying it can be neither `CLEAN` nor `VERIFIED`. The benign twin -- a
+  well-formed changed file -- produces nothing, and the byte-order-mark
+  regression tests are unchanged.
 
 ### Changed
 
@@ -97,9 +108,11 @@
   Found while producing the npm forward-the-exit-code receipt for this release,
   where a planted `@pytest.mark.skip` came back as `0 signal(s)`. Sources are
   read as `utf-8-sig` now, and both cases are regression tests. The related
-  silence -- a file that genuinely cannot be parsed still produces no note --
-  is recorded in [docs/what-did-not-work.md](docs/what-did-not-work.md) rather
-  than left as a surprise.
+  silence -- a file that genuinely cannot be parsed produced no note -- is closed
+  by `unreadable-file` (GW-DIV-003, above): the changed file is named and the
+  report cannot read as clean. The history is recorded in
+  [docs/what-did-not-work.md](docs/what-did-not-work.md) section 8 rather than
+  left as a surprise.
 - **The Claude hook blocked turns it should have allowed.** It exited 2 for
   *any* finding in enforce mode, including a `VERIFIED` report, because it
   re-derived "should this block?" from the verdict instead of reading the CLI's
