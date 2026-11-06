@@ -10,11 +10,23 @@ change to the maintenance contract, not a detail.
 |---|---|---|
 | One branch, one worktree | `main` only, local equal to `origin/main` | deleted at the 0.4.2 cleanup; stale branches are exported to `archive/branches/` as bundles before deletion |
 | A local loop measured in seconds | default `python -m pytest -q` ≤ 90 s | `addopts = -m "not slow"`; the default gate is 154 tests |
-| A real gate on every push | product behaviour, ≤ 5 min wall | `-m "not program"` in the `product` CI job, with `pytest-xdist` |
+| A real gate on every push | product behaviour, ≤ 2 min wall | `-m "not program"` in the `product` CI job, with `pytest-xdist` |
 | The whole suite, including Windows | nothing silently skipped | nightly `full` job: Ubuntu and Windows × 3.10 and 3.12 |
 | The suite is idempotent | two runs in a row give the same answer | no wall-clock or shared-state fixtures; `tests/conftest.py` isolates the hook's block budget |
 | One process home | GitHub Issues | no in-tree ticket files |
 | Every published number is guarded | guards are in the default gate | README, claim ledger, survey and docs tests |
+
+## Measured, 2026-11-07
+
+| Gate | Before | After |
+|---|---|---|
+| Default `python -m pytest -q` | 12 min 12 s (1,032 passed) | 8 s (154 passed) |
+| Product gate, serial | -- | 7 min 4 s (512 passed) |
+| Product gate, four workers | -- | 2 min 35 s |
+| Push CI wall time | 11.1 min (two Windows jobs) | **1.6 min** (run `42311950306`) |
+| `product` CI job | -- | 0.9 min |
+| Branches | 42 local, 4 remote | 1 and 1 |
+| Worktrees | 8 | 1 |
 
 ## The three commands
 
