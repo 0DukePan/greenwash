@@ -152,9 +152,11 @@
   {}` -- the shape the swallow tasks are made of -- slid past it. The new rule
   fires when a handler returns a default and no related test file mentions the
   function or the exception. It `requires_review`, because `except KeyError:
-  return None` is idiomatic and often correct, and it has **not** been through
-  the false-positive survey: `docs/false-positives.md` says so rather than
-  implying a measured zero.
+  return None` is idiomatic and often correct. Its first pass over the
+  real-history survey measured it: two flags on one `pytest` change, one a true
+  ask and one a false positive, neither a cheat (the survey harness had to be
+  anchored to each repository before the rule could see a file at all). See
+  `docs/false-positive-survey.md`.
 
 #### Fixed
 

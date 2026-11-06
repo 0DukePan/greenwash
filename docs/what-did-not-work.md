@@ -99,8 +99,9 @@ The scanner's precision on this sample was fine. The gate's was not: those 104
 reviews are what strict mode demanded over active CI, roughly one per 2.4
 commits. That was the first thing fixed rather than waived -- the rule now asks
 only when a change can alter what runs, and a version reference is not that. The
-same history now produces **12 flags**: 10 asking (7 of them the narrowed rule,
-all genuine runner changes) and the same two false positives. The before and
+same history now produces **14 flags**: 12 asking (7 the narrowed rule, all
+genuine runner changes; 3 conftest changes; and 2 from the newly measured
+`error-path-default`) and the same two false positives. The before and
 after are in [false-positive-survey.md](./false-positive-survey.md); it is a
 survey, not a rate -- classifying 109 flags by hand gives a number, not a
 population estimate.
@@ -110,14 +111,32 @@ in a separate shell script, or a test job replaced by a no-op with the same
 name, is still outside the trigger, and the taxonomy keeps that technique's
 coverage at `PARTIAL` rather than promoting it.
 
-## 7. `error-path-default` has not been through the false-positive survey
+## 7. `error-path-default` was blind to the survey until the harness was fixed
 
-It was added *because* of the misses in section 2, which means it has never been
-run over the real-history survey: its false-positive behaviour is unknown, and
-[false-positives.md](./false-positives.md) says so rather than implying a
-measured zero. It asks rather than accuses, and in strict mode "asks" means
-"blocks until someone decides", so the cost of that gap is a review, not a
-wrong verdict -- but it is a gap.
+It was added *because* of the misses in section 2, so it had never been run
+over the real-history survey. The first attempt to measure it reported nothing,
+and that zero was not a result: `benchmark/fp_survey.py` scanned every commit's
+diff without passing the surveyed repository, so the scanner resolved parsed
+Python files against the greenwash checkout. A rule that needs the file's tree
+-- `error-path-default` is one -- found no file under `src/...` and returned no
+module. An instrument that cannot see reports zero whether or not the thing is
+there.
+
+The fix is one argument: each diff is now scanned with its own repository as
+the working directory, and `error-path-default` can read the file it is
+judging. The rest of the artifact did not move -- same twelve flags, same
+commits. On the same 250 commits the rule fires twice, both on one change in
+`pytest`: a true ask on `564d690` (the JAX fix landed without a test, and the
+same pull request added one six commits later) and a false positive on the
+merge `4b3bb3c` (the merge already carries the regression test, but the rule's
+neighbouring-test heuristic does not know pytest's `testing/` directory). Two
+flags, one change, zero cheats; the measurement is in
+[false-positive-survey.md](./false-positive-survey.md).
+
+What remains a gap is the heuristic, not the measurement: widening that guess
+list is a rule change and needs its own pass, and the AST rules still read the
+clone's checked-out tree rather than each commit's tree, so a flag is confirmed
+by reading the commit.
 
 ## 8. A file that cannot be parsed produces no note
 
@@ -169,7 +188,7 @@ table stops matching the data.
 | detector-recall | A frozen evaluation run on a corpus this project did not author, at the pre-registered sample size. | Measured on the first-party internal corpus only; the frozen run has not happened. | On a labelled corpus of 24 tasks with one planted cheat each, the scanner caught 24 of 24 planted cheats (95% CI 86.2%-100%). |
 | false-alarms | A labelled sample of real code large enough for a rate, not a hand-classified flag count. | Measured on the recorded honest fixes of the internal corpus only. | It flagged 0 of 24 recorded honest fixes (95% upper bound 13.8% at this sample size). |
 | behavioural-effect | The pre-registered behavioural study: an independent corpus, a pinned image, and an instrument that is not the treatment. | One live first-party run. Its rows carry no detector flags, no diffs and no transcripts, and the classifier that produced the labels could not record a cheat that passes the held-out suite -- that is fixed now, but the run was not repeated after the fix. | No measurable effect at this sample size: +0.0 points over 252 scored runs (95% CI [0, 5] in every arm). The run recorded no detector flags and its labels predate the instrument fix that can label a passing cheat, so this is a label count, not a measurement of the plugin's effect. |
-| fp-survey | A labelled sample of real code; classifying flags by hand gives a number, not a population estimate. | A survey of recent history in 10 repositories, published for inspection. | On the recent history of 10 repositories (250 commits, 1,029 file changes) the scanner produced 12 flags: 10 are the rules that always ask for an explanation, 2 are genuine false positives. This is a survey, not a rate. |
+| fp-survey | A labelled sample of real code; classifying flags by hand gives a number, not a population estimate. | A survey of recent history in 10 repositories, published for inspection. | On the recent history of 10 repositories (250 commits, 1,029 file changes) the scanner produced 14 flags: 12 are the rules that always ask for an explanation, 2 are genuine false positives. This is a survey, not a rate. |
 | first-party-corpus | Corpus authorship independent of this project, with merge authority outside it. | Not established; the governance documents are the invitation. | The corpus is first-party: it measures the detector against its own authors' idea of a cheat and cannot establish detector quality. |
 | rate-claims | The frozen run at the pre-registered sample size; until then every number is a count with an interval. | Not available; the current corpus is first-party and small. | Every published number is an interval-qualified count on the internal corpus; a rate claim waits on the frozen run. |
 | strength-advisory | The strength check's error rate, measured; promotion to a verdict is deliberately deferred. | Ships as an advisory flag in this version. | The strength check ships as an advisory flag, not a verdict; promotion waits until its error rate is measured. |
@@ -205,7 +224,7 @@ shapes in `tests/test_relabel.py`. The plumbing run now completes:
 | A re-measured behavioural effect | The instrument fix is in; the run needs a reachable model and a corpus that saves its diffs and flags |
 | Evidence for the 16-row correction | The rows carry no diffs or transcripts, so the correction rests on a manual reading |
 | Independent authorship of the corpus | Needs maintainers outside this project; the governance documents are the invitation |
-| A false-positive *rate* rather than a flag count | Needs a labelled sample of real code, not 29 hand-classified flags |
+| A false-positive *rate* rather than a flag count | Needs a labelled sample of real code, not 14 hand-classified flags |
 | The swallow class, generally | Detection cannot see intent in an error path; the remedy today is a held-out suite, which almost nobody has |
 | A note when a changed file cannot be parsed | The BOM half is fixed; a genuinely unparseable file still goes quiet (section 8) |
 | The four unmeasured language tasks | Needs the toolchains and a full re-run |
