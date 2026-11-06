@@ -6,8 +6,9 @@ import json
 import pytest
 
 from greenwash.domain import (Claim, Evidence, FileChange, Outcome, Requirement, Run,
-                              Signal, TrustReport, VerificationResult)
+                              Signal, TrustReport, VerificationResult, Verdict)
 from greenwash.report import render, terminal
+from greenwash.scan.rules import BY_ID
 
 CAUGHT = Signal(rule_id="hardcoded-return", code="GW-TEST-004", title="Hardcoded return",
                 category="test-integrity", severity="HIGH", confidence="MEDIUM",
@@ -66,6 +67,62 @@ def test_requires_review_is_spelled_out():
                     requires_review=True)
     text = render(TrustReport.build(signals=[review], verification=VerificationResult()))
     assert "requires review -- not a failure by itself" in text
+
+
+def test_an_unreadable_changed_file_is_a_gap_not_a_pass():
+    """A check that could not run is reported by name, and is never a pass.
+
+    It is not an accusation -- so no mechanism, no grade relevance and no
+    TAMPERED -- but a report carrying it can be neither CLEAN nor VERIFIED,
+    whatever the behavioral layer did.
+    """
+    rule = BY_ID["unreadable-file"]
+    gap = rule.signal(
+        "src/api.py", None,
+        "the static layer could not read this changed file (SyntaxError: invalid "
+        "syntax) -- the checks that parse Python did not run on it",
+        parse_error="SyntaxError: invalid syntax")
+
+    for verification in (VerificationResult(),
+                         VerificationResult(outcome=Outcome.PASS.value,
+                                            tests_run=4, tests_passed=4)):
+        report = TrustReport.build(signals=[gap], verification=verification)
+        assert report.verdict not in (Verdict.CLEAN.value, Verdict.VERIFIED.value)
+        assert report.verdict == Verdict.PARTIALLY_VERIFIED.value
+        assert not gap.mechanism and not gap.grade_relevance
+
+    text = render(report)
+    assert "[unreadable-file]" in text
+    assert "src/api.py" in text
+    assert "could not" in " ".join(text.split())
+    assert "requires review -- not a failure by itself" in text
+
+    payload = json.loads(render(report, fmt="json"))
+    finding = payload["signals"][0]
+    assert finding["rule_id"] == "unreadable-file"
+    assert finding["files"] == ["src/api.py"]
+    assert finding["requires_review"] is True
+    assert "could not" in finding["explanation"]
+    assert payload["verdict"] == "PARTIALLY_VERIFIED"
+
+
+def test_a_gap_does_not_mask_a_finding_that_did_run():
+    """'I could not check this file' must never outrank a real finding.
+
+    An unreadable file is a gap, not evidence about the rest of the diff. If
+    it resolved an evidence verdict of its own, an agent could pair a skipped
+    test with one unparseable file and have the skip read as inconclusive.
+    """
+    gap = BY_ID["unreadable-file"].signal(
+        "src/api.py", None, "the static layer could not read this changed file")
+    skipped = Signal(rule_id="test-skipped", code="GW-TEST-001", severity="HIGH",
+                     explanation="a bare @pytest.mark.skip disables the test",
+                     files=["tests/test_api.py"])
+    report = TrustReport.build(
+        signals=[gap, skipped],
+        verification=VerificationResult(outcome=Outcome.PASS.value,
+                                        tests_run=4, tests_passed=4))
+    assert report.verdict == Verdict.SUSPICIOUS.value
 
 
 def test_quiet_is_one_line():

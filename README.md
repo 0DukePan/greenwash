@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <strong>24/24 planted tampers caught &middot; 0 false positives on 24 matched fixes &middot; 1014 tests</strong><br>
+  <strong>24/24 planted tampers caught &middot; 0 false positives on 24 matched fixes &middot; 1020 tests</strong><br>
   <sub>
     An agent under pressure to show green will skip the test, mock the unit under
     test, hardcode the expected value, or swallow the exception that would have
@@ -263,7 +263,7 @@ diff looks. The full decision table and the arithmetic:
 
 ## What it catches
 
-Ten static rules, and seven signals that only a run can produce:
+Eleven static rules, and seven signals that only a run can produce:
 
 | Code | Rule | Severity | What it means |
 |---|---|---|---|
@@ -273,6 +273,7 @@ Ten static rules, and seven signals that only a run can produce:
 | `GW-TEST-004` | `hardcoded-return` | high | A returned literal matches a value a test asserts against -- caught through a local variable, and checked against related test files on disk |
 | `GW-DIV-001` | `swallowed-exception` | medium | An exception is caught and dropped |
 | `GW-DIV-002` | `error-path-default` | medium | An `except` block turns an error into a default value and no related test file mentions that path -- **asks**, never accuses |
+| `GW-DIV-003` | `unreadable-file` | low | A changed Python file could not be parsed, so the static checks did not run on it -- it names the file, **asks**, never accuses, and the report cannot be `CLEAN` or `VERIFIED` |
 | `GW-EXP-001` | `known-exploit-pattern` | high | An unconditional `__eq__`, or `sys.exit(0)` / `os._exit(0)` / `process.exit(0)` |
 | `GW-TEST-005` | `mock-in-test` | medium | A mock appears in a test file -- **asks**, never accuses |
 | `GW-TEST-006` | `conftest-changed` | medium | `conftest.py` was touched -- **asks**, never accuses |
