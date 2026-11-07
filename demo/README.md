@@ -29,11 +29,18 @@ is computed from today, so a run is always inside the 30-day waiver ceiling.
 ## The README's GIF
 
 `assets/demo.gif` is the loop at the top of the README. It is neither
-screen-recorded nor transcribed: the generator runs `run_demo.py --terse`,
-captures its stdout, and types those exact lines onto a terminal card. The text
-inside the terminal is verbatim; what is added is presentation only -- the
-kicker above the card, the tint and amber edge on the flag blocks, and a 140ms
-brighten on each tag as it lands.
+screen-recorded nor transcribed: the generator runs `run_demo.py --terse
+--with-diff`, captures its stdout, and types those exact lines onto a terminal
+card. It starts from the change the agent made -- the real `git diff` of the
+throwaway repository, so the clip shows the cause before the verdict -- then the
+command, then the report.
+
+The text inside the terminal is verbatim; what is added is presentation only --
+the kicker above the card, the red/green colour on the diff lines, the tint and
+amber edge on the flag blocks, and a 140ms brighten on each tag as it lands.
+The generator also decides the pacing, because the report is taller than the
+window: it holds briefly on the diff, the verification block and the verdict,
+and scrolls the rest.
 
 One thing worth knowing if you rebuild it: the GIF's palette is built from the
 art's own colours with the accents forced in. Pillow's adaptive quantisation

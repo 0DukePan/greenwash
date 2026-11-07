@@ -35,15 +35,15 @@ ROOT = HERE.parent
 OUT = HERE / "demo.gif"
 
 S = 3                    # supersampling factor
-W, H = 840, 540          # roomy at README width, crisp on high-density displays
+W, H = 840, 640          # roomy at README width, crisp on high-density displays
 INSET = 16               # card distance from the canvas edge
 CARD_TOP = 116           # room for the story, not just a terminal screenshot
 RADIUS = 14
 HEADER = 30              # terminal chrome strip
 TEXT_LEFT = 34
 TEXT_TOP = CARD_TOP + 42
-LINE_H = 24
-SIZE = 16
+LINE_H = 26
+SIZE = 17
 
 BG = (8, 12, 17)
 BG_BOTTOM = (5, 9, 13)
@@ -54,6 +54,8 @@ BODY, FLAG, DIM = (207, 217, 226), (255, 151, 76), (148, 160, 172)
 FLASH = (255, 192, 121)   # the tag's first 140ms, so the catch registers
 ALERT, VERDICT_BAD = (255, 123, 114), (255, 123, 114)
 TINT = (43, 31, 24)       # card colour, warmed up: the signal-row highlight
+DIFF_BG = (16, 23, 31)    # the changed-lines block, cooler than a signal
+DIFF_ADD, DIFF_DEL = (126, 214, 145), (238, 130, 122)
 LABEL, LABEL_BG = (112, 235, 161), (17, 48, 36)
 BADGE, BADGE_BG = (255, 183, 109), (67, 42, 25)
 
@@ -68,7 +70,7 @@ EYEBROW_TOP, KICKER_TOP, KICKER_L1, KICKER_L2, KICKER_X = 18, 43, 27, 24, INSET 
 # generic editor. The right-hand badge makes the loop's poster frame useful in
 # a README, a link preview, or a paused social clip.
 TITLE = "greenwash  /  trust report"
-COMMAND_LABEL = "python demo/run_demo.py --terse"
+COMMAND_LABEL = "python demo/run_demo.py --terse --with-diff"
 STATUS = "HELD-OUT FAILED"
 
 FONT_DIRS = [
@@ -103,23 +105,36 @@ def px(value: float) -> int:
 def demo_lines() -> list:
     """The demo's stdout, pinned to ASCII decoration.
 
-    The GIF is drawn with ASCII marks (`+`, `x`, `-`) on purpose: they match the
-    README transcript and the palette is tuned for them. Pinning the child's
-    encoding keeps a rebuild here identical to a rebuild on a UTF-8 machine.
+    `--with-diff` makes the clip start from what the agent changed: the
+    generator prints the throwaway repository's real `git diff` before the
+    command, so the first half of the clip is the cause and the second half is
+    the report. The GIF is drawn with ASCII marks (`+`, `x`, `-`) on purpose:
+    they match the README transcript and the palette is tuned for them. Pinning
+    the child's encoding keeps a rebuild here identical to a rebuild on a UTF-8
+    machine.
     """
     env = {**os.environ, "PYTHONIOENCODING": "ascii"}
-    proc = subprocess.run([sys.executable, str(ROOT / "demo" / "run_demo.py"), "--terse"],
+    proc = subprocess.run([sys.executable, str(ROOT / "demo" / "run_demo.py"),
+                           "--terse", "--with-diff"],
                           capture_output=True, text=True, encoding="utf-8",
                           errors="replace", cwd=ROOT, env=env)
     if proc.returncode != 0:
-        sys.exit(f"demo/run_demo.py --terse failed:\n{proc.stderr}")
+        sys.exit(f"demo/run_demo.py --terse --with-diff failed:\n{proc.stderr}")
     return [line.rstrip() for line in proc.stdout.splitlines()]
 
 
 def classify(line: str) -> str:
     stripped = line.strip()
+    if not stripped:
+        return "blank"
     if line.startswith("$ ") or line.startswith("      --"):
         return "cmd"
+    if line.startswith(("diff --git", "index ", "@@ ", "--- ", "+++ ")):
+        return "diff-meta"
+    if line.startswith("+") and not set(stripped) == {"+"}:
+        return "diff-add"
+    if line.startswith("-") and not set(stripped) == {"-"}:
+        return "diff-del"
     if stripped.startswith(("! [", "\u26a0 [")):
         return "signal"
     if stripped.startswith(("x ", "\u2717 ")):
@@ -258,23 +273,41 @@ def render(visible, scroll: int = None, flash=(), cursor: bool = False) -> Image
     d = ImageDraw.Draw(img)
     window = [row for row in range(scroll, min(len(visible), scroll + VISIBLE))]
     tinted = signal_blocks(visible)
+    diff_rows = {index for index, (_, kind) in enumerate(visible)
+                 if kind.startswith("diff")}
+    # A terminal grows from the bottom: while the content is shorter than the
+    # window it sits at the bottom edge, not at the top with dead space below.
+    pad = max(0, VISIBLE - len(visible))
+
+    def row_y(row: int) -> float:
+        return TEXT_TOP + (row - scroll + pad) * LINE_H
+
+    for run in runs(diff_rows):
+        first, last = max(run[0], scroll), min(run[-1], scroll + VISIBLE - 1)
+        if first > last:
+            continue
+        y0 = px(row_y(first)) - px(4)
+        y1 = px(row_y(last)) + px(20)
+        d.rectangle([px(INSET + 5), y0, px(W - INSET - 5), y1], fill=DIFF_BG)
+        d.rectangle([px(INSET + 5), y0, px(INSET + 8), y1],
+                    fill=(86, 116, 146))
 
     for row in window:
         if row in tinted:
-            y = px(TEXT_TOP + (row - scroll) * LINE_H)
+            y = px(row_y(row))
             d.rectangle([px(INSET + 5), y - px(3), px(W - INSET - 5), y + px(19)], fill=TINT)
     for run in runs(tinted):
         first, last = max(run[0], scroll), min(run[-1], scroll + VISIBLE - 1)
         if first > last:
             continue
-        y0 = px(TEXT_TOP + (first - scroll) * LINE_H) - px(3)
-        y1 = px(TEXT_TOP + (last - scroll) * LINE_H) + px(19)
+        y0 = px(row_y(first)) - px(3)
+        y1 = px(row_y(last)) + px(19)
         d.rectangle([px(INSET + 5), y0, px(INSET + 8), y1],
                     fill=FLASH if run[0] in flash else FLAG)
 
     for row in window:
         line, kind = visible[row]
-        y = px(TEXT_TOP + (row - scroll) * LINE_H)
+        y = px(row_y(row))
         text = line.lstrip()
         indent = (len(line) - len(text) + 1) * SIZE * 0.55
 
@@ -295,6 +328,14 @@ def render(visible, scroll: int = None, flash=(), cursor: bool = False) -> Image
             d.text((px(TEXT_LEFT), y), line, font=FONT, fill=ALERT)
         elif kind == "verdict":
             d.text((px(TEXT_LEFT), y), line, font=FONT_BOLD, fill=VERDICT_BAD)
+        elif kind == "diff-add":
+            d.text((px(TEXT_LEFT), y), line, font=FONT, fill=DIFF_ADD)
+        elif kind == "diff-del":
+            d.text((px(TEXT_LEFT), y), line, font=FONT, fill=DIFF_DEL)
+        elif kind == "diff-meta":
+            d.text((px(TEXT_LEFT), y), line, font=FONT, fill=DIM)
+        elif kind == "blank":
+            continue
         elif kind == "check":
             d.text((px(TEXT_LEFT + indent), y), text, font=FONT, fill=BODY)
         elif kind == "dim":
@@ -306,7 +347,7 @@ def render(visible, scroll: int = None, flash=(), cursor: bool = False) -> Image
         row = len(visible) - 1
         if scroll <= row < scroll + VISIBLE:
             width = d.textlength(visible[row][0], font=FONT) / S
-            y = px(TEXT_TOP + (row - scroll) * LINE_H)
+            y = px(row_y(row))
             x = TEXT_LEFT + (width if not visible[row][0].startswith("$ ") else width)
             d.rectangle([px(x + 1), y - px(1), px(x + 9), y + px(17)], fill=CMD)
     return img
@@ -324,18 +365,19 @@ def story_frames() -> list:
 
     def typed(prefix):
         frames.append((render(shown + [(prefix, "cmd")],
-                              scroll_for(len(shown) + 1), cursor=True), 55))
+                              scroll_for(len(shown) + 1), cursor=True), 45))
 
-    add(240)
+    add(260)
 
     for position, start in enumerate(commands):
         end = commands[position + 1] if position + 1 < len(commands) else len(content)
         text = content[start][0]
-        step = 4 if len(text) > 30 else 2
+        is_diff = text.startswith("$ git diff")
+        step = 8 if len(text) > 30 else 3
         for cut in range(step, len(text), step):
             typed(text[:cut])
         shown.append(content[start])
-        add(100)
+        add(110)
 
         pending: list = []
 
@@ -354,6 +396,11 @@ def story_frames() -> list:
                 shown.append(content[index])
                 add(180)
                 continue
+            if kind.startswith("diff"):          # the change, line by line
+                flush(60)
+                shown.append(content[index])
+                add(45)
+                continue
             if kind == "signal":                 # pulse, then settle on its own frame
                 flush()
                 shown.append(content[index])
@@ -361,10 +408,17 @@ def story_frames() -> list:
                 add(80, flash={len(shown) - 1})
                 continue
             pending.append(content[index])
+            if line.startswith(("Verification:", "Suspicious patterns:")):
+                flush(60)
+                add(420)
+                continue
             if not line.strip() or len(pending) >= 3:
                 flush(60 if not line.strip() else 85)
         flush()
-        add(1300 if position == len(commands) - 1 else 550)
+        if is_diff:
+            add(1200)                            # read the change before the report
+        else:
+            add(2000 if position == len(commands) - 1 else 500)
     return frames
 
 
@@ -380,8 +434,8 @@ def build() -> list:
     return frames
 
 
-ACCENTS = [BG, CARD, TINT, BORDER, DIVIDER, CMD, BODY, DIM, FLAG, PROMPT,
-           ALERT, *DOTS]
+ACCENTS = [BG, CARD, TINT, DIFF_BG, BORDER, DIVIDER, CMD, BODY, DIM, FLAG,
+           PROMPT, ALERT, DIFF_ADD, DIFF_DEL, *DOTS]
 
 
 def palette(frames) -> Image.Image:

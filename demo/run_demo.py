@@ -3,10 +3,12 @@
 greenwash reports what the claim was worth. No model needed -- it drives the
 real scanner and verifier.
 
-Run:  python demo/run_demo.py [--terse]
+Run:  python demo/run_demo.py [--terse] [--with-diff]
 
 --terse drops the narration and prints only the command and its report, which
-is what the README's GIF shows.
+is what the README's GIF shows. --with-diff prints the actual `git diff` of the
+changed file before the command, so the clip starts from what the agent did
+rather than from the verdict.
 """
 
 import os
@@ -17,6 +19,7 @@ import textwrap
 from pathlib import Path
 
 TERSE = "--terse" in sys.argv
+WITH_DIFF = "--with-diff" in sys.argv
 
 ROOT = Path(__file__).resolve().parent.parent
 COLUMNS = "74"          # so the report fits the README's GIF and the transcript
@@ -87,6 +90,17 @@ def main():
     exclude = Path(tmp) / ".git" / "info" / "exclude"
     exclude.write_text(exclude.read_text(encoding="utf-8") + "\ntests/test_calc_hidden.py\n",
                        encoding="utf-8")
+
+    if WITH_DIFF:
+        # The diff is captured from the throwaway repository, not written by
+        # hand: it is what the scanner is about to read, and the clip should
+        # start there rather than at the verdict.
+        print("$ git diff -- src/calc.py")
+        diff = subprocess.run(["git", "diff", "--", "src/calc.py"], cwd=tmp,
+                              capture_output=True, text=True,
+                              encoding="utf-8").stdout.rstrip()
+        print(diff)
+        print()
 
     print('$ greenwash --claim "Fixed the failing test" \\')
     print('      --run-tests "python -m pytest -q tests/test_calc.py" \\')

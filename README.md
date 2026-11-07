@@ -64,9 +64,9 @@ Known limits are in [docs/what-did-not-work.md](docs/what-did-not-work.md).
 </p>
 
 <p align="center">
-  <img src="assets/demo.gif" width="720" alt="An agent 'fixes' a failing test by hardcoding the answer; greenwash reports visible tests 1/1 passing, held-out checks 0/1 failing, and a verdict of NOT_VERIFIED">
+  <img src="assets/demo.gif" width="720" alt="The agent's diff turns add() into 'return 5 # matches the test'; greenwash shows visible tests 1/1 passing, held-out checks 0/1 failing, and a verdict of NOT_VERIFIED">
   <br>
-  <sub><code>python demo/run_demo.py --terse</code> -- everything inside the terminal is verbatim output, scrolled by the generator because the report is taller than the window. The framing, chrome, and signal treatment are presentation only.</sub>
+  <sub><code>python demo/run_demo.py --terse --with-diff</code> -- the diff, the command and the report are verbatim output, scrolled by the generator because the report is taller than the window. The framing, chrome, colour and scroll are presentation only.</sub>
 </p>
 
 <p align="center">

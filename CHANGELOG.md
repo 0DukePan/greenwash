@@ -19,6 +19,11 @@
   the product's real gate; `-o addopts=` is everything. CI runs the smoke class
   on both supported Pythons, the product gate in parallel on every push, and
   everything -- including Windows -- nightly. See `docs/maintenance.md`.
+- **The demo shows the change before the verdict.** `run_demo.py --with-diff`
+  prints the throwaway repository's real `git diff` before the command, and the
+  README's clip is rebuilt around it: the diff, the command, then the report.
+  Nothing inside the terminal is written by the generator -- it captures stdout
+  -- and the clip now opens on what the agent changed rather than mid-report.
 
 ### Fixed
 
