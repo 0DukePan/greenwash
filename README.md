@@ -206,20 +206,20 @@ note: coverage is a proxy: 100% of the changed source files have an
 
 Three things to notice, because they are the whole design:
 
-- **`Ran 1/1, then 0/1`** Ã¢â‚¬â€ the visible suite passes and a suite the agent never
+- **`Ran 1/1, then 0/1`** ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â the visible suite passes and a suite the agent never
   saw does not. That gap is the evidence, and it cannot be argued with.
-- **`Observed: assert 5 == 7`** Ã¢â‚¬â€ every failing verdict carries expected-vs-observed.
+- **`Observed: assert 5 == 7`** ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â every failing verdict carries expected-vs-observed.
   There is no code path that prints a bare `FAILED`.
-- **`note: coverage is a proxy`** Ã¢â‚¬â€ a measurement that isn't a real measurement
+- **`note: coverage is a proxy`** ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â a measurement that isn't a real measurement
   says so, in the report, next to the number.
 
 ## How it works
 
 ```
-  diff Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€“Âº static rules Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€“Âº Signal[]  Ã¢â€â‚¬Ã¢â€Â
-                                       Ã¢â€Å“Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€“Âº confidence Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€“Âº verdict Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€“Âº report
-  tests Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€“Âº verification Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€“Âº Result Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€Ëœ        Ã¢â€â€š
-            (current, baseline,                Ã¢â€â€Ã¢â€â‚¬ every point, explained
+  diff ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬â€œÃ‚Âº static rules ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬â€œÃ‚Âº Signal[]  ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ‚Â
+                                       ÃƒÂ¢Ã¢â‚¬ÂÃ…â€œÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬â€œÃ‚Âº confidence ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬â€œÃ‚Âº verdict ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬â€œÃ‚Âº report
+  tests ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬â€œÃ‚Âº verification ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬â€œÃ‚Âº Result ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ‹Å“        ÃƒÂ¢Ã¢â‚¬ÂÃ¢â‚¬Å¡
+            (current, baseline,                ÃƒÂ¢Ã¢â‚¬ÂÃ¢â‚¬ÂÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ every point, explained
              integrity, held-out)
 ```
 
@@ -238,7 +238,7 @@ per-test results, and output are captured, secrets redacted, output capped.
 The strongest evidence available is a suite the agent never saw, and almost
 nobody has one configured. The repository's own history supplies the next best
 thing. When a diff changes a test file, greenwash takes the **committed** version
-of that test Ã¢â‚¬â€ the worktree at `HEAD` already holds it Ã¢â‚¬â€ overlays only the
+of that test ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â the worktree at `HEAD` already holds it ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â overlays only the
 changed *implementation* files onto it, and runs it against the new code.
 
 That is the one combination nothing else checks. The baseline comparison runs
@@ -248,7 +248,7 @@ committed test failing while the edited one passes is what changing the test
 instead of the code looks like, and it is reported as `test-weakened`.
 
 It is a signal rather than a conviction, because a genuine specification change
-produces an identical result Ã¢â‚¬â€ so it makes a report `SUSPICIOUS` and asks for an
+produces an identical result ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â so it makes a report `SUSPICIOUS` and asks for an
 explanation, and `--fail-on suspicious` is the opt-in gate. A collection error,
 like a refactor that renamed an import target, is recorded as `unavailable`
 rather than as a failure.
@@ -266,7 +266,7 @@ greenwash --claim "Implement OAuth login" \
 ```
 
 Each requirement bound with `=>` is run and reported as a pass or a failure. One
-with no binding is reported as **unverifiable** Ã¢â‚¬â€ never as a pass Ã¢â‚¬â€ and a
+with no binding is reported as **unverifiable** ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â never as a pass ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â and a
 requirement that fails produces `NOT_VERIFIED`, because it is a check the claim
 itself named. No model is involved: the agent says what it did and points at the
 evidence, and greenwash runs it. The same list can live in
@@ -364,7 +364,7 @@ nothing skipped:
 | Cheats missed by both layers | **0** |
 | Honest fixes flagged | **0/25** |
 | Buggy baselines flagged | 0/25 |
-| Runtime | 44s for 25 scored tasks x 3 variants -- every variant runs the real suite in a subprocess, four tasks at a time |
+| Runtime | under two minutes for 25 scored tasks x 3 variants -- every variant runs the real suite in a subprocess, four tasks concurrently |
 | Static scan budget | 500-file diff scored in under 2s (asserted by `tests/test_rules.py`) |
 
 Reproduce with `python benchmark/detection.py`; the metrics table, including the
@@ -653,7 +653,7 @@ That writes one entry to `.greenwash/waivers.json`, committed with the code:
     {
       "id": "GW-2026-0001",
       "rule_id": "GW-DIV-002",
-      "signal_fingerprint": "sha256:1f0cÃ¢â‚¬Â¦",
+      "signal_fingerprint": "sha256:1f0cÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦",
       "path": "src/loader.py",
       "reason": "the fallback is the documented behaviour and an integration test covers it",
       "reviewer": "@maintainer",

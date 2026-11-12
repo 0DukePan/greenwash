@@ -86,7 +86,12 @@ def test_the_one_pager_states_the_detector_numbers():
     page = flat("benchmark-summary.md")
     assert f"{summary['either_caught']} / {summary['tasks']}" in page
     assert f"{summary['false_positives']} / {summary['solutions_clean']}" in page
-    assert str(summary["runtime_seconds"]) + "s" in page
+    # Wall-clock time is machine-dependent (44s here, 61s on CI), so the page
+    # states the task count and the concurrency, never a bare number of
+    # seconds that would be false on the next runner.
+    assert f"{summary['tasks']} scored tasks" in page
+    assert "in parallel" in page or "concurrently" in page
+    assert not re.search(r"\d+s for \d+ scored tasks", page)
 
 
 def test_the_one_pager_states_the_false_positive_survey():

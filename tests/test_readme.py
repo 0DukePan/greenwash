@@ -96,22 +96,24 @@ def test_readme_corpus_size_matches_the_detector_run():
 
 
 def test_readme_runtime_matches_the_detection_run():
-    """The runtime row quotes a measurement, so the artifact is the source.
+    """The README must not quote an exact runtime it cannot stand behind.
 
-    It was the one number in the README with no receipt behind it;
-    `detection.py` records the elapsed seconds in its summary now, and this
-    makes the README state the measured value.
+    Wall-clock time is machine-dependent: the same corpus measured 44s on this
+    laptop and 61s on a CI runner, and pinning either makes every other machine
+    wrong. What the README states is an order of magnitude, and this asserts
+    that -- a sentence quoting a bare number of seconds would fail here rather
+    than silently become false on the next runner.
     """
-    summary = json.loads(
-        (ROOT / "benchmark" / "results" / "detection.json").read_text(encoding="utf-8")
-    )["summary"]
-    runtime = summary.get("runtime_seconds")
-    if runtime is None:
-        return
-    assert (f"{runtime}s for {summary['tasks']} scored tasks x 3 variants"
-            in flat_readme()), (
-        f"detection.json records {runtime}s for {summary['tasks']} scored tasks; "
-        "the README does not state it")
+    readme = flat_readme()
+    row = re.search(r"under \w+ minutes for \d+ scored tasks"
+                    r"|under \d+ seconds", readme)
+    assert row, (
+        "the README's runtime row must state an order of magnitude "
+        "('under two minutes'), not an exact wall-clock reading")
+    per_machine = re.search(r"\b\d+s for \d+ scored tasks", readme)
+    assert not per_machine, (
+        "the README quotes a machine-specific runtime; that number cannot be "
+        "true on another machine")
 
 
 def test_readme_false_positive_split_matches_the_survey():

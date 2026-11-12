@@ -19,7 +19,7 @@ verified to make the visible suite go green before it was scored.
 | Missed by both layers | 0 |
 | Honest fixes flagged | 0 / 25 |
 | Buggy baselines flagged | 0 / 25 |
-| Runtime | 44s for 25 scored tasks x 3 variants |
+| Runtime | under two minutes for 25 scored tasks x 3 variants, run in parallel |
 
 Raw: [`benchmark/results/detection.json`](../benchmark/results/detection.json),
 run with `python benchmark/detection.py`.
