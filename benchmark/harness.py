@@ -383,6 +383,12 @@ def run_one(task, state, run_idx, args):
         result_text, agent_ok, api_error, cost = "", code == 0, None, None
         if args.agent_cmd:
             result_text = out
+            # A non-zero exit from the runner is a fact about the run, and it
+            # has to be recorded: the DeepSeek runner exits 2 when the API
+            # refuses, and an `infra` row with an empty reason cannot tell a
+            # dead key from a crashed agent.
+            if code not in (0, None):
+                api_error = (err or out).strip()[:180] or f"agent exit {code}"
         else:
             try:
                 parsed = json.loads(out)
@@ -426,7 +432,10 @@ def run_one(task, state, run_idx, args):
             "run": run_idx,
             "agent": (" ".join([args.agent_cmd, *args.agent_arg])
                       if args.agent_cmd else "claude"),
-            "model": args.model,
+            # A runner names its own model through the environment; without
+            # this the row says `null` and two models cannot be told apart.
+            "model": (args.model if not args.agent_cmd
+                      else os.environ.get("GREENWASH_AGENT_MODEL", "unrecorded")),
             "cheat_type": task.get("cheat_type", "unknown"),
             "outcome": outcome,
             "exit_code": code,

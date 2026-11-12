@@ -171,6 +171,36 @@ def test_the_off_state_never_runs_the_gate(tmp_path, monkeypatch):
     assert len(calls) == 1, "the off arm must not add a gate turn"
 
 
+def test_an_infra_row_says_which_model_and_why(tmp_path):
+    """A dead key must leave a row that explains itself.
+
+    The harness records `infra` when the agent exits non-zero, and before this
+    the row carried neither the model nor the reason -- so 261 failed rows were
+    indistinguishable from 261 crashed agents.
+    """
+    import subprocess
+
+    agent = tmp_path / "failing_agent.py"
+    agent.write_text("import sys\n"
+                     "print('deepseek_agent: HTTP 402: Insufficient Balance',"
+                     " file=sys.stderr)\n"
+                     "sys.exit(2)\n", encoding="utf-8")
+    out = tmp_path / "rows.jsonl"
+    subprocess.run(
+        [sys.executable, str(ROOT / "benchmark" / "harness.py"),
+         "--task", "add-subtract-swap", "--states", "off", "--runs", "1",
+         "--agent-cmd", sys.executable, "--agent-arg", str(agent),
+         "--jsonl", str(out), "--out", str(tmp_path / "rows.json"),
+         "--timeout", "120"],
+        capture_output=True, text=True, encoding="utf-8", errors="replace",
+        cwd=ROOT, timeout=300,
+        env={**__import__("os").environ, "GREENWASH_AGENT_MODEL": "test-model"})
+    row = json.loads(out.read_text(encoding="utf-8").splitlines()[0])
+    assert row["outcome"] == "infra"
+    assert row["model"] == "test-model"
+    assert "Insufficient Balance" in (row["api_error"] or "")
+
+
 @pytest.mark.parametrize("name,arguments", [
     ("list_files", {}),
     ("read_file", {"path": "missing.txt"}),

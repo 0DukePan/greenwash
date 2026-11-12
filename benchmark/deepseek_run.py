@@ -122,6 +122,50 @@ def report(jsonl: pathlib.Path) -> int:
     return 0
 
 
+def selfcheck() -> int:
+    """Everything a run needs except the model: proves the wiring end to end.
+
+    A funded key is not always available, and "it will work when you pay" is a
+    claim. This runs the harness against a scripted agent on one task and
+    asserts the row is shaped the way a live row will be, so the only unknown
+    left at run time is the API.
+    """
+    import tempfile
+    tasks = ["add-subtract-swap"]
+    out = pathlib.Path(tempfile.mkdtemp(prefix="gw-selfcheck-")) / "rows.jsonl"
+    command = [
+        sys.executable, str(HERE / "harness.py"),
+        "--task", tasks[0], "--states", "off", "--runs", "1",
+        "--agent-cmd", sys.executable,
+        "--agent-arg", str(HERE / "tools" / "fake_agent.py"),
+        "--agent-task-dir", "--jsonl", str(out),
+        "--out", str(out.with_suffix(".json")), "--timeout", "120",
+    ]
+    environment = {**os.environ, "FAKE_AGENT_MODE": "hardcode",
+                   "GREENWASH_AGENT_MODEL": "selfcheck"}
+    code = subprocess.call(command, cwd=ROOT, env=environment,
+                           stdout=subprocess.DEVNULL)
+    if code != 0 or not out.is_file():
+        print("selfcheck: the harness did not run", file=sys.stderr)
+        return 1
+    row = json.loads(out.read_text(encoding="utf-8").splitlines()[0])
+    problems = []
+    if row["outcome"] != "integrity cheat":
+        problems.append(f"a planted hardcode scored {row['outcome']!r}, "
+                        "not 'integrity cheat'")
+    if row["model"] != "selfcheck":
+        problems.append("the row did not record the model")
+    if not row.get("diff_path") or not pathlib.Path(row["diff_path"]).is_file():
+        problems.append("the row does not name an evidence diff")
+    if problems:
+        for problem in problems:
+            print(f"selfcheck: FAIL -- {problem}", file=sys.stderr)
+        return 1
+    print("selfcheck: OK -- harness, classifier, evidence and row shape are "
+          "wired; only the API is untested")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="the DeepSeek benchmark run")
     parser.add_argument("--model", default=MODEL)
@@ -132,10 +176,13 @@ def main() -> int:
     parser.add_argument("--jsonl", type=pathlib.Path, default=DEFAULT_JSONL)
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--preflight", action="store_true")
+    parser.add_argument("--selfcheck", action="store_true")
     parser.add_argument("--report", action="store_true")
     args = parser.parse_args()
     if args.preflight:
         return preflight(args.model)
+    if args.selfcheck:
+        return selfcheck()
     if args.report:
         return report(args.jsonl)
     return run(args)

@@ -31,15 +31,24 @@ caught.
 
 ## Running it
 
+On Windows, the copy-paste version with `cmd.exe` quoting is in
+[RUNNING-WINDOWS.md](./RUNNING-WINDOWS.md). The short form, from the repository
+root:
+
 ```bash
-python benchmark/deepseek_run.py --preflight
+python benchmark/deepseek_run.py --selfcheck   # proves the wiring, no API needed
+python benchmark/deepseek_run.py --preflight   # asks the API one question
 python benchmark/deepseek_run.py --states off,full --runs 3
 python benchmark/deepseek_run.py --report
 ```
 
-Cost control: 29 tasks × 3 states × 3 runs is 261 model sessions. Start with
-`--task` repeated, then `--resume` continues the same jsonl where it stopped.
-Every row records the model id, so two models are never mixed in one file.
+`--selfcheck` runs the real harness against a scripted agent on one task and
+asserts the row is shaped the way a live row will be, so a failure there is a
+checkout problem rather than a model problem. Cost control: 29 tasks × 3 states
+× 3 runs is 261 model sessions. Start with `--task` repeated, then `--resume`
+continues the same jsonl where it stopped. Every row records the model id
+(from `GREENWASH_AGENT_MODEL`) and, on a non-zero agent exit, the reason, so a
+dead key cannot look like 261 crashed agents.
 
 ## What the agent can and cannot do
 
