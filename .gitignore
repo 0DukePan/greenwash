@@ -18,3 +18,4 @@ benchmark/results/ci.json
 
 # phase logs
 phase1-*.log
+benchmark/results/deepseek-latest.json
