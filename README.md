@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <strong>25/25 planted tampers caught &middot; 0 false positives on 25 matched fixes &middot; 1057 tests</strong><br>
+  <strong>25/25 planted tampers caught &middot; 0 false positives on 25 matched fixes &middot; 1067 tests</strong><br>
   <sub>
     An agent under pressure to show green will skip the test, mock the unit under
     test, hardcode the expected value, or swallow the exception that would have
@@ -103,20 +103,15 @@ unrelated project owns the PyPI name `greenwash`, so `pip install greenwash`
 installs someone else's package and this README will not tell you to.
 
 **`greenwash-cli` is not on PyPI yet.** The wheel builds and installs cleanly
-from the tag below; publishing is the next release step, tracked in
-[RELEASING.md](RELEASING.md). Until then, the `git+https://` line
-above is the supported install, and an install instruction that does not work
-would be the same defect this tool exists to catch.
+from the tag; publishing is the next release step, tracked in
+[RELEASING.md](RELEASING.md). Until then the `git+https://` line above is the
+supported install, and an install instruction that does not work would be the
+same defect this tool exists to catch.
 
 ```bash
 pip install git+https://github.com/0DukePan/greenwash@v0.5.0   # the pip equivalent
 python -m greenwash --version                                  # 0.5.0
 ```
-
-No configuration, no account, no network. If your project has tests, greenwash
-finds them. In a JavaScript project, the shim in [`npm/`](npm/) runs the same
-Python implementation -- read [`npm/README.md`](npm/README.md) first: the npm
-name is not published yet, so `npx greenwash` is not a supported install today.
 
 ### Check it before you believe it
 
@@ -134,6 +129,11 @@ test for a change. `--quick` skips the corpus and takes ten seconds.
 What it does not prove is in [docs/what-did-not-work.md](docs/what-did-not-work.md);
 the short version is that a passing suite is never proof of correctness, and
 neither is this benchmark.
+
+No configuration, no account, no network. If your project has tests, greenwash
+finds them. In a JavaScript project, the shim in [`npm/`](npm/) runs the same
+Python implementation -- read [`npm/README.md`](npm/README.md) first: the npm
+name is not published yet, so `npx greenwash` is not a supported install today.
 
 To watch it before you install anything:
 
@@ -217,20 +217,20 @@ note: coverage is a proxy: 100% of the changed source files have an
 
 Three things to notice, because they are the whole design:
 
-- **`Ran 1/1, then 0/1`** ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â the visible suite passes and a suite the agent never
+- **`Ran 1/1, then 0/1`** — the visible suite passes and a suite the agent never
   saw does not. That gap is the evidence, and it cannot be argued with.
-- **`Observed: assert 5 == 7`** ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â every failing verdict carries expected-vs-observed.
+- **`Observed: assert 5 == 7`** — every failing verdict carries expected-vs-observed.
   There is no code path that prints a bare `FAILED`.
-- **`note: coverage is a proxy`** ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â a measurement that isn't a real measurement
+- **`note: coverage is a proxy`** — a measurement that isn't a real measurement
   says so, in the report, next to the number.
 
 ## How it works
 
 ```
-  diff ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“Ãƒâ€šÃ‚Âº static rules ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“Ãƒâ€šÃ‚Âº Signal[]  ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒâ€šÃ‚Â
-                                       ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“Ãƒâ€šÃ‚Âº confidence ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“Ãƒâ€šÃ‚Âº verdict ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“Ãƒâ€šÃ‚Âº report
-  tests ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“Ãƒâ€šÃ‚Âº verification ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“Ãƒâ€šÃ‚Âº Result ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒâ€¹Ã…â€œ        ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡
-            (current, baseline,                ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ every point, explained
+  diff â”€â”€â–º static rules â”€â”€â–º Signal[]  â”€â”
+                                       â”œâ”€â”€â–º confidence â”€â”€â–º verdict â”€â”€â–º report
+  tests â”€â”€â–º verification â”€â”€â–º Result â”€â”€â”€â”˜        â”‚
+            (current, baseline,                â””â”€ every point, explained
              integrity, held-out)
 ```
 
@@ -249,7 +249,7 @@ per-test results, and output are captured, secrets redacted, output capped.
 The strongest evidence available is a suite the agent never saw, and almost
 nobody has one configured. The repository's own history supplies the next best
 thing. When a diff changes a test file, greenwash takes the **committed** version
-of that test ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â the worktree at `HEAD` already holds it ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â overlays only the
+of that test — the worktree at `HEAD` already holds it — overlays only the
 changed *implementation* files onto it, and runs it against the new code.
 
 That is the one combination nothing else checks. The baseline comparison runs
@@ -259,7 +259,7 @@ committed test failing while the edited one passes is what changing the test
 instead of the code looks like, and it is reported as `test-weakened`.
 
 It is a signal rather than a conviction, because a genuine specification change
-produces an identical result ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â so it makes a report `SUSPICIOUS` and asks for an
+produces an identical result — so it makes a report `SUSPICIOUS` and asks for an
 explanation, and `--fail-on suspicious` is the opt-in gate. A collection error,
 like a refactor that renamed an import target, is recorded as `unavailable`
 rather than as a failure.
@@ -277,11 +277,36 @@ greenwash --claim "Implement OAuth login" \
 ```
 
 Each requirement bound with `=>` is run and reported as a pass or a failure. One
-with no binding is reported as **unverifiable** ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â never as a pass ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â and a
+with no binding is reported as **unverifiable** — never as a pass — and a
 requirement that fails produces `NOT_VERIFIED`, because it is a check the claim
 itself named. No model is involved: the agent says what it did and points at the
 evidence, and greenwash runs it. The same list can live in
 `.greenwash/config.json` as `"requirements": [...]`.
+
+### Requirement coverage
+
+The same bindings answer a different question: which parts of a specification
+have evidence, and which have none. Repeating a sentence binds more evidence to
+it, which is how contradictory evidence becomes visible:
+
+```bash
+greenwash coverage --run-tests "python -m pytest -q" \
+  --require "Login succeeds => tests/test_auth.py::test_login" \
+  --require "Login succeeds => tests/test_auth.py::test_login_after_refresh" \
+  --require "Invalid credentials rejected => tests/test_auth.py::test_rejects" \
+  --require "Refresh-token rotation"
+```
+
+Each requirement is **verified**, **failed**, **contradictory** (one bound test
+passes and another fails), **unverified** (nothing bound) or **could not check**
+(the evidence would not run). Requirements whose bound tests assert only the
+happy path are listed separately as having no negative case.
+
+The exit codes are the same ladder: 0 verified, 1 failed or contradictory, 2
+unverified, 3 could not check. And the report always says the thing the numbers
+cannot: *coverage counts requirements with passing evidence; it is not a claim
+that the code is correct.* High coverage with a missing negative case is exactly
+the shape of an agent that made the tests pass without doing the work.
 
 **Verdict and confidence** are deterministic and explainable. A failed check
 outranks any pattern match, a signal alone can never produce `NOT_VERIFIED`,
@@ -364,8 +389,8 @@ that makes them is `benchmark/`.
 **Detector accuracy, no model in the loop.** 28 tasks across six languages, each
 shipped with a buggy baseline, a recorded honest fix, and a scripted cheat.
 Every cheat actually made the visible suite go green. On this Windows laptop 25
-of the 28 scored -- Go, Rust and Ruby are not installed here, so those
-three are named as `skipped: no toolchain` and kept out of every rate; the CI
+of the 28 scored -- Go, Rust and Ruby are not installed here, so those three are
+named as `skipped: no toolchain` and kept out of every rate; the CI
 `languages` job runs the same corpus where the toolchains exist and asserts that
 nothing skipped:
 
@@ -491,11 +516,6 @@ The repository carries the machinery that decides whether a public claim may be
 made, not just the detector. Everything below is offline and reproducible from
 pinned artifacts.
 
-- **The offline benchmark** ([docs/benchmark-for-readers.md](docs/benchmark-for-readers.md))
-  is the one command a reader should run first: `python benchmark/verify.py`
-  scores a planted cheat per task, an attack beside its legitimate twin, and a
-  positive/negative pair per language pack -- no model, no network, ninety
-  seconds. What it measures, and what it cannot, is on that page.
 - **The claim matrix** ([docs/claim-matrix.md](docs/claim-matrix.md)) lists every
   public claim with its source type -- unit test, maintainer-authored,
   independent, frozen or beta -- its limitation, and the strongest wording the
@@ -664,7 +684,7 @@ That writes one entry to `.greenwash/waivers.json`, committed with the code:
     {
       "id": "GW-2026-0001",
       "rule_id": "GW-DIV-002",
-      "signal_fingerprint": "sha256:1f0cÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦",
+      "signal_fingerprint": "sha256:1f0câ€¦",
       "path": "src/loader.py",
       "reason": "the fallback is the documented behaviour and an integration test covers it",
       "reviewer": "@maintainer",

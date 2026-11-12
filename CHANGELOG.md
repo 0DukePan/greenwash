@@ -4,7 +4,20 @@
 
 ### Added
 
-- **`python benchmark/verify.py` â€” one command, ninety seconds, no model.**
+- **`greenwash coverage` — the Requirement Coverage Engine.**
+  `--require` already bound one sentence to one test. Repeating the sentence
+  binds more evidence to it, which is what makes contradictory evidence
+  visible: `greenwash coverage --require "Login succeeds => tests/a.py::test_one"
+  --require "Login succeeds => tests/a.py::test_two"`. Each requirement comes out
+  **verified**, **failed**, **contradictory** (one bound test passes and another
+  fails), **unverified** (nothing bound) or **could not check** (the evidence
+  would not run), and requirements whose bound tests only assert the happy path
+  are listed separately as having no negative case. Exit codes are the same
+  ladder as `scan`/`verify`: 0 verified, 1 failed or contradictory, 2 unverified,
+  3 could not check. Every report ends with the sentence the counts cannot carry:
+  *coverage counts requirements with passing evidence; it is not a claim that
+  the code is correct.* `greenwash/coverage.py`.
+- **`python benchmark/verify.py` — one command, ninety seconds, no model.**
   Runs the three offline measurements (the task corpus, the attack/twin pairs,
   the language packs), prints each result and exits non-zero on the first
   regression. `--quick` skips the corpus and takes ten seconds. The CI
@@ -702,7 +715,7 @@
   `HEAD`, and flags tests that passed at baseline and fail now (`regression`).
 - **Python AST checks** (`ast_checks.py`): hardcoded returns are now caught even
   when routed through a local variable (`result = 5; return result`) or
-  annotated with a trailing comment (`return 5  # fixed`) â€” both slipped past
+  annotated with a trailing comment (`return 5  # fixed`) — both slipped past
   the old regex.
 - **Data-driven language packs** (`patterns.py`) for Python, JS/TS, Go, Rust,
   Ruby, and Java.

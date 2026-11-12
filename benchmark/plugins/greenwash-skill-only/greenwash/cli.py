@@ -41,8 +41,9 @@ import argparse
 import os
 import sys
 
-from . import (__version__, config as config_mod, evidence as evidence_mod, gitutil,
-               scan as scan_mod, taxonomy as taxonomy_mod)
+from . import (__version__, config as config_mod, coverage as coverage_mod,
+               evidence as evidence_mod, gitutil, scan as scan_mod,
+               taxonomy as taxonomy_mod)
 from . import guard as guard_mod
 from . import strict as strict_mod, waivers as waivers_mod
 from .doctor import doctor, initialize
@@ -173,6 +174,18 @@ def build_parser() -> argparse.ArgumentParser:
     evidence.add_argument("--allow-template", action="store_true",
                           help="allow a corpus template while drafting; never use for a study claim")
     evidence.add_argument("--json", action="store_true", help="machine-readable validation result")
+
+    coverage = sub.add_parser(
+        "coverage",
+        help="map stated requirements to the tests bound to them, and say what is unproven")
+    coverage.add_argument("--require", action="append", default=None,
+                          metavar="TEXT[ => TARGET]",
+                          help="a requirement, optionally bound with `=>` to a test id "
+                               "or `cmd: <command>`; repeat a sentence to bind more evidence")
+    coverage.add_argument("--run-tests", default=None,
+                          help="the test command to run each bound test id with")
+    coverage.add_argument("--timeout", type=int, default=None)
+    coverage.add_argument("--json", action="store_true", help="machine-readable result")
     return parser
 
 
@@ -538,6 +551,43 @@ def _run_waive(args) -> int:
     return EXIT_OK
 
 
+def _run_coverage(args) -> int:
+    """Requirement coverage: what each claim promised, and which parts held up.
+
+    Exit codes follow the same ladder as `scan`/`verify`:
+      0  every requirement has passing evidence
+      1  a requirement failed, or its evidence contradicted itself
+      2  a requirement has no evidence bound -- a gap, never a pass
+      3  nothing could be run at all
+    """
+    import json
+
+    timeout = args.timeout if getattr(args, "timeout", None) is not None else 120
+    rows = coverage_mod.run(args.require, test_command=args.run_tests,
+                            cwd=os.getcwd(), timeout=timeout)
+    summary = coverage_mod.summary(rows)
+
+    if getattr(args, "json", False):
+        _emit(json.dumps({"summary": summary,
+                          "requirements": [row.to_dict() for row in rows]},
+                         indent=2) + "\n", machine=True)
+    else:
+        _emit(coverage_mod.render(rows), machine=False)
+
+    if not rows:
+        print("greenwash coverage: nothing was supplied; pass --require", file=sys.stderr)
+        return EXIT_ERROR
+    if summary[coverage_mod.FAILED] or summary[coverage_mod.CONTRADICTORY]:
+        return EXIT_FINDINGS
+    if summary[coverage_mod.UNVERIFIED]:
+        return EXIT_BLOCKED
+    if summary[coverage_mod.UNAVAILABLE]:
+        return EXIT_ERROR
+    if not summary[coverage_mod.VERIFIED]:
+        return EXIT_ERROR
+    return EXIT_OK
+
+
 def _run_evidence(args) -> int:
     """Validate external-evidence records without making a network request."""
     import json
@@ -629,6 +679,9 @@ def main(argv=None) -> int:
 
     if command == "evidence":
         return _run_evidence(args)
+
+    if command == "coverage":
+        return _run_coverage(args)
 
     report, code = collect(args)
     if report is None:
