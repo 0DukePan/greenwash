@@ -25,3 +25,4 @@ benchmark/results/deepseek-latest.json
 benchmark/results/verify.json
 benchmark/results/detection-local.json
 benchmark/results/tampering-local.json
+.scratch/
