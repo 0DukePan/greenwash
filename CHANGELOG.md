@@ -4,6 +4,24 @@
 
 ### Added
 
+- **`python benchmark/verify.py` — one command, ninety seconds, no model.**
+  Runs the three offline measurements (the task corpus, the attack/twin pairs,
+  the language packs), prints each result and exits non-zero on the first
+  regression. `--quick` skips the corpus and takes ten seconds. The CI
+  `languages` job runs this exact command, so the reader's first command and the
+  gate are one code path. See `docs/benchmark-for-readers.md`.
+- **A DeepSeek runner for the behavioural study.** `benchmark/tools/deepseek_agent.py`
+  is a model behind the harness's `--agent-cmd` seam: four tools, a path sandbox,
+  a command allowlist, a bounded turn loop, and the `full`-arm gate loop that
+  feeds a static finding back when the model tries to stop. It exits 2 on a
+  refused key so the harness records `infra` rather than a failed fix.
+  `benchmark/deepseek_run.py` adds a preflight, a resumable jsonl and a report.
+  No live rows yet: the configured key has no balance. See
+  `benchmark/DEEPSEEK.md`.
+- **The first live-model pilot rows.** Eight tasks, one isolated agent each, the
+  `off` arm: 6 genuine fixes, 2 underspecified, 0 integrity cheats. Both
+  non-fixes were corpus defects and both prompts were repaired afterwards; the
+  rows are kept as they ran. See `benchmark/DEEPSEEK-PILOT.md`.
 - **`GREENWASH_STATE_DIR` pins the Stop hook's block budget.** Without it the
   budget follows the git directory, so a target that is not itself a repository
   inherits whichever ancestor repository it sits under. On a machine whose home
@@ -15,15 +33,28 @@
 
 - **The test suite is split into three classes.** A test that spawns a process
   carries `slow`; the frozen research programme carries `program`. The default
-  `python -m pytest -q` is the 154-test, ten-second loop; `-m "not program"` is
+  `python -m pytest -q` is the 169-test, seven-second loop; `-m "not program"` is
   the product's real gate; `-o addopts=` is everything. CI runs the smoke class
   on both supported Pythons, the product gate in parallel on every push, and
   everything -- including Windows -- nightly. See `docs/maintenance.md`.
+- **`benchmark/detection.py` scores tasks in parallel.** 172s to 44s on the
+  machine that wrote it, which is what makes a stranger's first run tolerable.
+  The numbers are unchanged apart from the tasks whose toolchains are installed.
 - **The demo shows the change before the verdict.** `run_demo.py --with-diff`
   prints the throwaway repository's real `git diff` before the command, and the
   README's clip is rebuilt around it: the diff, the command, then the report.
   Nothing inside the terminal is written by the generator -- it captures stdout
   -- and the clip now opens on what the agent changed rather than mid-report.
+- **`verifier-config-changed` no longer fires on ordinary maintenance.** The
+  ten-repository survey measured it as 104 of 109 flags, nearly all dependency
+  bumps and action-version updates. It now asks only when a change can alter
+  what runs; the same history produces 7. Rule id, code, severity and
+  `requires_review` are unchanged.
+- **`adapters/README.md` separates coercion from request.** Claude Code and
+  Codex have Stop hooks and can block; the six other hosts get rules only, and
+  a rule is something a model can skip. The page says so and points at
+  pre-commit and the GitHub Action as the enforcement that needs no
+  cooperation.
 
 ### Fixed
 
@@ -39,6 +70,17 @@
   and the waiver fixtures used an expiry exactly at the thirty-day ceiling,
   which is refused in the hours after local midnight when the timezone is ahead
   of UTC. Two days of slack keeps the fixture valid at any hour.
+- **An `infra` row now says which model and why.** The harness passed a
+  non-zero agent exit through as a failed fix with an empty reason, so 261
+  dead-key rows would have looked exactly like 261 crashed agents.
+- **A changed file the static layer cannot read now produces a finding.**
+  `unreadable-file` (GW-DIV-003) covers both a file that will not parse and one
+  git reports as binary -- a UTF-16 source file used to slip past every AST rule
+  and read as clean. Missing paths are still not findings.
+- **No published page quotes a wall-clock runtime.** The README said 44s and a
+  guard required it to match the artifact; the same commit measured 61s on CI.
+  Both pages now state an order of magnitude, and a test fails if a bare number
+  of seconds reappears.
 
 ## 0.4.2
 
