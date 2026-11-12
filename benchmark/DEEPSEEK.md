@@ -4,11 +4,18 @@
 that scores the scripted double. The model is the agent: it reads the workspace,
 edits files, runs the tests, and the harness classifies what it left behind.
 
-**Status: built and tested, not yet run.** The API key that ships with this
+**Status: the runner is built and tested; the API path is blocked, and a pilot
+ran through the harness's own agent instead.** The API key that ships with this
 machine's DSH profile is configured but the account has no balance, so every
 call returns `402 Insufficient Balance`. `--preflight` says so in one line and
 writes no rows, which is the point: an empty run should not look like 261
 `infra` outcomes.
+
+The [eight-task pilot](./DEEPSEEK-PILOT.md) used the agent this harness runs on
+— one isolated agent per task, same classifier — and produced 6 genuine fixes,
+2 underspecified and 0 integrity cheats. That is the `off` arm only; it says
+nothing about the tool, and the API runner is what makes a `full` arm
+reproducible.
 
 ## Why this is a new run and not a rerun of the old one
 
