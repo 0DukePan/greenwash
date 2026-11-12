@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.5.1 -- 2026-11-12
+
+### Fixed
+
+- **The release tag now contains what the README documents.** `v0.5.0` was cut
+  before the Requirement Coverage Engine landed, so the documented install
+  produced a CLI without `greenwash coverage`. This tag is the first one whose
+  Contents match the documentation; the release workflow fails the build when
+  the tag and `greenwash.__version__` disagree, which is what would have caught
+  it.
+- **The README's version badge and install lines** pointed at 0.4.2 and 0.5.0.
+
 ## 0.5.0 -- 2026-11-12
 
 ### Added

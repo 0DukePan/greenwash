@@ -49,7 +49,7 @@ held-out suite, the integrity check, and the mode.
 | `greenwash` as a habit, before you merge | none -- it never blocks by default | always, for the first week |
 | `greenwash --format markdown` in a PR description | none | reviewers ask "how do we know" |
 | pre-commit: `greenwash scan --staged` | a few seconds per commit | you want the diff read before it lands |
-| GitHub Action (`uses: 0DukePan/greenwash@v0.4.2`) | one job | you want CI to fail on a faked pass |
+| GitHub Action (`uses: 0DukePan/greenwash@v0.5.1`) | one job | you want CI to fail on a faked pass |
 | Claude Code plugin | the hook runs on every turn end | your agent ends its own turns |
 | Codex plugin | same, **strict by default** | same |
 | `--enforce` / `--fail-on not_verified` | a red build on real failures | you have a held-out suite or a trustworthy baseline |

@@ -1,4 +1,4 @@
-﻿cff-version: 1.2.0
+cff-version: 1.2.0
 message: "If you use this software, cite it as below. If you cite a measured number, cite the artifact that produced it -- the numbers have intervals, and the intervals are the point."
 title: "greenwash"
 abstract: "A trust report on what a coding agent's \"done\" claim is actually worth. It reads a diff with static rules and runs the project's own tests -- including a baseline differential, a changed test's committed form, and an optional held-out suite -- then prints a verdict, a confidence, and the evidence behind both. Local, deterministic, dependency-free, no model and no network."
@@ -7,7 +7,7 @@ authors:
 repository-code: "https://github.com/0DukePan/greenwash"
 url: "https://github.com/0DukePan/greenwash"
 license: MIT
-version: "0.5.0"
+version: "0.5.1"
 date-released: "2026-11-12"
 keywords:
   - coding-agents
@@ -21,7 +21,7 @@ preferred-citation:
   title: "greenwash"
   authors:
     - name: "greenwash contributors"
-  version: "0.5.0"
+  version: "0.5.1"
   year: 2026
   url: "https://github.com/0DukePan/greenwash"
 references:

@@ -12,7 +12,7 @@
   <img src="https://img.shields.io/badge/python-3.10%2B-blue.svg" alt="python 3.10+">
   <img src="https://img.shields.io/badge/dependencies-none-brightgreen.svg" alt="no dependencies">
   <img src="https://img.shields.io/badge/schema-v1-informational.svg" alt="schema v1">
-  <a href="https://github.com/0DukePan/greenwash/releases"><img src="https://img.shields.io/badge/version-0.4.2-orange.svg" alt="0.4.2"></a>
+  <a href="https://github.com/0DukePan/greenwash/releases"><img src="https://img.shields.io/badge/version-0.5.1-orange.svg" alt="0.4.2"></a>
 </p>
 
 <p align="center">
@@ -92,7 +92,7 @@ modifies your code, never calls a model, and never leaves your machine.
 ## Sixty-second start
 
 ```bash
-pipx install git+https://github.com/0DukePan/greenwash@v0.5.0
+pipx install git+https://github.com/0DukePan/greenwash@v0.5.1
 cd your-repo
 greenwash                     # a trust report for the current diff
 ```
@@ -109,7 +109,7 @@ supported install, and an install instruction that does not work would be the
 same defect this tool exists to catch.
 
 ```bash
-pip install git+https://github.com/0DukePan/greenwash@v0.5.0   # the pip equivalent
+pip install git+https://github.com/0DukePan/greenwash@v0.5.1   # the pip equivalent
 python -m greenwash --version                                  # 0.5.0
 ```
 
@@ -551,11 +551,11 @@ pinned artifacts.
 
 | Where | How |
 |---|---|
-| Any repo (CLI) | `pipx install git+https://github.com/0DukePan/greenwash@v0.5.0` -- **not on PyPI yet**, see [RELEASING.md](RELEASING.md) |
+| Any repo (CLI) | `pipx install git+https://github.com/0DukePan/greenwash@v0.5.1` -- **not on PyPI yet**, see [RELEASING.md](RELEASING.md) |
 | Node projects | the shim in [`npm/`](npm/) -- **not published under this name yet**, see [npm/README.md](npm/README.md) |
 | **Claude Code** (the unskippable hook) | `/plugin marketplace add 0DukePan/greenwash` then `/plugin install greenwash@greenwash` |
 | **Codex** (strict by default) | the plugin in [`codex/`](codex/README.md) -- same checker, same policy, strict gate |
-| GitHub Actions | `uses: 0DukePan/greenwash@v0.5.0` (see [`action.yml`](action.yml)) |
+| GitHub Actions | `uses: 0DukePan/greenwash@v0.5.1` (see [`action.yml`](action.yml)) |
 | pre-commit | add `0DukePan/greenwash` to `repos` (see [`.pre-commit-hooks.yaml`](.pre-commit-hooks.yaml)) |
 | Cursor / Copilot / Cline / Windsurf / Gemini / Amp | the rules file generated for that host in [`adapters/`](adapters/) -- rules only, no hook |
 
