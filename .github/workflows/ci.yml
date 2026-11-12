@@ -49,6 +49,7 @@ jobs:
           FAKE_AGENT_MODE=hardcode python benchmark/harness.py \
             --agent-cmd python \
             --agent-arg "$(pwd)/benchmark/tools/fake_agent.py" \
+            --agent-task-dir \
             --states off,full --out benchmark/results/ci.json
           python - <<'PY'
           import json

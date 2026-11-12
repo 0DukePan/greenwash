@@ -18,6 +18,14 @@ python -m pytest -m program      # the programme
 python -m pytest -o addopts=     # everything, including the programme
 ```
 
+## Running a live model
+
+`deepseek_run.py` scores a live model through the harness's `--agent-cmd` seam;
+the model, the sandbox and the cost controls are in
+[DEEPSEEK.md](./DEEPSEEK.md). It needs a funded API key —
+`python benchmark/deepseek_run.py --preflight` says in one line whether you have
+one.
+
 The benchmark answers one question: **does having greenwash around change how
 often an agent's "done" claim is actually true?** It measures the silent-cheat
 rate under three plugin states and reports the delta plus a false-positive

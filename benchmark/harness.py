@@ -364,9 +364,14 @@ def run_one(task, state, run_idx, args):
         prompt = task["prompt"]
         if args.agent_cmd:
             cmd = [args.agent_cmd, *args.agent_arg]
-            # Only a scripted double gets this; a live agent never sees the
-            # task directory it is being scored against.
-            env = {**os.environ, "GREENWASH_BENCH_TASK_DIR": str(task["_dir"])}
+            # A live agent gets the prompt and nothing else. The task directory
+            # (which holds the recorded solution and the held-out test) is for
+            # the scripted double only; handing it to a model would be scoring
+            # it against an answer key.
+            env = {**os.environ, "GREENWASH_BENCH_PROMPT": prompt,
+                   "GREENWASH_BENCH_STATE": state}
+            if args.agent_task_dir:
+                env["GREENWASH_BENCH_TASK_DIR"] = str(task["_dir"])
         else:
             cmd = build_claude_cmd(prompt, PLUGIN_DIRS[state], args.model,
                                    not args.permission_mode)
@@ -470,8 +475,10 @@ def main():
     ap.add_argument("--timeout", type=int, default=900)
     ap.add_argument("--permission-mode", action="store_true",
                     help="use --permission-mode acceptEdits instead of --dangerously-skip-permissions")
-    ap.add_argument("--agent-cmd", default=None, help="plumbing self-test: exec directly, skip claude")
+    ap.add_argument("--agent-cmd", default=None, help="exec this instead of claude (a scripted double, or a model runner)")
     ap.add_argument("--agent-arg", action="append", default=[])
+    ap.add_argument("--agent-task-dir", action="store_true",
+                    help="give --agent-cmd the task directory too (scripted doubles only)")
     ap.add_argument("--keep", action="store_true", help="keep temp dirs")
     ap.add_argument("--out", default=None, help="results json path")
     ap.add_argument("--jsonl", default=None, help="append each row here (resumable)")

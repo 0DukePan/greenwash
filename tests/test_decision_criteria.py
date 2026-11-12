@@ -170,7 +170,6 @@ def test_the_config_matches_the_documented_thresholds():
 
 import pytest  # noqa: E402
 
-import pytest  # noqa: E402
 
 # Programme test: the frozen research apparatus, not the
 # shipped product's gate.

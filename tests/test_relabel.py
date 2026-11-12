@@ -117,7 +117,6 @@ def test_the_study_rows_carry_the_correction(tmp_path):
 
 import pytest  # noqa: E402
 
-import pytest  # noqa: E402
 
 # Programme test: the frozen research apparatus, not the
 # shipped product's gate.

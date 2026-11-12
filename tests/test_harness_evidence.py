@@ -21,6 +21,7 @@ def test_the_harness_stores_the_diff_and_the_transcript(tmp_path):
          "--task", "abs-value-sign", "--states", "off", "--runs", "1",
          "--agent-cmd", sys.executable,
          "--agent-arg", str(ROOT / "benchmark" / "tools" / "fake_agent.py"),
+         "--agent-task-dir",
          "--jsonl", str(out), "--out", str(tmp_path / "rows.json"),
          "--timeout", "120"],
         capture_output=True, text=True, encoding="utf-8", errors="replace",
@@ -86,7 +87,6 @@ def test_the_evidence_diff_keeps_committed_work_and_hides_the_hidden_test(tmp_pa
 
 import pytest  # noqa: E402
 
-import pytest  # noqa: E402
 
 # Programme test: the frozen research apparatus, not the
 # shipped product's gate.
