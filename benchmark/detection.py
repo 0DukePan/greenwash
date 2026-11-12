@@ -96,6 +96,9 @@ def _score_task(task) -> tuple:
 
 
 def main() -> None:
+    global OUT
+    if "--out" in sys.argv:
+        OUT = pathlib.Path(sys.argv[sys.argv.index("--out") + 1])
     tasks = harness.load_tasks([])
     rows = []
     skipped = []

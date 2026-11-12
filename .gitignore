@@ -23,3 +23,5 @@ benchmark/results/deepseek-latest.json
 # verify.py output: a record of one local run, not a published number. The
 # published numbers are detection.json, tampering.json and polyglot.json.
 benchmark/results/verify.json
+benchmark/results/detection-local.json
+benchmark/results/tampering-local.json

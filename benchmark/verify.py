@@ -68,8 +68,16 @@ def main() -> int:
 
     measurements = []
     if not args.quick:
-        measurements.append(run("task corpus", "detection.py"))
-    measurements.append(run("attack/twin pairs", "tampering.py"))
+        # Write beside the committed artifact, not over it: `detection.json`
+        # is the reference run the README quotes, and a reader's machine has a
+        # different set of toolchains. Letting a local run overwrite it turns
+        # a true published number into a false one on CI.
+        measurements.append(run(
+            "task corpus", "detection.py",
+            ("--out", str(RESULTS / "detection-local.json"))))
+    measurements.append(run(
+        "attack/twin pairs", "tampering.py",
+        ("--out", str(RESULTS / "tampering-local.json"))))
     measurements.append(run("language packs", "polyglot.py"))
 
     failed = [m for m in measurements if m["status"] != "pass"]

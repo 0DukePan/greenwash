@@ -225,6 +225,9 @@ def main() -> int:
         print(f"  {mark} {row['id']:<22} attack={row['attack']['signals']} "
               f"twin={row['twin']['signals']}{fp}")
     out = HERE / "results" / "tampering.json"
+    if "--out" in sys.argv:
+        out = pathlib.Path(sys.argv[sys.argv.index("--out") + 1])
+    out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps({"summary": summary, "cases": rows}, indent=2) + "\n",
                    encoding="utf-8")
     print(f"written -> {out}")
