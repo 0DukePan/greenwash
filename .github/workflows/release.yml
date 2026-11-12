@@ -1,0 +1,110 @@
+name: release
+
+# Publishing is a separate workflow on purpose: it runs only on a tag, only
+# from this repository, and only after the same gate a pull request gets.
+#
+# Authentication is PyPI Trusted Publishing (OIDC) -- there is no API token in
+# this repository and no secret to rotate. Configure it once at
+# https://pypi.org/manage/project/greenwash-cli/settings/publishing/ with:
+#   owner 0DukePan, repository greenwash, workflow release.yml, environment pypi
+#
+# If the package does not exist on PyPI yet, create it with a one-off upload or
+# a "pending publisher" entry; after the first release the Trusted Publisher is
+# what authorises every later one.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: "Build and check, do not upload"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: build the distributions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install tooling
+        run: python -m pip install --upgrade pip build twine
+      - name: The tag and the declared version must agree
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          declared=$(python -c "import greenwash; print(greenwash.__version__)")
+          echo "tag=$tag declared=$declared"
+          test "$tag" = "$declared" || {
+            echo "::error::tag $GITHUB_REF_NAME does not match greenwash.__version__ $declared"
+            exit 1
+          }
+      - name: Build
+        run: python -m build --outdir dist
+      - name: Check the metadata
+        run: python -m twine check dist/*
+      - name: Upload the build
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  verify:
+    name: the gate a release must pass
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install pytest
+        run: python -m pip install --upgrade pip pytest
+      - name: Offline measurements
+        run: python benchmark/verify.py
+      - name: The product gate
+        run: python -m pytest -q -m "not program"
+      - name: The built wheel installs and runs in a clean environment
+        run: |
+          python -m venv /tmp/clean
+          /tmp/clean/bin/python -m pip install --quiet dist/*.whl
+          /tmp/clean/bin/greenwash --version
+          /tmp/clean/bin/greenwash doctor
+      - name: The installed CLI catches the demo cheat
+        run: |
+          /tmp/clean/bin/python demo/run_demo.py --terse | tee /tmp/demo.txt
+          grep -q "NOT_VERIFIED" /tmp/demo.txt
+          grep -q "hardcoded-return" /tmp/demo.txt
+      - name: Fetch the build for the upload job
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    name: upload to PyPI
+    needs: [build, verify]
+    if: startsWith(github.ref, 'refs/tags/') && (github.event_name != 'workflow_dispatch' || inputs.dry-run == false)
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/greenwash-cli
+    permissions:
+      id-token: write
+    steps:
+      - name: Fetch the build
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - name: Publish
+        uses: pypa/gh-action-pypi-publish@release/v1

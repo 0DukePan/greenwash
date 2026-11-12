@@ -92,15 +92,26 @@ modifies your code, never calls a model, and never leaves your machine.
 ## Sixty-second start
 
 ```bash
-pipx install greenwash-cli    # or: pip install greenwash-cli
+pipx install git+https://github.com/0DukePan/greenwash@v0.5.0
 cd your-repo
 greenwash                     # a trust report for the current diff
 ```
 
-The distribution is **`greenwash-cli`**; the import name and the command are both
-`greenwash`. There is an unrelated project on PyPI called `greenwash`, so the
-distribution is named differently on purpose -- `pip install greenwash` installs
-someone else's package, and this README will not tell you to.
+Works today, from the tag, with no account and no build step. The distribution
+is **`greenwash-cli`** and the import name and command are both `greenwash`; an
+unrelated project owns the PyPI name `greenwash`, so `pip install greenwash`
+installs someone else's package and this README will not tell you to.
+
+**`greenwash-cli` is not on PyPI yet.** The wheel builds and installs cleanly
+from the tag below; publishing is the next release step, tracked in
+[RELEASING.md](RELEASING.md). Until then, the `git+https://` line
+above is the supported install, and an install instruction that does not work
+would be the same defect this tool exists to catch.
+
+```bash
+pip install git+https://github.com/0DukePan/greenwash@v0.5.0   # the pip equivalent
+python -m greenwash --version                                  # 0.5.0
+```
 
 No configuration, no account, no network. If your project has tests, greenwash
 finds them. In a JavaScript project, the shim in [`npm/`](npm/) runs the same
@@ -206,20 +217,20 @@ note: coverage is a proxy: 100% of the changed source files have an
 
 Three things to notice, because they are the whole design:
 
-- **`Ran 1/1, then 0/1`** ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â the visible suite passes and a suite the agent never
+- **`Ran 1/1, then 0/1`** ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â the visible suite passes and a suite the agent never
   saw does not. That gap is the evidence, and it cannot be argued with.
-- **`Observed: assert 5 == 7`** ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â every failing verdict carries expected-vs-observed.
+- **`Observed: assert 5 == 7`** ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â every failing verdict carries expected-vs-observed.
   There is no code path that prints a bare `FAILED`.
-- **`note: coverage is a proxy`** ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â a measurement that isn't a real measurement
+- **`note: coverage is a proxy`** ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â a measurement that isn't a real measurement
   says so, in the report, next to the number.
 
 ## How it works
 
 ```
-  diff ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬â€œÃ‚Âº static rules ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬â€œÃ‚Âº Signal[]  ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ‚Â
-                                       ÃƒÂ¢Ã¢â‚¬ÂÃ…â€œÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬â€œÃ‚Âº confidence ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬â€œÃ‚Âº verdict ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬â€œÃ‚Âº report
-  tests ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬â€œÃ‚Âº verification ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬â€œÃ‚Âº Result ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ‹Å“        ÃƒÂ¢Ã¢â‚¬ÂÃ¢â‚¬Å¡
-            (current, baseline,                ÃƒÂ¢Ã¢â‚¬ÂÃ¢â‚¬ÂÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ every point, explained
+  diff ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“Ãƒâ€šÃ‚Âº static rules ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“Ãƒâ€šÃ‚Âº Signal[]  ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒâ€šÃ‚Â
+                                       ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“Ãƒâ€šÃ‚Âº confidence ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“Ãƒâ€šÃ‚Âº verdict ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“Ãƒâ€šÃ‚Âº report
+  tests ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“Ãƒâ€šÃ‚Âº verification ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“Ãƒâ€šÃ‚Âº Result ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒâ€¹Ã…â€œ        ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡
+            (current, baseline,                ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ every point, explained
              integrity, held-out)
 ```
 
@@ -238,7 +249,7 @@ per-test results, and output are captured, secrets redacted, output capped.
 The strongest evidence available is a suite the agent never saw, and almost
 nobody has one configured. The repository's own history supplies the next best
 thing. When a diff changes a test file, greenwash takes the **committed** version
-of that test ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â the worktree at `HEAD` already holds it ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â overlays only the
+of that test ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â the worktree at `HEAD` already holds it ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â overlays only the
 changed *implementation* files onto it, and runs it against the new code.
 
 That is the one combination nothing else checks. The baseline comparison runs
@@ -248,7 +259,7 @@ committed test failing while the edited one passes is what changing the test
 instead of the code looks like, and it is reported as `test-weakened`.
 
 It is a signal rather than a conviction, because a genuine specification change
-produces an identical result ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â so it makes a report `SUSPICIOUS` and asks for an
+produces an identical result ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â so it makes a report `SUSPICIOUS` and asks for an
 explanation, and `--fail-on suspicious` is the opt-in gate. A collection error,
 like a refactor that renamed an import target, is recorded as `unavailable`
 rather than as a failure.
@@ -266,7 +277,7 @@ greenwash --claim "Implement OAuth login" \
 ```
 
 Each requirement bound with `=>` is run and reported as a pass or a failure. One
-with no binding is reported as **unverifiable** ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â never as a pass ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â and a
+with no binding is reported as **unverifiable** ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â never as a pass ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â and a
 requirement that fails produces `NOT_VERIFIED`, because it is a check the claim
 itself named. No model is involved: the agent says what it did and points at the
 evidence, and greenwash runs it. The same list can live in
@@ -520,11 +531,11 @@ pinned artifacts.
 
 | Where | How |
 |---|---|
-| Any repo (CLI) | `pipx install greenwash-cli` |
+| Any repo (CLI) | `pipx install git+https://github.com/0DukePan/greenwash@v0.5.0` -- **not on PyPI yet**, see [RELEASING.md](RELEASING.md) |
 | Node projects | the shim in [`npm/`](npm/) -- **not published under this name yet**, see [npm/README.md](npm/README.md) |
 | **Claude Code** (the unskippable hook) | `/plugin marketplace add 0DukePan/greenwash` then `/plugin install greenwash@greenwash` |
 | **Codex** (strict by default) | the plugin in [`codex/`](codex/README.md) -- same checker, same policy, strict gate |
-| GitHub Actions | `uses: 0DukePan/greenwash@v0.4.2` (see [`action.yml`](action.yml)) |
+| GitHub Actions | `uses: 0DukePan/greenwash@v0.5.0` (see [`action.yml`](action.yml)) |
 | pre-commit | add `0DukePan/greenwash` to `repos` (see [`.pre-commit-hooks.yaml`](.pre-commit-hooks.yaml)) |
 | Cursor / Copilot / Cline / Windsurf / Gemini / Amp | the rules file generated for that host in [`adapters/`](adapters/) -- rules only, no hook |
 
@@ -653,7 +664,7 @@ That writes one entry to `.greenwash/waivers.json`, committed with the code:
     {
       "id": "GW-2026-0001",
       "rule_id": "GW-DIV-002",
-      "signal_fingerprint": "sha256:1f0cÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦",
+      "signal_fingerprint": "sha256:1f0cÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦",
       "path": "src/loader.py",
       "reason": "the fallback is the documented behaviour and an integration test covers it",
       "reviewer": "@maintainer",

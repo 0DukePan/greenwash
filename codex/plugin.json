@@ -1,6 +1,6 @@
 {
   "name": "greenwash",
-  "version": "0.4.2",
+  "version": "0.5.0",
   "description": "A strict stop gate for coding agents: the diff is read and the project's tests are run when a turn tries to end, and the stop is blocked unless every finding is fixed or waived.",
   "hooks": "hooks/codex-hooks.json",
   "skills": "skills",

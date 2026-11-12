@@ -1,10 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.5.0 -- 2026-11-12
 
 ### Added
 
-- **`python benchmark/verify.py` — one command, ninety seconds, no model.**
+- **`python benchmark/verify.py` â€” one command, ninety seconds, no model.**
   Runs the three offline measurements (the task corpus, the attack/twin pairs,
   the language packs), prints each result and exits non-zero on the first
   regression. `--quick` skips the corpus and takes ten seconds. The CI
@@ -702,7 +702,7 @@
   `HEAD`, and flags tests that passed at baseline and fail now (`regression`).
 - **Python AST checks** (`ast_checks.py`): hardcoded returns are now caught even
   when routed through a local variable (`result = 5; return result`) or
-  annotated with a trailing comment (`return 5  # fixed`) — both slipped past
+  annotated with a trailing comment (`return 5  # fixed`) â€” both slipped past
   the old regex.
 - **Data-driven language packs** (`patterns.py`) for Python, JS/TS, Go, Rust,
   Ruby, and Java.
