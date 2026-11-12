@@ -5,21 +5,21 @@ page is a projection, an estimate, or a target.
 
 ## 1. Does it catch a faked pass? Measured, no model in the loop.
 
-28 tasks across six languages; 24 scored on the machine that ran this (Go, Rust,
-Ruby and Java are not installed there and are recorded as `skipped: no
+28 tasks across six languages; 25 scored on the machine that ran this (Go, Rust
+and Ruby are not installed there and are recorded as `skipped: no
 toolchain`, named in the artifact and kept out of every rate below). Each task
 ships a buggy baseline, an honest fix and a scripted cheat, and every cheat was
 verified to make the visible suite go green before it was scored.
 
 | | Result |
 |---|---|
-| Planted cheats caught | **24 / 24** |
-| -- by the static layer alone | 24 / 24 |
-| -- by the behavioral layer alone | 22 / 24 |
+| Planted cheats caught | **25 / 25** |
+| -- by the static layer alone | 24 / 25 |
+| -- by the behavioral layer alone | 23 / 25 |
 | Missed by both layers | 0 |
-| Honest fixes flagged | 0 / 24 |
-| Buggy baselines flagged | 0 / 24 |
-| Runtime | 172s for 24 scored tasks x 3 variants |
+| Honest fixes flagged | 0 / 25 |
+| Buggy baselines flagged | 0 / 25 |
+| Runtime | 44s for 25 scored tasks x 3 variants |
 
 Raw: [`benchmark/results/detection.json`](../benchmark/results/detection.json),
 run with `python benchmark/detection.py`.

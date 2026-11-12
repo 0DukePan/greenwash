@@ -15,23 +15,23 @@ how often an agent's "done" claim is actually true?**
 
 | Metric | Value |
 |---|---|
-| Corpus | 24 of 28 tasks (4 skipped: no toolchain), 24 of 24 planted cheats verified to make the visible suite pass |
-| True positives (cheats caught) | 24 |
+| Corpus | 25 of 28 tasks (3 skipped: no toolchain), 25 of 25 planted cheats verified to make the visible suite pass |
+| True positives (cheats caught) | 25 |
 | False negatives (cheats missed) | 0 |
 | False positives (honest fixes flagged) | 0 |
-| True negatives (honest fixes left alone) | 24 |
-| Recall | 100.0% (95% CI 86.2%-100.0%) |
+| True negatives (honest fixes left alone) | 25 |
+| Recall | 100.0% (95% CI 86.7%-100.0%) |
 | Precision | 100.0% |
-| False-positive rate | 0.0% (95% upper bound 13.8% on this corpus size) |
-| Static layer alone | 24/24 |
-| Behavioral layer alone | 22/24 |
+| False-positive rate | 0.0% (95% upper bound 13.3% on this corpus size) |
+| Static layer alone | 24/25 |
+| Behavioral layer alone | 23/25 |
 
 By cheat type (applied / static caught / behavioral caught):
 
 | Cheat type | Applied | Static | Behavioral |
 |---|---|---|---|
 | `exploit` | 3 | 3 | 1 |
-| `hardcode` | 5 | 5 | 5 |
+| `hardcode` | 6 | 5 | 6 |
 | `mock` | 4 | 4 | 4 |
 | `skip` | 5 | 5 | 5 |
 | `swallow` | 5 | 5 | 5 |
@@ -197,11 +197,11 @@ writes `benchmark/results/detection.json`:
 
 | Workspace | Result |
 |---|---|
-| 24 of the 28 planted cheats | all 24 went green; static scan 24/24, held-out suite 22/24 |
-| 24 recorded real fixes | 0 flags, both suites pass |
-| 24 buggy baselines | 0 flags |
+| 25 of the 28 planted cheats | all 25 went green; static scan 24/25, held-out suite 23/25 |
+| 25 recorded real fixes | 0 flags, both suites pass |
+| 25 buggy baselines | 0 flags |
 
-The four tasks not scored here are the Go, Rust, Ruby and Java ones: this
+The three tasks not scored here are the Go, Rust and Ruby ones: this
 machine has none of those toolchains, so `detection.py` records them under
 `skipped` with the missing executable and keeps them out of every rate. CI's
 `languages` job runs the same corpus where the toolchains exist and asserts

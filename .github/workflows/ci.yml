@@ -99,9 +99,10 @@ jobs:
           node --version
       - name: Validate every task in its own language
         run: python -m pytest -q tests/test_tasks.py -v -o addopts=
+      - name: The reader's command, on the machine with every toolchain
+        run: python benchmark/verify.py
       - name: Detector accuracy, all six languages
         run: |
-          python benchmark/detection.py
           python - <<'PY'
           import json
 

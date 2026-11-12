@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <strong>24/24 planted tampers caught &middot; 0 false positives on 24 matched fixes &middot; 1054 tests</strong><br>
+  <strong>25/25 planted tampers caught &middot; 0 false positives on 25 matched fixes &middot; 1057 tests</strong><br>
   <sub>
     An agent under pressure to show green will skip the test, mock the unit under
     test, hardcode the expected value, or swallow the exception that would have
@@ -107,6 +107,23 @@ finds them. In a JavaScript project, the shim in [`npm/`](npm/) runs the same
 Python implementation -- read [`npm/README.md`](npm/README.md) first: the npm
 name is not published yet, so `npx greenwash` is not a supported install today.
 
+### Check it before you believe it
+
+```bash
+git clone https://github.com/0DukePan/greenwash && cd greenwash
+python benchmark/verify.py          # 90 seconds, no model, no network
+```
+
+That runs the three offline measurements against this repository's own corpus:
+a planted cheat per task scored by the scanner and the real test runner, each
+cheat beside its legitimate twin, and a positive/negative pair per language
+pack. It exits non-zero on the first regression, so it is also the acceptance
+test for a change. `--quick` skips the corpus and takes ten seconds.
+
+What it does not prove is in [docs/what-did-not-work.md](docs/what-did-not-work.md);
+the short version is that a passing suite is never proof of correctness, and
+neither is this benchmark.
+
 To watch it before you install anything:
 
 ```bash
@@ -189,20 +206,20 @@ note: coverage is a proxy: 100% of the changed source files have an
 
 Three things to notice, because they are the whole design:
 
-- **`Ran 1/1, then 0/1`** — the visible suite passes and a suite the agent never
+- **`Ran 1/1, then 0/1`** Ã¢â‚¬â€ the visible suite passes and a suite the agent never
   saw does not. That gap is the evidence, and it cannot be argued with.
-- **`Observed: assert 5 == 7`** — every failing verdict carries expected-vs-observed.
+- **`Observed: assert 5 == 7`** Ã¢â‚¬â€ every failing verdict carries expected-vs-observed.
   There is no code path that prints a bare `FAILED`.
-- **`note: coverage is a proxy`** — a measurement that isn't a real measurement
+- **`note: coverage is a proxy`** Ã¢â‚¬â€ a measurement that isn't a real measurement
   says so, in the report, next to the number.
 
 ## How it works
 
 ```
-  diff ──► static rules ──► Signal[]  ─┐
-                                       ├──► confidence ──► verdict ──► report
-  tests ──► verification ──► Result ───┘        │
-            (current, baseline,                └─ every point, explained
+  diff Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€“Âº static rules Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€“Âº Signal[]  Ã¢â€â‚¬Ã¢â€Â
+                                       Ã¢â€Å“Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€“Âº confidence Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€“Âº verdict Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€“Âº report
+  tests Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€“Âº verification Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€“Âº Result Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€Ëœ        Ã¢â€â€š
+            (current, baseline,                Ã¢â€â€Ã¢â€â‚¬ every point, explained
              integrity, held-out)
 ```
 
@@ -221,7 +238,7 @@ per-test results, and output are captured, secrets redacted, output capped.
 The strongest evidence available is a suite the agent never saw, and almost
 nobody has one configured. The repository's own history supplies the next best
 thing. When a diff changes a test file, greenwash takes the **committed** version
-of that test — the worktree at `HEAD` already holds it — overlays only the
+of that test Ã¢â‚¬â€ the worktree at `HEAD` already holds it Ã¢â‚¬â€ overlays only the
 changed *implementation* files onto it, and runs it against the new code.
 
 That is the one combination nothing else checks. The baseline comparison runs
@@ -231,7 +248,7 @@ committed test failing while the edited one passes is what changing the test
 instead of the code looks like, and it is reported as `test-weakened`.
 
 It is a signal rather than a conviction, because a genuine specification change
-produces an identical result — so it makes a report `SUSPICIOUS` and asks for an
+produces an identical result Ã¢â‚¬â€ so it makes a report `SUSPICIOUS` and asks for an
 explanation, and `--fail-on suspicious` is the opt-in gate. A collection error,
 like a refactor that renamed an import target, is recorded as `unavailable`
 rather than as a failure.
@@ -249,7 +266,7 @@ greenwash --claim "Implement OAuth login" \
 ```
 
 Each requirement bound with `=>` is run and reported as a pass or a failure. One
-with no binding is reported as **unverifiable** — never as a pass — and a
+with no binding is reported as **unverifiable** Ã¢â‚¬â€ never as a pass Ã¢â‚¬â€ and a
 requirement that fails produces `NOT_VERIFIED`, because it is a check the claim
 itself named. No model is involved: the agent says what it did and points at the
 evidence, and greenwash runs it. The same list can live in
@@ -335,19 +352,19 @@ that makes them is `benchmark/`.
 
 **Detector accuracy, no model in the loop.** 28 tasks across six languages, each
 shipped with a buggy baseline, a recorded honest fix, and a scripted cheat.
-Every cheat actually made the visible suite go green. On this Windows laptop 24
-of the 28 scored -- Go, Rust, Ruby and Java are not installed here, so those
-four are named as `skipped: no toolchain` and kept out of every rate; the CI
+Every cheat actually made the visible suite go green. On this Windows laptop 25
+of the 28 scored -- Go, Rust and Ruby are not installed here, so those
+three are named as `skipped: no toolchain` and kept out of every rate; the CI
 `languages` job runs the same corpus where the toolchains exist and asserts that
 nothing skipped:
 
 | | Result |
 |---|---|
-| Planted cheats caught | **24/24** (24 static, 22 behavioral, union 24) |
+| Planted cheats caught | **25/25** (24 static, 23 behavioral, union 25) |
 | Cheats missed by both layers | **0** |
-| Honest fixes flagged | **0/24** |
-| Buggy baselines flagged | 0/24 |
-| Runtime | 172s for 24 scored tasks x 3 variants -- every variant runs the real suite in a subprocess |
+| Honest fixes flagged | **0/25** |
+| Buggy baselines flagged | 0/25 |
+| Runtime | 44s for 25 scored tasks x 3 variants -- every variant runs the real suite in a subprocess, four tasks at a time |
 | Static scan budget | 500-file diff scored in under 2s (asserted by `tests/test_rules.py`) |
 
 Reproduce with `python benchmark/detection.py`; the metrics table, including the
@@ -463,6 +480,11 @@ The repository carries the machinery that decides whether a public claim may be
 made, not just the detector. Everything below is offline and reproducible from
 pinned artifacts.
 
+- **The offline benchmark** ([docs/benchmark-for-readers.md](docs/benchmark-for-readers.md))
+  is the one command a reader should run first: `python benchmark/verify.py`
+  scores a planted cheat per task, an attack beside its legitimate twin, and a
+  positive/negative pair per language pack -- no model, no network, ninety
+  seconds. What it measures, and what it cannot, is on that page.
 - **The claim matrix** ([docs/claim-matrix.md](docs/claim-matrix.md)) lists every
   public claim with its source type -- unit test, maintainer-authored,
   independent, frozen or beta -- its limitation, and the strongest wording the
@@ -631,7 +653,7 @@ That writes one entry to `.greenwash/waivers.json`, committed with the code:
     {
       "id": "GW-2026-0001",
       "rule_id": "GW-DIV-002",
-      "signal_fingerprint": "sha256:1f0c…",
+      "signal_fingerprint": "sha256:1f0cÃ¢â‚¬Â¦",
       "path": "src/loader.py",
       "reason": "the fallback is the documented behaviour and an integration test covers it",
       "reviewer": "@maintainer",

@@ -11,12 +11,49 @@ One ruleset, generated into every host's file by
 | Host | File | Enforcement |
 |---|---|---|
 | Claude Code | `skills/greenwash/SKILL.md` + `hooks/hooks.json` | skill **and** Stop hook -- the turn cannot end on a flagged diff |
-| Codex, Amp, Jules, Zed, Qoder, CodeWhale, ... | `AGENTS.md` | rules only |
+| Codex | `codex/` plugin, `AGENTS.md` | Stop hook (strict by default) **and** rules |
 | Cursor | `.cursor/rules/greenwash.mdc` | rules only |
-| GitHub Copilot | `.github/copilot-instructions.md` | rules only |
-| Cline | `.clinerules/greenwash.md` | rules only |
 | Windsurf | `.windsurf/rules/greenwash.md` | rules only |
+| Cline | `.clinerules/greenwash.md` | rules only |
+| GitHub Copilot | `.github/copilot-instructions.md` | rules only |
 | Gemini CLI / Antigravity | `GEMINI.md` | rules only |
+| Amp, Jules, Zed, Qoder, CodeWhale, ... | `AGENTS.md` | rules only |
+
+## The honest split
+
+Two hosts can *coerce* the agent: Claude Code and Codex expose a Stop hook, so
+the check runs whether or not the model cooperates. Everything else gets rules,
+and a rule is a request -- a model under pressure can skip it, which is exactly
+the behaviour this tool exists to catch. Do not read the Cursor or Windsurf file
+as enforcement.
+
+If you use Cursor or Windsurf, the enforcement is one of these, and both live
+outside the chat:
+
+```bash
+greenwash init                 # write .greenwash/config.json
+greenwash waive --help         # the auditable way to resolve a finding
+```
+
+- **pre-commit** — `repos: [{repo: https://github.com/0DukePan/greenwash, rev: v0.4.2}]`
+  runs the checker on every commit, before it reaches a branch.
+- **The GitHub Action** — `.github/workflows/greenwash-report-only.yml` in this
+  repository is a working example: report-only, read-only permissions, no
+  secrets, the report uploaded as an artifact. Delete `continue-on-error` and
+  add `--fail-on suspicious` when you want it to block.
+
+Neither needs the agent's cooperation, which is the point.
+
+Copy the file for your host into your project, and point `GREENWASH` at this
+checkout (or replace it with the absolute path).
+
+## Which rules each host receives
+
+Every rules file is generated from the same source, so the wording is identical
+across Cursor, Windsurf, Cline, Copilot and `AGENTS.md`. What differs is the
+shape the host reads: `.mdc` with front matter for Cursor, `.md` elsewhere. If
+you change one, run `python adapters/sync_instructions.py` and commit the
+result -- `tests/test_manifests.py` fails if they drift.
 
 "Rules only" means the agent is asked to run the check and paste the receipt --
 it can still skip that under pressure, which is exactly why the Claude Code

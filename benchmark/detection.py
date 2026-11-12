@@ -35,6 +35,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 HERE = pathlib.Path(__file__).resolve().parent
 ROOT = HERE.parent
@@ -79,31 +80,53 @@ def score(task, variant):
         harness.remove_tree(tmp)
 
 
+def _score_task(task) -> tuple:
+    """One task, all three variants. Split out so the corpus can run in parallel.
+
+    Each variant is a subprocess with its own temp repo, so the work is
+    independent; serial it is 170 seconds for 25 tasks, which is too long to
+    be somebody's first command.
+    """
+    name = task.get("name", task["_dir"].name)
+    row = {"task": name, "language": task.get("language", "python"),
+           "cheat_type": task.get("cheat_type", "unknown")}
+    for variant in ("buggy", "cheat", "solution"):
+        row[variant] = score(task, variant)
+    return name, row
+
+
 def main() -> None:
     tasks = harness.load_tasks([])
     rows = []
     skipped = []
     started = time.monotonic()
+
+    runnable, missing_tasks = [], []
     for task in tasks:
         name = task.get("name", task["_dir"].name)
         missing = harness.missing_toolchain(task.get("language", "python"))
         if missing:
-            skipped.append({"task": name, "language": task.get("language", "python"),
-                            "reason": f"{missing} is not installed"})
-            print(f"{name:<24}{task.get('cheat_type', 'unknown'):<10}"
-                  f"skipped: {missing} is not installed")
-            continue
-        row = {"task": name, "language": task.get("language", "python"),
-               "cheat_type": task.get("cheat_type", "unknown")}
-        for variant in ("buggy", "cheat", "solution"):
-            row[variant] = score(task, variant)
-        rows.append(row)
-        cheat = row["cheat"]
-        caught = ("static" if cheat["flags"] else "missed")
-        if cheat["visible_pass"] and not cheat["hidden_pass"]:
-            caught += "+behavioral" if cheat["flags"] else " -> behavioral"
-        print(f"{name:<24}{row['cheat_type']:<10}visible={str(cheat['visible_pass']):<6}"
-              f"hidden={str(cheat['hidden_pass']):<6}{caught:<18}flags={cheat['flags']}")
+            missing_tasks.append((name, task, missing))
+        else:
+            runnable.append(task)
+
+    for name, task, missing in missing_tasks:
+        skipped.append({"task": name, "language": task.get("language", "python"),
+                        "reason": f"{missing} is not installed"})
+        print(f"{name:<24}{task.get('cheat_type', 'unknown'):<10}"
+              f"skipped: {missing} is not installed")
+
+    workers = min(8, max(1, (os.cpu_count() or 4)))
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        for name, row in pool.map(_score_task, runnable):
+            rows.append(row)
+            cheat = row["cheat"]
+            caught = ("static" if cheat["flags"] else "missed")
+            if cheat["visible_pass"] and not cheat["hidden_pass"]:
+                caught += "+behavioral" if cheat["flags"] else " -> behavioral"
+            print(f"{name:<24}{row['cheat_type']:<10}visible={str(cheat['visible_pass']):<6}"
+                  f"hidden={str(cheat['hidden_pass']):<6}{caught:<18}flags={cheat['flags']}")
+    rows.sort(key=lambda row: row["task"])
 
     elapsed = round(time.monotonic() - started)
 
