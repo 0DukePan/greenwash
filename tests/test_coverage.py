@@ -156,10 +156,17 @@ def test_the_cli_reports_the_four_states_with_the_documented_exit_codes(tmp_path
 def test_a_real_pytest_binding_reports_verified(tmp_path):
     (tmp_path / "test_one.py").write_text(
         "def test_ok():\n    assert True\n", encoding="utf-8")
+    # PATH comes from the environment on purpose: stripping it made the child
+    # unable to find `python`, and the test failed with "could not check"
+    # rather than testing anything.
+    env = {**__import__("os").environ, "PYTHONPATH": str(ROOT)}
     result = subprocess.run(
         [sys.executable, "-m", "greenwash", "coverage",
          "--require", "the test passes => test_one.py::test_ok",
+         "--run-tests", f"{sys.executable} -m pytest -q",
          "--json"],
         cwd=tmp_path, capture_output=True, text=True, encoding="utf-8",
-        errors="replace", env={"PYTHONPATH": str(ROOT)}, timeout=180)
+        errors="replace", env=env, timeout=180)
     assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["summary"]["verified"] == 1, payload

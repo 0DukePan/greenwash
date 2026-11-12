@@ -106,7 +106,11 @@ jobs:
           python - <<'PY'
           import json
 
-          summary = json.load(open("benchmark/results/detection.json", encoding="utf-8"))["summary"]
+          # The fresh run, not the committed reference: this machine has every
+          # toolchain, so nothing may be skipped here. detection.json is the
+          # reference run the README quotes, and verify.py deliberately leaves
+          # it alone.
+          summary = json.load(open("benchmark/results/detection-local.json", encoding="utf-8"))["summary"]
           skipped = summary["skipped"]
           assert not skipped, f"toolchains are installed, but these tasks skipped: {skipped}"
           assert summary["tasks"] == summary["corpus"], summary
