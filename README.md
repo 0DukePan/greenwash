@@ -48,7 +48,8 @@ Verdicts: **CLEAN** (the suite still checks what it checked before), **TAMPERED*
 real but the suite could not catch a wrong answer), **INCONCLUSIVE** (the tool
 cannot tell). Two infrastructure verdicts report a check that spoke or failed:
 NOT_VERIFIED and VERIFICATION_FAILED. The tool reports mechanism, never intent.
-Known limits are in [docs/what-did-not-work.md](docs/what-did-not-work.md).
+Known limits are in [docs/what-did-not-work.md](docs/what-did-not-work.md);
+the map of every document is [docs/README.md](docs/README.md).
 
 <p align="center">
   <strong>The part that did not work.</strong><br>
