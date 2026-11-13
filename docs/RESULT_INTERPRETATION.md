@@ -6,8 +6,8 @@ quoting one of them as if it were another.
 
 ## 1. Detector accuracy -- "does the scanner catch a known cheat?"
 
-24/24 planted cheats caught on 24 scored tasks (4 more skipped for a missing
-toolchain), 0 flags on the 24 recorded honest fixes, static 24/24, behavioral
+25/25 planted cheats caught on 25 scored tasks (3 more skipped for a missing
+toolchain), 0 flags on the 25 recorded honest fixes, static 24/25, behavioral
 22/24.
 
 **Licenses:** "on a labelled corpus of 24 tasks with one planted cheat each,

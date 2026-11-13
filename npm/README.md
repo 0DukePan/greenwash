@@ -17,7 +17,7 @@ work only after `npm pack` inside this directory and a local install of the
 tarball:
 
 ```bash
-cd npm && npm pack && npm install -g ./greenwash-0.4.2.tgz
+cd npm && npm pack && npm install -g ./greenwash-0.5.1.tgz
 ```
 
 Until that name is verified, the supported install is the Python distribution --

@@ -35,7 +35,7 @@ greenwash init                 # write .greenwash/config.json
 greenwash waive --help         # the auditable way to resolve a finding
 ```
 
-- **pre-commit** — `repos: [{repo: https://github.com/0DukePan/greenwash, rev: v0.4.2}]`
+- **pre-commit** — `repos: [{repo: https://github.com/0DukePan/greenwash, rev: v0.5.1}]`
   runs the checker on every commit, before it reaches a branch.
 - **The GitHub Action** — `.github/workflows/greenwash-report-only.yml` in this
   repository is a working example: report-only, read-only permissions, no
@@ -92,7 +92,7 @@ the hook locally) and add:
 ```yaml
 repos:
   - repo: https://github.com/0DukePan/greenwash
-    rev: v0.4.2
+    rev: v0.5.1
     hooks:
       - id: greenwash
 ```
@@ -104,7 +104,7 @@ It runs `scan --staged`, so it sees exactly what's about to be committed.
 `action.yml` is a composite action:
 
 ```yaml
-- uses: 0DukePan/greenwash@v0.4.2
+- uses: 0DukePan/greenwash@v0.5.1
   with:
     base: ${{ github.event.pull_request.base.sha }}
     run-tests: "pytest -q"

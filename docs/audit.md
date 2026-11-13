@@ -26,7 +26,9 @@ Result, verbatim from the run: `724 passed, 7 skipped in 740.13s (0:12:20)`. Zer
 ## Docs-versus-repo gaps (verified)
 
 1. **The master prompt named by this phase's brief (`greenwash-plan.md`) does not exist in the repository.** The brief itself was treated as self-contained.
-2. **`ROADMAP_TO_TRENDING.md` still uses the retired v1 taxonomy and numbers** ("silent cheat", the off-versus-full comparison). It was not updated by the 2026-10 correction and contradicts `docs/what-did-not-work.md`.
+2. **The internal planning documents are not in this repository.** The launch roadmap and the advisor questionnaire were written for
+   the maintainer and describe strategy, star targets and an open decision. Keeping them beside the code made the repository
+   read as a campaign rather than a tool, so they now live outside it. Nothing in this repository depends on them.
 3. **The README's headline detector numbers are not labeled as maintainer-authored or preliminary.** The 24-of-24 and 0-of-24 figures are from the maintainer's own task corpus, and the launch-benchmark spec says those are plumbing, not evidence.
 4. **The claim ledger has no source-type or limitation fields.** It records claim, evidence, status and allowed wording, but not whether evidence is a unit test, maintainer-authored, independent, frozen or beta, and not the limitation sentence per claim.
 5. **Launch thresholds exist twice with no consistency test.** `benchmark/thresholds.json` and the table in `docs/specs/launch-benchmark.md` agree today by inspection, but nothing fails when one moves.

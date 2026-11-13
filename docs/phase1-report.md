@@ -22,7 +22,7 @@ The phase brief named `greenwash-plan.md`; that file does not exist in the repos
 
 ## Step-by-step
 
-0. **Audit.** `docs/audit.md`: architecture, verdict engine and launch command locations, the baseline above, and eleven verified docs-versus-code gaps, including the missing master prompt and the stale `ROADMAP_TO_TRENDING.md` numbers.
+0. **Audit.** `docs/audit.md`: architecture, verdict engine and launch command locations, the baseline above, and eleven verified docs-versus-code gaps, including the missing master prompt and the planning documents that used to sit at the repository root.
 1. **Fail-safe verdicts.** One test per infra case (`tests/test_failsafe.py`). Found and fixed one real hole: a passing suite whose committed form could not be re-run returned `VERIFIED`; an unavailable integrity check now yields `INCONCLUSIVE`. Timeout, missing dependency and internal failure already mapped to `VERIFICATION_FAILED`; parse failure and empty diff to `INCONCLUSIVE`.
 2. **Decision criteria.** Criteria rows now carry `MEASURED` or `UNMEASURED`; the decision lists `unmeasured_criteria` and cannot return LAUNCH while any exists. Eight tests pin the L1/L2 boundaries, empty dataset, malformed report, conflicting cells, the sample floor, and that `benchmark/thresholds.json` matches the launch spec's L-table.
 3. **Statistics.** Recomputation above. The classes are now stated explicitly in the evaluation module: positives, twins, natural clean, weak verifier; planted and synthetic records never enter a rate.
@@ -48,7 +48,8 @@ The phase brief named `greenwash-plan.md`; that file does not exist in the repos
 - The judge choice and the frozen prompt (B2).
 - Confirmation whether the v4 "Ratchet" is the pinned competitor (B3).
 - The pre-registered launch configuration.
-- The advisor's answers to `to-questionnaire-greenwash-launch-worthiness.md`, which decide the recommendation below.
+- The advisor's answers to the launch questionnaire, which is held outside this repository
+  because it is internal planning rather than product documentation.
 
 ## Draft recommendation: halve Stage 1 and 2, run Stage 3 on dev, defer Stage 4, start Stage 5 report-only now
 
